@@ -1,0 +1,1000 @@
+\chapter{Analisi ammortizzata}\label{ch:ammortizzata}
+
+% nomi delle operazioni e macro di comodo
+\newcommand{\Push}{\textsc{Push}}
+\newcommand{\Pop}{\textsc{Pop}}
+\newcommand{\MultiPop}{\textsc{MultiPop}}
+\newcommand{\MultiPush}{\textsc{MultiPush}}
+\newcommand{\Increment}{\textsc{Increment}}
+\newcommand{\Decrement}{\textsc{Decrement}}
+\newcommand{\SetBit}{\textsc{Set}}
+\newcommand{\ResetBit}{\textsc{Reset}}
+\newcommand{\TableInsert}{\textsc{Table-Insert}}
+\newcommand{\TableDelete}{\textsc{Table-Delete}}
+\newcommand{\tnum}{\mathit{num}}
+\newcommand{\tsize}{\mathit{size}}
+
+Quando si studia una struttura dati si è soliti calcolare il costo di ogni singola operazione nel caso peggiore, e da quello ricavare il costo di una sequenza di operazioni. Il problema di questo approccio è che molte strutture dati hanno operazioni che sono occasionalmente molto costose ma che, proprio per questo, lasciano la struttura in uno stato in cui le operazioni successive costano poco: l'analisi del caso peggiore della singola operazione non tiene conto di questo effetto e finisce per fornire stime troppo pessimistiche. L'\textbf{analisi ammortizzata} (amortized analysis) studia invece il costo di un'intera sequenza di operazioni e lo ripartisce in qualche modo tra le operazioni che la compongono. A differenza dell'analisi del caso medio non interviene alcuna probabilità, e si ottiene comunque una garanzia sul caso peggiore. In questo capitolo vediamo i tre metodi principali dell'analisi ammortizzata (aggregazione, accantonamenti e potenziale), applicandoli a due esempi: uno stack con l'operazione aggiuntiva \MultiPop{} e un contatore binario con l'operazione \Increment{}. Infine li usiamo per studiare un'applicazione reale, le \emph{tabelle dinamiche}, ovvero tabelle che vengono riallocate quando si riempiono o si svuotano troppo.
+
+\section{L'idea di fondo}\label{sec:idea}
+Consideriamo una struttura dati su cui si esegue una sequenza di $n$ operazioni. Ciò che ci interessa non è il costo della singola operazione, ma il tempo complessivo della sequenza, che indichiamo con $T(n)$. Questo tempo viene poi ripartito in qualche modo tra le $n$ operazioni: la scelta più semplice è dividerlo in parti uguali.
+
+\begin{definizione}[Costo ammortizzato per operazione]\label{def:ammortizzato}
+Sia $T(n)$ il costo totale, nel caso peggiore, di una sequenza di $n$ operazioni su una struttura dati. Il \textbf{costo ammortizzato per operazione} è
+\[
+\frac{T(n)}{n}.
+\]
+\end{definizione}
+
+Si tratta quindi del costo che ogni operazione ha \emph{in media} all'interno della sequenza, ovvero di una media sul caso peggiore: a ogni operazione si attribuisce una parte del costo totale, anche se in quel momento la sua esecuzione è stata più economica o più costosa.
+
+\begin{osservazione}[Non è un'analisi probabilistica]
+La stima ottenuta \textbf{non è probabilistica}: non si fanno ipotesi sulla distribuzione delle operazioni e non si calcolano valori attesi. Si considera la sequenza peggiore possibile e si garantisce che, anche in quel caso, il costo medio per operazione resta contenuto, ovvero che il costo ammortizzato è un limite valido per qualsiasi sequenza di operazioni.
+\end{osservazione}
+
+\paragraph{L'approccio naive.}
+Un modo naturale per calcolare la complessità di una sequenza di $n$ operazioni consiste nel calcolare il caso peggiore di una \emph{singola} operazione e nel moltiplicarlo per $n$. Vedremo che questo approccio dà luogo a un'analisi \textbf{troppo pessimistica}. Infatti, in molte strutture dati è impossibile che tutte le operazioni di una sequenza ricadano nel caso peggiore: anzi, spesso solo una parte molto limitata di esse può effettivamente incorrere in tale situazione. L'analisi ammortizzata serve proprio a tenere conto di questo fatto.
+
+\paragraph{I tre metodi.}
+Per ottenere stime più strette si usano tre tecniche:
+\begin{itemize}
+    \item \textbf{Metodo dell'aggregazione}: si stima il costo totale $T(n)$ della sequenza e lo si divide in parti uguali tra le $n$ operazioni (sezione~\ref{sec:aggregazione}).
+    \item \textbf{Metodo degli accantonamenti} (accounting method): si assegna a ciascuna operazione un costo ammortizzato scelto da noi, in modo che la somma dei costi ammortizzati non sia mai inferiore al costo reale; l'eccedenza viene immagazzinata come \emph{credito} su singoli elementi della struttura dati (sezione~\ref{sec:accantonamenti}).
+    \item \textbf{Metodo del potenziale} (potential method): come il precedente, ma il credito viene associato alla struttura dati nel suo insieme tramite una \emph{funzione potenziale} (sezione~\ref{sec:potenziale}).
+\end{itemize}
+
+\section{Due esempi di riferimento}\label{sec:esempi}
+Per confrontare i tre metodi useremo sempre gli stessi due esempi, così da vedere come lo stesso problema venga affrontato in modi diversi.
+
+\subsection{Stack con \MultiPop}\label{sec:stack}
+Uno stack $S$ è una struttura dati che si accede solo dalla cima, e che supporta le seguenti operazioni elementari:
+\begin{itemize}
+    \item $\Push(S,x)$: inserisce l'elemento $x$ in cima allo stack.
+    \item $\Pop(S)$: rimuove l'elemento in cima allo stack, se c'è; su uno stack vuoto non ha alcun effetto.
+    \item $\textsc{StackEmpty}(S)$: restituisce vero se lo stack è vuoto, falso altrimenti.
+\end{itemize}
+Ognuna di queste operazioni costa $O(1)$, e per semplicità attribuiamo costo $1$ a \Push{} e a \Pop{}. Più precisamente, contiamo soltanto i \Push{} e i \Pop{} \emph{effettivi}, ovvero quelli che inseriscono o rimuovono davvero un elemento: un \Pop{} eseguito su uno stack vuoto ha quindi costo $0$. Aggiungiamo ora l'operazione \textbf{\MultiPop}$(S,k)$, che rimuove i $k$ elementi in cima allo stack, oppure l'intero stack se questo ne contiene meno di $k$. Si tratta di un'operazione \emph{derivata}, ovvero ottenuta ripetendo più volte un'operazione elementare.
+
+\begin{algorithm}[htbp]
+\caption{L'operazione $\MultiPop(S,k)$ ripete \Pop{} finché lo stack non si svuota o finché non sono stati rimossi $k$ elementi.}\label{alg:multipop}
+\begin{algorithmic}[1]
+\Procedure{MultiPop}{$S,k$}
+  \While{\textbf{not} \Call{StackEmpty}{$S$} \textbf{and} $k>0$}
+    \State \Call{Pop}{$S$}
+    \State $k \gets k-1$
+  \EndWhile
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Il costo di $\MultiPop(S,k)$ è pari al numero di iterazioni del ciclo, ovvero al numero di \Pop{} effettivamente eseguiti:
+\[
+\text{costo}\big(\MultiPop(S,k)\big) = \min(|S|,\,k)
+\]
+dove $|S|$ è il numero di elementi presenti nello stack al momento della chiamata. La figura~\ref{fig:multipop} mostra un esempio.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, el/.style={draw=Accent, fill=Accent!6, minimum width=11mm, minimum height=5.5mm, inner sep=0pt, font=\small}]
+  % (a) stack iniziale
+  \foreach \v [count=\i from 0] in {4,8,15,16,23,42}{\node[el] at (0,{0.55*\i}) {\v};}
+  \draw[thick] (-0.7,-0.3) -- (0.7,-0.3);
+  \node[font=\scriptsize, TextGray, anchor=west] at (0.75,2.75) {$\leftarrow$ cima};
+  \node[font=\small] at (0,-0.85) {(a)};
+  % (b) dopo MULTIPOP(S,4)
+  \foreach \v [count=\i from 0] in {4,8}{\node[el] at (5.2,{0.55*\i}) {\v};}
+  \draw[thick] (4.5,-0.3) -- (5.9,-0.3);
+  \node[font=\scriptsize, TextGray, anchor=west] at (5.95,0.55) {$\leftarrow$ cima};
+  \node[font=\small] at (5.2,-0.85) {(b)};
+  % (c) dopo MULTIPOP(S,7)
+  \draw[thick] (9.5,-0.3) -- (10.9,-0.3);
+  \node[font=\scriptsize, TextGray] at (10.2,0.2) {vuoto};
+  \node[font=\small] at (10.2,-0.85) {(c)};
+  % frecce
+  \draw[->, thick] (1.5,1.4) -- node[above, font=\scriptsize] {$\MultiPop(S,4)$} (3.9,1.4);
+  \draw[->, thick] (6.7,0.5) -- node[above, font=\scriptsize] {$\MultiPop(S,7)$} (9.1,0.5);
+\end{tikzpicture}
+\caption{Effetto di \MultiPop{} su uno stack contenente sei elementi (a, la cima è l'elemento 42). $\MultiPop(S,4)$ rimuove i quattro elementi in cima e lascia 4 e 8 (b); la chiamata successiva $\MultiPop(S,7)$ svuota lo stack (c), perché ne erano rimasti solo due: in questo caso il costo è $\min(2,7)=2$ e non $7$.}
+\label{fig:multipop}
+\end{figure}
+
+\paragraph{Analisi naive.}
+Consideriamo una sequenza di $n$ operazioni (\Push, \Pop{} e \MultiPop) a partire da uno stack inizialmente vuoto. In questa situazione:
+\begin{itemize}
+    \item Lo stack contiene al più $n$ elementi, quindi $|S| = O(n)$.
+    \item Una singola operazione costa quindi $O(n)$ nel caso peggiore, perché un \MultiPop{} può dover rimuovere $O(n)$ elementi.
+    \item Il costo di $n$ operazioni è allora $n \cdot O(n) = O(n^2)$.
+\end{itemize}
+Questo limite superiore è corretto, ma non è \textbf{stretto}\footnote{Ovvero non è anche un limite $\Omega(n^2)$: nessuna sequenza di $n$ operazioni costa davvero quanto $n^2$.}: abbiamo ipotizzato che ogni operazione sia un \MultiPop{} costoso, e vedremo che ciò è impossibile.
+
+\subsection{Contatore binario con \Increment}\label{sec:contatore}
+Il secondo esempio è un contatore binario che conta in avanti a partire da $0$. Sia $A[0\dots k-1]$ un array di $k$ bit, in cui $A[0]$ è il bit meno significativo. Il valore memorizzato nel contatore è
+\[
+\mathrm{value}[A] = \sum_{i=0}^{k-1} A[i]\cdot 2^i.
+\]
+L'operazione \Increment{} somma $1$ al valore, modulo $2^k$:
+\[
+\mathrm{value}[\Increment(A)] \equiv \mathrm{value}[A] + 1 \pmod{2^k}.
+\]
+Ad esempio, con $k=7$ il contatore $1101011$ (che vale $107$) diventa $1101100$ (che vale $108$): gli ultimi due bit passano da $1$ a $0$, il terzo da $0$ a $1$, e gli altri restano invariati.
+
+\begin{algorithm}[htbp]
+\caption{L'operazione $\Increment(A)$ azzera i bit uguali a $1$ a partire dal meno significativo (propagando il riporto) e porta a $1$ il primo bit uguale a $0$ che incontra.}\label{alg:increment}
+\begin{algorithmic}[1]
+\Procedure{Increment}{$A$}
+  \State $i \gets 0$
+  \While{$i<k$ \textbf{and} $A[i]=1$}
+    \State $A[i] \gets 0$
+    \State $i \gets i+1$
+  \EndWhile
+  \If{$i<k$}
+    \State $A[i] \gets 1$\label{alg:increment:set}
+  \EndIf
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\noindent
+Le operazioni elementari sono la modifica di un singolo bit, e ne distinguiamo due tipi:
+\begin{itemize}
+    \item \textbf{\SetBit}: porta un bit da $0$ a $1$.
+    \item \textbf{\ResetBit}: porta un bit da $1$ a $0$.
+\end{itemize}
+Ciascuna ha costo $1$, quindi il costo di un \Increment{} è il numero di bit che cambiano. Notiamo che ogni \Increment{} esegue \emph{al più un} \SetBit{} (riga~\ref{alg:increment:set} dell'algoritmo~\ref{alg:increment}), e può non eseguirne nessuno solo quando il contatore passa da $1\dots1$ a $0\dots0$.
+
+\paragraph{Analisi naive.}
+Nel caso peggiore l'array contiene tutti $1$: l'incremento azzera tutti i $k$ bit, quindi
+\[
+\text{costo di un incremento} = O(k), \qquad \text{costo di } n \text{ incrementi} = n \cdot O(k) = O(nk).
+\]
+Anche in questo caso si tratta di un'analisi molto sovrabbondante: un incremento modifica tutti i $k$ bit soltanto nel passaggio da $01\dots1$ a $10\dots0$ e in quello da $1\dots1$ a $0\dots0$, cioè due volte ogni $2^k$ incrementi. Subito dopo il contatore ha al più un bit uguale a $1$, e gli incrementi successivi costano pochissimo.
+
+\section{Metodo dell'aggregazione}\label{sec:aggregazione}
+Il problema delle analisi naive viste sopra è che calcolano il caso peggiore di una singola operazione e poi lo moltiplicano per $n$. L'idea dell'aggregazione è non prendere questa scorciatoia: si stima direttamente il costo totale della sequenza, tenendo conto di come le operazioni interagiscono tra loro.
+
+\begin{definizione}[Metodo dell'aggregazione]\label{def:aggregazione}
+Il \textbf{metodo dell'aggregazione} (aggregate analysis) consiste nello stimare il costo $T(n)$ di una sequenza di $n$ operazioni e nel distribuirlo in modo equo tra le $n$ operazioni, ottenendo un costo ammortizzato
+\[
+\frac{T(n)}{n}
+\]
+per ciascuna operazione, indipendentemente dal suo tipo.
+\end{definizione}
+
+\subsection{Stack con \MultiPop}
+Partiamo da uno stack inizialmente vuoto. Le operazioni \Push{} e \Pop{} sono le operazioni \emph{elementari}, mentre \MultiPop{} è un'operazione \emph{derivata}: ogni sequenza di operazioni $\langle op_1,\dots,op_n\rangle$ con $op_i \in \{\Push,\Pop,\MultiPop\}$ può essere \textbf{srotolata} in una sequenza equivalente $\langle op'_1,\dots,op'_m\rangle$ di sole operazioni elementari, con $op'_j \in \{\Push,\Pop\}$, sostituendo
+\begin{center}
+\begin{tabular}{rcl}
+$\Pop(S)$ & $\longrightarrow$ & $\Pop(S)$ \\
+$\Push(S,x)$ & $\longrightarrow$ & $\Push(S,x)$ \\
+$\MultiPop(S,k)$ & $\longrightarrow$ & $\underbrace{\Pop(S),\dots,\Pop(S)}_{\min(|S|,\,k)}$
+\end{tabular}
+\end{center}
+Poiché ogni operazione elementare costa $1$, le due sequenze hanno lo stesso costo, ovvero il numero $m$ di operazioni elementari:
+\[
+\text{costo}\big(\langle op_1,\dots,op_n\rangle\big) = \text{costo}\big(\langle op'_1,\dots,op'_m\rangle\big) = m.
+\]
+
+\paragraph{Esempio.}
+Consideriamo la sequenza $\Push(a)$, $\Push(b)$, $\Push(c)$, $\MultiPop(4)$, $\Push(d)$, $\Pop$, $\dots$ e osserviamo come viene srotolata in figura~\ref{fig:srotolamento}. Quando viene eseguito $\MultiPop(4)$ lo stack contiene soltanto tre elementi, quindi l'operazione si traduce in $\min(3,4)=3$ operazioni di \Pop.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, every node/.style={font=\scriptsize\sffamily}, opl/.style={font=\scriptsize, TextGray}]
+  % operazioni originali
+  \node (t1) at (0,2.2) {PUSH(a)};
+  \node (t2) at (2,2.2) {PUSH(b)};
+  \node (t3) at (4,2.2) {PUSH(c)};
+  \node (t4) at (6.6,2.2) {MULTIPOP(4)};
+  \node (t5) at (9.4,2.2) {PUSH(d)};
+  \node (t6) at (11.4,2.2) {POP()};
+  \foreach \i/\x in {1/0,2/2,3/4,4/6.6,5/9.4,6/11.4}{\node[opl] at (\x,2.75) {$op_\i$};}
+  % operazioni elementari
+  \node (b1) at (0,0) {PUSH(a)};
+  \node (b2) at (2,0) {PUSH(b)};
+  \node (b3) at (4,0) {PUSH(c)};
+  \node (b4) at (5.5,0) {POP()};
+  \node (b5) at (6.6,0) {POP()};
+  \node (b6) at (7.7,0) {POP()};
+  \node (b7) at (9.4,0) {PUSH(d)};
+  \node (b8) at (11.4,0) {POP()};
+  \foreach \i/\x in {1/0,2/2,3/4,4/5.5,5/6.6,6/7.7,7/9.4,8/11.4}{\node[opl] at (\x,-0.5) {$op'_\i$};}
+  % frecce
+  \draw[->, Accent] (t1.south) -- (b1.north);
+  \draw[->, Accent] (t2.south) -- (b2.north);
+  \draw[->, Accent] (t3.south) -- (b3.north);
+  \draw[->, Accent] (t4.south) -- (b4.north);
+  \draw[->, Accent] (t4.south) -- (b5.north);
+  \draw[->, Accent] (t4.south) -- (b6.north);
+  \draw[->, Accent] (t5.south) -- (b7.north);
+  \draw[->, Accent] (t6.south) -- (b8.north);
+  \draw[decorate, decoration={brace, mirror, amplitude=4pt}] (5.0,-0.85) -- (8.2,-0.85) node[midway, below=4pt] {$\min(|S|,4)=3$};
+\end{tikzpicture}
+\caption{Una sequenza di operazioni sullo stack (in alto) e la corrispondente sequenza di sole operazioni elementari (in basso): $\MultiPop(4)$, eseguito su uno stack che contiene tre elementi, si srotola in tre \Pop{} (parentesi graffa). La sequenza originale ha $6$ operazioni e quella srotolata ne ha $8$; ognuna delle $8$ costa $1$.}
+\label{fig:srotolamento}
+\end{figure}
+
+\paragraph{Un secondo esempio.}
+Prendiamo la sequenza $\Push(1)$, $\Push(2)$, $\Push(3)$, $\Pop$, $\Push(4)$, $\MultiPop(2)$. Le prime cinque operazioni costano $1$ ciascuna, ovvero $4$ \Push{} e $1$ \Pop, mentre il \MultiPop{} rimuove $4$ e $2$ e costa quindi $2$: il costo totale è $4+1+2=7$. Se aggiungiamo un altro $\MultiPop(2)$, lo stack contiene solo l'elemento $1$, quindi si traduce in un solo \Pop{} e il costo totale sale a $8$. Notiamo che un \MultiPop{} costa tanto quanti sono gli elementi che toglie, e che non può togliere più elementi di quelli inseriti.
+
+\paragraph{Analisi.}
+Questa osservazione è il punto chiave: ogni elemento può essere rimosso al più una volta per ogni volta che è stato inserito. Nella sequenza srotolata, quindi, il numero di \Pop{} non supera il numero di \Push, e il numero di \Push{} della sequenza srotolata coincide con quello della sequenza originale, a sua volta al più $n$:
+\[
+\#\Pop\big(\langle op'_1,\dots,op'_m\rangle\big) \le \#\Push\big(\langle op'_1,\dots,op'_m\rangle\big) = \#\Push\big(\langle op_1,\dots,op_n\rangle\big) \le n.
+\]
+Detta $\langle op_1,\dots,op_n\rangle$ la sequenza più costosa, si ottiene
+\[
+T(n) = \text{costo}\big(\langle op'_1,\dots,op'_m\rangle\big) = \#\Pop + \#\Push \le n + n = 2n
+\]
+e quindi
+\[
+\text{costo ammortizzato per operazione} = \frac{T(n)}{n} \le \frac{2n}{n} = 2 = O(1).
+\]
+Lo stesso costo ammortizzato vale per \Push, \Pop{} e \MultiPop{}, anche se un singolo \MultiPop{} può costare molto: è il totale della sequenza che resta limitato da $2n$, non la singola operazione. Rispetto all'analisi naive, che dava $O(n^2)$, il costo di $n$ operazioni scende a $O(n)$.
+
+\begin{esercizio}[Sequenza più costosa sullo stack]
+Dimostrare che la sequenza più costosa di $n$ operazioni \Push, \Pop{} e \MultiPop, a partire da uno stack vuoto, ha costo
+\[
+T(n) \le \begin{cases} 1 & \text{se } n = 1 \\ 2(n-1) & \text{se } n \ge 2. \end{cases}
+\]
+\end{esercizio}
+
+\paragraph{Soluzione.}
+Se $n=1$ le sequenze possibili sono tre: $\langle\Push\rangle$, di costo $1$, $\langle\Pop\rangle$, di costo $0$ perché lo stack è vuoto, e $\langle\MultiPop(k)\rangle$ con $k = 1,2,\dots$, anch'esse di costo $0$. Quindi $T(1) \le 1$.
+
+Sia ora $n \ge 2$. Indichiamo con $p$ il numero di \Push{} della sequenza e con $r$ il numero di elementi rimossi da \Pop{} e \MultiPop. Ogni elemento può essere rimosso solo dopo essere stato inserito, quindi $r \le p$ e
+\[
+T(n) = p + r \le 2p.
+\]
+Distinguiamo due casi:
+\begin{itemize}
+    \item Se $r \ge 1$, almeno una delle operazioni è un \Pop{} o un \MultiPop, quindi $p \le n-1$ e $T(n) \le 2(n-1)$.
+    \item Se $r = 0$, il costo è dato dai soli \Push, e poiché $n - 2 \ge 0$ si ha $T(n) = p \le n \le n + (n-2) = 2(n-1)$.
+\end{itemize}
+Il limite $2(n-1)$ si raggiunge davvero: basta eseguire $n-1$ operazioni \Push{} seguite da $\MultiPop(S,n-1)$, che costano $(n-1)+(n-1)=2(n-1)$.
+
+\subsection{Contatore binario con \Increment}\label{sec:contatore-aggr}
+Supponiamo ora che il contatore sia inizialmente nullo, e studiamo quanti bit cambiano in una sequenza di $n$ incrementi. Il punto è che non tutti i bit cambiano a ogni chiamata, come si vede dalla figura~\ref{fig:contatore}:
+\begin{itemize}
+    \item $A[0]$ cambia a ogni incremento, ovvero $n$ volte.
+    \item $A[1]$ cambia solo una volta ogni due incrementi, ovvero $\lfloor n/2\rfloor$ volte.
+    \item $A[2]$ cambia solo una volta ogni quattro incrementi, ovvero $\lfloor n/2^2\rfloor$ volte.
+\end{itemize}
+In generale, per $i = 0,1,\dots,k-1$ il bit $A[i]$ cambia $\lfloor n/2^i \rfloor$ volte nell'arco di $n$ incrementi\footnote{Il bit $A[i]$ cambia nel passaggio dal valore $v$ al valore $v+1$ se e solo se $v+1$ è un multiplo di $2^i$. Partendo da $0$, i valori $v+1$ percorsi sono $1,\dots,n$, tra i quali i multipli di $2^i$ sono esattamente $\lfloor n/2^i\rfloor$.}; per $i \ge k$ il bit non esiste e non può cambiare.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  cb0/.style={minimum width=7mm, minimum height=4.4mm, inner sep=0pt, font=\scriptsize\ttfamily, draw=RuleGray, fill=white},
+  cb1/.style={minimum width=7mm, minimum height=4.4mm, inner sep=0pt, font=\scriptsize\ttfamily, draw=RuleGray, fill=Accent!25},
+  lab/.style={font=\scriptsize, TextGray},
+  x=1mm, y=1mm]
+  \newcommand{\cbrow}[3]{%
+    \node[lab] at (-12,-5*#1) {#1};
+    \foreach \b/\f [count=\j from 0] in {#2}{\node[cb\f] at (7*\j,-5*#1) {\b};}
+    \node[lab] at (62,-5*#1) {#3};}
+  % intestazione
+  \foreach \j/\x in {7/0,6/7,5/14,4/21,3/28,2/35,1/42,0/49}{\node[lab] at (\x,5) {$A[\j]$};}
+  \node[lab] at (-12,5) {valore};
+  \node[lab, align=center] at (62,6) {costo\\totale};
+\cbrow{0}{0/0,0/0,0/0,0/0,0/0,0/0,0/0,0/0}{0}
+\cbrow{1}{0/0,0/0,0/0,0/0,0/0,0/0,0/0,1/1}{1}
+\cbrow{2}{0/0,0/0,0/0,0/0,0/0,0/0,1/1,0/1}{3}
+\cbrow{3}{0/0,0/0,0/0,0/0,0/0,0/0,1/0,1/1}{4}
+\cbrow{4}{0/0,0/0,0/0,0/0,0/0,1/1,0/1,0/1}{7}
+\cbrow{5}{0/0,0/0,0/0,0/0,0/0,1/0,0/0,1/1}{8}
+\cbrow{6}{0/0,0/0,0/0,0/0,0/0,1/0,1/1,0/1}{10}
+\cbrow{7}{0/0,0/0,0/0,0/0,0/0,1/0,1/0,1/1}{11}
+\cbrow{8}{0/0,0/0,0/0,0/0,1/1,0/1,0/1,0/1}{15}
+\cbrow{9}{0/0,0/0,0/0,0/0,1/0,0/0,0/0,1/1}{16}
+\cbrow{10}{0/0,0/0,0/0,0/0,1/0,0/0,1/1,0/1}{18}
+\cbrow{11}{0/0,0/0,0/0,0/0,1/0,0/0,1/0,1/1}{19}
+\cbrow{12}{0/0,0/0,0/0,0/0,1/0,1/1,0/1,0/1}{22}
+\cbrow{13}{0/0,0/0,0/0,0/0,1/0,1/0,0/0,1/1}{23}
+\cbrow{14}{0/0,0/0,0/0,0/0,1/0,1/0,1/1,0/1}{25}
+\cbrow{15}{0/0,0/0,0/0,0/0,1/0,1/0,1/0,1/1}{26}
+\cbrow{16}{0/0,0/0,0/0,1/1,0/1,0/1,0/1,0/1}{31}
+\end{tikzpicture}
+\caption{Un contatore a $8$ bit durante $16$ incrementi consecutivi, a partire da $0$. A sinistra il valore del contatore, al centro i bit $A[7],\dots,A[0]$ (i bit evidenziati sono quelli che sono cambiati nel passaggio dal valore precedente), a destra il costo totale, ovvero il numero complessivo di bit modificati dall'inizio. $A[0]$ cambia a ogni incremento, $A[1]$ una volta ogni due, $A[2]$ una volta ogni quattro e così via; il costo totale è sempre minore del doppio del numero di incrementi.}
+\label{fig:contatore}
+\end{figure}
+
+Il costo totale è il numero complessivo di bit che cambiano, quindi
+\[
+T(n) = \sum_{i=0}^{k-1} \left\lfloor \frac{n}{2^i} \right\rfloor \le \sum_{i=0}^{k-1} \frac{n}{2^i} < \sum_{i=0}^{\infty} \frac{n}{2^i} = n \sum_{i=0}^{\infty} \frac{1}{2^i} = 2n
+\]
+dove abbiamo usato il fatto che la serie geometrica $\sum_{i\ge 0} 2^{-i}$ vale $2$. Ne segue che
+\[
+\text{costo ammortizzato per operazione} = \frac{T(n)}{n} < \frac{2n}{n} = 2 = O(1)
+\]
+contro il $O(k)$ dell'analisi naive. In figura, ad esempio, $16$ incrementi costano $31 < 32 = 2\cdot 16$.
+
+\begin{esercizio}[Costo di una sequenza di incrementi]
+Dimostrare che la sequenza di $n$ incrementi su un contatore binario a $k$ bit, inizialmente nullo, ha costo $T(n)$ tale che
+\[
+n \le T(n) \le 2n-1
+\]
+dove le due disuguaglianze non sono in generale rafforzabili.
+\end{esercizio}
+
+\paragraph{Soluzione.}
+Ogni incremento modifica almeno un bit, quindi $T(n) \ge n$. Per il limite superiore basta il calcolo appena fatto con l'aggregazione, che dà $T(n) < 2n$: poiché $T(n)$ è un numero intero, ne segue
+\[
+T(n) \le 2n - 1.
+\]
+Le due disuguaglianze non si possono migliorare. Con $k=1$ ogni incremento modifica esattamente un bit, quindi $T(n)=n$. Per la seconda consideriamo $n = 2^i$ con $1 \le i \le k-1$: i bit $A[j]$ con $j > i$ non cambiano mai, perché $\lfloor 2^i/2^j \rfloor = 0$, e quindi
+\[
+T(2^i) = 2^i + \left\lfloor \frac{2^i}{2} \right\rfloor + \dots + \left\lfloor \frac{2^i}{2^{i-1}} \right\rfloor + \left\lfloor \frac{2^i}{2^i} \right\rfloor = 2^i + 2^{i-1} + \dots + 2 + 1 = 2^{i+1} - 1 = 2n - 1.
+\]
+Ad esempio $T(4) = 1+2+1+3 = 7 = 2\cdot 4 -1$.
+
+\subsection{Contatore non necessariamente nullo}
+Se il contatore parte da una configurazione qualsiasi, il bit $A[i]$ continua a cambiare una volta ogni $2^i$ incrementi, ma il primo cambiamento può arrivare subito. Per la stessa ragione della nota precedente, il numero di volte in cui $A[i]$ cambia è il numero di multipli di $2^i$ tra $n$ interi consecutivi, che è al più $\lceil n/2^i \rceil$. Si ottiene quindi
+\[
+T(n) \le \sum_{i=0}^{k-1} \left\lceil \frac{n}{2^i} \right\rceil \le \sum_{i=0}^{k-1} \left(\frac{n}{2^i} + 1\right) = n \sum_{i=0}^{k-1} \frac{1}{2^i} + k < 2n + k.
+\]
+Il costo di $n$ incrementi è quindi $O(n+k)$: se $n = \Omega(k)$, ovvero se si eseguono almeno tanti incrementi quanti sono i bit, il costo è $O(n)$ qualunque sia la configurazione di partenza, e il costo ammortizzato resta $O(1)$.
+
+\paragraph{Esempio.}
+Partiamo dal contatore a $6$ bit $011011$ ed eseguiamo $n=5$ incrementi, che producono nell'ordine $011100$, $011101$, $011110$, $011111$ e $100000$. Il bit $A[0]$ cambia $5$ volte, $A[1]$ cambia $3$ volte (nel primo, nel terzo e nel quinto incremento), $A[2]$ due volte, mentre $A[3]$, $A[4]$ e $A[5]$ cambiano una volta soltanto, nell'ultimo incremento. Questi numeri coincidono con i limiti $\lceil 5/2^i \rceil = 5,3,2,1,1,1$, e il costo totale è $13 < 2n + k = 16$.
+
+\begin{esercizio}[\MultiPush]
+Se l'insieme delle operazioni sullo stack includesse un'operazione $\MultiPush(S,x_1,\dots,x_k)$, che inserisce $k$ elementi nello stack, il limite $O(1)$ sul costo ammortizzato delle operazioni sullo stack sarebbe ancora valido?
+\end{esercizio}
+
+\paragraph{Soluzione.}
+No, in generale. Un \MultiPush{} costa $k$ e può inserire fino a $k$ elementi, quindi una sequenza di $n$ operazioni \MultiPush{} su uno stack vuoto costa $nk$ e ha costo ammortizzato $k$, che non è $O(1)$ se $k$ non è limitato da una costante. L'argomento del paragrafo precedente cade perché non è più vero che il numero di \Push{} è al più $n$: la sequenza ne esegue anche $nk$.
+
+\begin{esercizio}[\Decrement]
+Si dimostri che, se un'operazione \Decrement{} fosse inclusa nell'esempio del contatore a $k$ bit, $n$ operazioni potrebbero richiedere tempo $\Theta(nk)$.
+\end{esercizio}
+
+\paragraph{Soluzione.}
+Ogni operazione modifica al più $k$ bit, quindi $n$ operazioni costano $O(nk)$. Per il limite inferiore partiamo da $0\dots0$ ed eseguiamo alternativamente \Decrement{} e \Increment: il primo porta il contatore a $1\dots1$ (modulo $2^k$) modificando $k$ bit, il secondo lo riporta a $0\dots0$ modificandone ancora $k$. Ogni operazione costa quindi $k$ e il totale è $nk = \Theta(nk)$. L'analisi dell'incremento non si estende perché sfrutta il fatto che un bit può essere azzerato solo dopo essere stato portato a $1$; con \Decrement{} il contatore può tornare indietro e il caso peggiore si ripete a ogni passo.
+
+\begin{esercizio}[Costo pari a una potenza di $2$]\label{es:potenze}
+Una sequenza di $n$ operazioni viene eseguita su una struttura dati. L'$i$-esima operazione costa $i$ se $i$ è una potenza esatta di $2$, altrimenti costa $1$. Applicare il metodo dell'aggregazione per determinare il costo ammortizzato per operazione. Lo stesso esercizio verrà risolto con il metodo degli accantonamenti (sezione~\ref{sec:accantonamenti}) e con quello del potenziale (sezione~\ref{sec:potenziale}).
+\end{esercizio}
+
+\paragraph{Soluzione.}
+Indichiamo con $c_i$ il costo dell'$i$-esima operazione, quindi $c_i = i$ se $i = 2^j$ per un certo $j \in \mathbb{N}$ e $c_i = 1$ altrimenti. Separiamo nella somma le operazioni che costano $1$ da quelle che costano $i$:
+\[
+T(n) = \sum_{i=1}^{n} c_i = \sum_{\substack{i=1 \\ i \notin 2^{\mathbb{N}}}}^{n} 1 + \sum_{\substack{i=1 \\ i \in 2^{\mathbb{N}}}}^{n} i.
+\]
+Tra $1$ e $n$ ci sono $\lfloor \lg n \rfloor + 1$ potenze di $2$, ovvero $2^0, 2^1,\dots,2^{\lfloor \lg n\rfloor}$\footnote{Con $\lg$ si indica il logaritmo in base $2$.}, quindi la prima somma vale $n - (\lfloor \lg n \rfloor + 1)$, mentre la seconda è una somma geometrica:
+\[
+\sum_{\substack{i=1 \\ i \in 2^{\mathbb{N}}}}^{n} i = \sum_{j=0}^{\lfloor \lg n \rfloor} 2^j = 2^{\lfloor \lg n \rfloor + 1} - 1.
+\]
+Si ottiene allora
+\[
+T(n) = n - (\lfloor \lg n \rfloor + 1) + 2^{\lfloor \lg n \rfloor + 1} - 1 < n + 2^{\lfloor \lg n \rfloor + 1} \le n + 2n = 3n
+\]
+dove abbiamo usato $2^{\lfloor \lg n \rfloor} \le n$. Pertanto
+\[
+\text{costo ammortizzato per operazione} = \frac{T(n)}{n} < \frac{3n}{n} = 3.
+\]
+
+\section{Metodo degli accantonamenti}\label{sec:accantonamenti}
+Il metodo dell'aggregazione assegna lo stesso costo ammortizzato a tutte le operazioni, e questo può essere restrittivo quando le operazioni sono di natura diversa. Il metodo degli accantonamenti (accounting method) permette invece di assegnare a ciascuna operazione un costo ammortizzato scelto da noi, anche diverso da operazione a operazione.
+
+\begin{definizione}[Costi ammortizzati]\label{def:accantonamenti}
+Data una sequenza di operazioni $op_1, op_2, \dots, op_n$, indichiamo con
+\[
+c_i = \text{costo reale}(op_i), \qquad \hat{c}_i = \text{costo ammortizzato}(op_i)
+\]
+dove i costi ammortizzati $\hat{c}_i$ sono \emph{definiti da noi}. L'\textbf{obiettivo} è definirli in modo tale che, per qualsiasi sequenza di operazioni, valga
+\[
+T(n) = \sum_{i=1}^{n} c_i \le \sum_{i=1}^{n} \hat{c}_i.
+\]
+\end{definizione}
+
+In questo modo la somma dei costi ammortizzati è un limite superiore al costo reale, e basta stimare la prima per avere una stima della seconda.
+
+\paragraph{L'idea del credito.}
+Per garantire la disuguaglianza si ragiona come in un conto in banca, usando il costo ammortizzato come ``prezzo'' addebitato a ogni operazione:
+\begin{itemize}
+    \item Se $\hat{c}_i > c_i$, delle $\hat{c}_i$ unità di costo addebitate, $c_i$ servono a pagare il costo reale di $op_i$, mentre le restanti $\hat{c}_i - c_i$ vengono \textbf{immagazzinate} su elementi specifici della struttura dati, come credito.
+    \item Se $c_i > \hat{c}_i$, la differenza $c_i - \hat{c}_i$ viene \textbf{recuperata} dai crediti immagazzinati nella struttura dati.
+\end{itemize}
+Perché il metodo funzioni, il credito deve essere sufficiente a coprire ogni operazione ``in perdita''. Per formalizzare questa idea, sia $D_0$ la configurazione iniziale di una struttura dati, sia $op_1,\dots,op_n$ una sequenza di operazioni e sia $D_{j}$ la configurazione che si ottiene da $D_{j-1}$ applicando $op_{j}$, ovvero
+\[
+D_0 \xrightarrow{op_1} D_1 \xrightarrow{op_2} D_2 \xrightarrow{op_3} \cdots \xrightarrow{op_n} D_n.
+\]
+Indichiamo con $B_j$ il \textbf{credito totale} accumulato dopo l'esecuzione delle prime $j$ operazioni, ovvero la differenza tra quanto è stato addebitato e quanto è stato effettivamente speso:
+\[
+B_j = \sum_{i=1}^{j} (\hat{c}_i - c_i), \qquad B_0 = 0.
+\]
+
+\begin{lemma}[Correttezza degli accantonamenti]\label{lem:accantonamenti}
+Se i costi ammortizzati sono scelti in modo che
+\[
+B_j \ge 0 \qquad \text{per } j = 0, 1, \dots, n
+\]
+allora $\sum_{i=1}^{j} c_i \le \sum_{i=1}^{j} \hat{c}_i$ per ogni $j$, e in particolare $\sum_{i=1}^{n} c_i \le \sum_{i=1}^{n} \hat{c}_i$.
+\end{lemma}
+
+\paragraph{Dimostrazione.}
+Per ogni $j = 1,\dots,n$ si ha, per ipotesi,
+\[
+0 \le B_j = \sum_{i=1}^{j} (\hat{c}_i - c_i) = \sum_{i=1}^{j} \hat{c}_i - \sum_{i=1}^{j} c_i, \qquad \text{quindi} \qquad \sum_{i=1}^{j} c_i \le \sum_{i=1}^{j} \hat{c}_i.
+\]
+Scegliendo $j = n$ si ottiene la disuguaglianza sull'intera sequenza. \hfill $\square$
+
+In pratica, per applicare il metodo basta scegliere i costi $\hat{c}_i$ e verificare che il credito totale $B_j$ non diventi mai negativo: in questo modo la somma dei costi ammortizzati è una stima per eccesso del costo effettivo della sequenza.
+
+\begin{osservazione}[I crediti esistono solo nell'analisi]
+Il credito è uno strumento di analisi: non compare nel codice e non occorre memorizzarlo da nessuna parte (ad esempio, non serve aggiungere un campo $x.\mathrm{credit}$ a ogni elemento). Serve solo a convincerci che i costi $\hat{c}_i$ scelti sono sufficienti.
+\end{osservazione}
+
+\subsection{Stack con \MultiPop}
+Assumiamo di partire da uno stack vuoto e scegliamo i costi ammortizzati
+\[
+\hat{c}_{\Push} = 2, \qquad \hat{c}_{\Pop} = \hat{c}_{\MultiPop} = 0
+\]
+a fronte dei costi reali $c_{\Push} = 1$, $c_{\Pop} = 1$ e $c_{\MultiPop} = \min(|S|,k)$. Questi costi hanno una lettura molto intuitiva: un \Push{} addebita $2$ unità, di cui $1$ paga il costo reale dell'operazione e l'altra viene \textbf{assegnata all'elemento} appena inserito, che porta quindi con sé una unità di credito. Quando l'elemento viene rimosso, con un \Pop{} o con un \MultiPop, il costo reale della rimozione si paga proprio con quell'unità, senza addebitare nulla all'operazione. Il credito è quindi $|S|$, cioè una unità per ogni elemento presente nello stack.
+
+\begin{esempiofig}
+Consideriamo uno stack con quattro elementi, ognuno dei quali porta con sé una moneta, cioè l'unità di credito accantonata dal suo \Push. Eseguiamo $\MultiPop(S,3)$: il costo reale è $3$, ma al \MultiPop{} non addebitiamo nulla. Le tre monete degli elementi rimossi bastano a pagare le tre operazioni \Pop, e sullo stack resta un solo elemento con la sua moneta: il credito è sempre uguale al numero di elementi presenti.
+\tcblower
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[>=Stealth,
+  el/.style={draw=Accent, fill=Accent!6, minimum width=8mm, minimum height=5.5mm, inner sep=0pt, font=\small},
+  coin/.style={circle, draw=ObsColor, fill=ObsColor!25, minimum size=3.6mm, inner sep=0pt, font=\tiny}]
+  % stack prima
+  \foreach \i in {0,1,2,3}{\node[el] at (0,{0.6*\i}) {x}; \node[coin] at (0.75,{0.6*\i}) {1};}
+  \draw[thick] (-0.6,-0.32) -- (1.1,-0.32);
+  \node[font=\scriptsize] at (0.25,-0.8) {prima};
+  % freccia
+  \draw[->, thick] (1.5,1.2) -- node[above, font=\scriptsize] {$\MultiPop(S,3)$} (3.7,1.2);
+  % stack dopo
+  \node[el] at (4.6,0) {x}; \node[coin] at (5.35,0) {1};
+  \draw[thick] (4.0,-0.32) -- (5.7,-0.32);
+  \node[font=\scriptsize] at (4.85,-0.8) {dopo};
+  % monete usate
+  \foreach \i in {0,1,2}{\node[coin, fill=ObsColor!10, draw=ObsColor!50] at (7.0,{0.6*\i}) {1};}
+  \node[font=\scriptsize, TextGray, align=center] at (7.0,-0.8) {pagano\\le $3$ \Pop};
+\end{tikzpicture}}
+\end{esempiofig}
+
+Verifichiamo che il credito non sia mai negativo. In ogni istante $j$ vale
+\[
+B_j = \sum_{i=1}^{j} \hat{c}_i - \sum_{i=1}^{j} c_i = |S_j| \ge 0
+\]
+dove $|S_j|$ è la dimensione dello stack dopo $j$ operazioni: un \Push{} aggiunge $2-1=1$ al primo membro e alla dimensione, mentre un \Pop{} o un \MultiPop{} che rimuovono $k'$ elementi aggiungono $0-k'=-k'$ al primo membro e tolgono $k'$ alla dimensione. Per il lemma~\ref{lem:accantonamenti} segue
+\[
+\sum_{i=1}^{n} c_i \le \sum_{i=1}^{n} \hat{c}_i = 2\cdot \#\Push \le 2n
+\]
+e quindi, come con l'aggregazione, il costo di $n$ operazioni è $O(n)$. Si noti che questa volta il costo ammortizzato \emph{non} è lo stesso per tutte le operazioni: vale $2$ per \Push{} e $0$ per le altre due, ma questo è proprio ciò che rende il metodo più flessibile.
+
+\subsection{Contatore binario con \Increment}
+Consideriamo il contatore inizialmente nullo e usiamo come costo reale il numero di bit modificati. Come costi ammortizzati delle sottooperazioni scegliamo
+\[
+\hat{c}_{\SetBit} = 2, \qquad \hat{c}_{\ResetBit} = 0.
+\]
+Un \SetBit{} addebita quindi $2$ unità: $1$ serve a pagare l'operazione e l'altra viene accantonata \textbf{sul bit stesso}. Poiché ogni bit uguale a $1$ è stato portato a $1$ da un \SetBit, ogni bit uguale a $1$ porta con sé una unità di credito, che usiamo per pagare il \ResetBit{} quando lo riportiamo a $0$. Un \Increment{} esegue al più un \SetBit{} (e un numero qualsiasi di \ResetBit, che non vengono addebitati), quindi
+\[
+\hat{c}_{\Increment} = 2\cdot \#\SetBit = \begin{cases} 0 & \text{se non esegue alcun } \SetBit \\ 2 & \text{se ne esegue uno} \end{cases} \;\le\; 2.
+\]
+Ad esempio, nel passaggio da $0111$ a $1000$ i tre bit azzerati usano le loro tre unità di credito, mentre il bit portato a $1$ paga una unità e ne conserva un'altra.
+
+Il credito immagazzinato in ogni istante è il numero di bit uguali a $1$ presenti nel contatore, quindi non è mai negativo:
+\[
+B_j = \sum_{i=1}^{j} \hat{c}_i - \sum_{i=1}^{j} c_i = \#\{\text{bit del contatore uguali a } 1\} \ge 0.
+\]
+Per il lemma~\ref{lem:accantonamenti} vale allora
+\[
+\sum_{i=1}^{n} c_i \le \sum_{i=1}^{n} \hat{c}_i \le 2n
+\]
+cioè il costo di $n$ incrementi è $O(n)$ e il costo ammortizzato di un incremento è $O(1)$, ritrovando il risultato dell'aggregazione.
+
+\begin{esercizio}[Costo pari a una potenza di $2$, con gli accantonamenti]
+Risolvere l'esercizio~\ref{es:potenze} con il metodo degli accantonamenti.
+\end{esercizio}
+
+\paragraph{Soluzione.}
+Scegliamo i costi ammortizzati
+\[
+\hat{c}_1 = 1, \qquad \hat{c}_i = 2 \;\text{ se } i = 2^j \text{ con } j \ge 1, \qquad \hat{c}_i = 3 \;\text{ altrimenti}.
+\]
+Un'operazione che costa $1$ (ovvero con $i$ non potenza di $2$) paga $1$ per sé e accantona $2$ unità di credito. Un'operazione $i = 2^j$ con $j \ge 1$ costa $2^j$, ma tra l'operazione $2^{j-1}$ e l'operazione $2^j$ ci sono $2^{j-1}-1$ operazioni da $1$, che hanno accantonato complessivamente $2(2^{j-1}-1) = 2^j - 2$ unità: queste pagano quasi tutto il costo $2^j$ e le $2$ unità addebitate coprono la parte restante. In questo modo il credito accumulato dopo $i$ operazioni è
+\[
+B_i = 2\left(i - 2^{\lfloor \lg i \rfloor}\right) \ge 0
+\]
+(ad esempio $2$ dopo l'operazione $3$, $0$ dopo la $4$, $6$ dopo la $7$ e di nuovo $0$ dopo la $8$) e non è mai negativo. Per il lemma~\ref{lem:accantonamenti}
+\[
+T(n) \le \sum_{i=1}^{n} \hat{c}_i \le 3n
+\]
+e il costo ammortizzato per operazione è al più $3$.
+
+\section{Metodo del potenziale}\label{sec:potenziale}
+Il metodo degli accantonamenti associa il credito a singoli elementi della struttura dati. Il metodo del potenziale (potential method) segue la stessa logica, ma immagazzina il credito nella struttura dati \emph{nel suo insieme}, come se fosse un'energia potenziale che può essere rilasciata per pagare le operazioni future.
+
+\begin{definizione}[Funzione potenziale]\label{def:potenziale}
+Una \textbf{funzione potenziale} associa a ogni configurazione $D$ della struttura dati un numero reale
+\[
+D \longmapsto \Phi(D) \in \mathbb{R}
+\]
+detto \textbf{potenziale} di $D$. Data la sequenza di configurazioni $D_0 \xrightarrow{op_1} D_1 \xrightarrow{op_2} \cdots \xrightarrow{op_n} D_n$ e detto $c_i$ il costo reale di $op_i$, il \textbf{costo ammortizzato} di $op_i$ rispetto a $\Phi$ è
+\[
+\hat{c}_i = c_i + \Phi(D_i) - \Phi(D_{i-1}) = c_i + \Delta\Phi_i
+\]
+dove $\Delta\Phi_i = \Phi(D_i) - \Phi(D_{i-1})$ è la \textbf{variazione di potenziale} causata da $op_i$.
+\end{definizione}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, st/.style={draw=Accent, fill=Accent!6, rounded corners=2pt, minimum width=10mm, minimum height=7mm, font=\small}]
+  \node[st] (d0) at (0,0) {$D_0$};
+  \node[st] (d1) at (3,0) {$D_1$};
+  \node[st] (d2) at (6,0) {$D_2$};
+  \node (dd) at (8.6,0) {$\cdots$};
+  \node[st] (dn) at (11,0) {$D_n$};
+  \draw[->] (d0) -- node[above, font=\small] {$op_1$} (d1);
+  \draw[->] (d1) -- node[above, font=\small] {$op_2$} (d2);
+  \draw[->] (d2) -- node[above, font=\small] {$op_3$} (dd);
+  \draw[->] (dd) -- node[above, font=\small] {$op_n$} (dn);
+  \foreach \i/\x in {0/0,1/3,2/6,n/11}{
+    \draw[FigColor, dotted] (\x,-0.4) -- (\x,-0.95);
+    \node[FigColor, font=\small] at (\x,-1.3) {$\Phi(D_\i)$};}
+\end{tikzpicture}
+\caption{Il metodo del potenziale associa a ogni configurazione $D_i$ della struttura dati un valore $\Phi(D_i)$: il costo ammortizzato dell'operazione $op_i$ è il suo costo reale più la differenza tra il potenziale dopo e prima dell'operazione.}
+\label{fig:potenziale}
+\end{figure}
+
+Intuitivamente, se $\Delta\Phi_i > 0$ l'operazione viene sovrapagata e il potenziale della struttura dati aumenta, mentre se $\Delta\Phi_i < 0$ l'operazione viene sottopagata e la diminuzione del potenziale paga la parte di costo reale che non è coperta dal costo ammortizzato. Sommando i costi ammortizzati, i termini di potenziale si semplificano a coppie:
+\begin{align*}
+\sum_{i=1}^{n} \hat{c}_i &= \sum_{i=1}^{n} \big[c_i + \Phi(D_i) - \Phi(D_{i-1})\big] \\
+&= \big(c_1 + \Phi(D_1) - \Phi(D_0)\big) + \big(c_2 + \Phi(D_2) - \Phi(D_1)\big) + \cdots + \big(c_n + \Phi(D_n) - \Phi(D_{n-1})\big)
+\end{align*}
+dove ogni $\Phi(D_i)$, con $0 < i < n$, compare una volta con segno positivo e una con segno negativo (somma telescopica), da cui
+\begin{equation}\label{eq:telescopica}
+\sum_{i=1}^{n} \hat{c}_i = \sum_{i=1}^{n} c_i + \Phi(D_n) - \Phi(D_0).
+\end{equation}
+
+\begin{lemma}[Correttezza del potenziale]\label{lem:potenziale}
+Vale $\displaystyle\sum_{i=1}^{n} \hat{c}_i \ge \sum_{i=1}^{n} c_i$ se e solo se $\Phi(D_n) \ge \Phi(D_0)$.
+\end{lemma}
+
+\paragraph{Dimostrazione.}
+Per la~\eqref{eq:telescopica}, la disuguaglianza $\sum \hat{c}_i \ge \sum c_i$ equivale a $\sum c_i + \Phi(D_n) - \Phi(D_0) \ge \sum c_i$, ovvero a $\Phi(D_n) - \Phi(D_0) \ge 0$. \hfill $\square$
+
+Nella pratica non si sa in anticipo quante operazioni verranno eseguite, quindi si richiede la condizione per ogni $k$:
+\[
+\Phi(D_k) \ge \Phi(D_0) \qquad \text{per } k = 1,2,\dots,n.
+\]
+Di solito si definisce $\Phi(D_0) = 0$ e si dimostra che $\Phi(D_k) \ge 0$ per ogni $k$. Notiamo che i costi ammortizzati dipendono dalla funzione potenziale scelta: funzioni diverse danno costi diversi, tutti però validi come limiti superiori al costo reale. La scelta migliore dipende dai limiti che si vogliono dimostrare.
+
+\subsection{Stack con \MultiPop}
+Partendo da uno stack inizialmente vuoto, definiamo il potenziale come il numero di elementi dello stack:
+\[
+\Phi(S) = |S|.
+\]
+Se $S_0$ è lo stack vuoto si ha $\Phi(S_0) = 0$, e poiché la dimensione di uno stack non è mai negativa vale $\Phi(S) \ge \Phi(S_0)$ per ogni configurazione. Calcoliamo i costi ammortizzati delle tre operazioni, indicando con $S_{i-1}$ e $S_i$ lo stack prima e dopo l'operazione:
+\begin{align*}
+\hat{c}_{\Push} &= c_{\Push} + |S_i| - |S_{i-1}| = 1 + 1 = 2 && \text{perché } |S_i| = |S_{i-1}|+1, \\
+\hat{c}_{\Pop} &= c_{\Pop} + |S_i| - |S_{i-1}| = 1 - 1 = 0 && \text{perché } |S_i| = |S_{i-1}|-1, \\
+\hat{c}_{\MultiPop} &= c_{\MultiPop} + |S_i| - |S_{i-1}| = k' - k' = 0 && \text{perché } |S_i| = |S_{i-1}|-k',
+\end{align*}
+dove $k' = \min(|S_{i-1}|,k)$ è il numero di elementi effettivamente rimossi. Troviamo gli stessi costi del metodo degli accantonamenti (il potenziale $|S|$ è la somma dei crediti accantonati sugli elementi), e per il lemma~\ref{lem:potenziale}
+\[
+\sum_{i=1}^{n} c_i \le \sum_{i=1}^{n} \hat{c}_i = 2\cdot\#\Push \le 2n.
+\]
+
+\subsection{Contatore binario con \Increment}
+Per il contatore, con $D_i$ configurazione dopo $i$ incrementi, definiamo il potenziale come il numero di bit uguali a $1$:
+\[
+\Phi(D_i) = \#\{\text{bit uguali a } 1 \text{ in } D_i\}.
+\]
+Se $D_0$ è la configurazione nulla si ha $\Phi(D_0) = 0$ e in generale $\Phi(D_i) \ge \Phi(D_0)$. Per calcolare il costo ammortizzato dell'$i$-esimo incremento osserviamo che
+\[
+c_i = \#\SetBit_i + \#\ResetBit_i, \qquad \Delta\Phi_i = \#\SetBit_i - \#\ResetBit_i
+\]
+dove $\#\SetBit_i$ e $\#\ResetBit_i$ sono il numero di bit portati a $1$ e a $0$ dall'$i$-esimo incremento, con $0 \le \#\SetBit_i \le 1$. Infatti ogni \SetBit{} aggiunge un bit uguale a $1$ e ogni \ResetBit{} ne toglie uno. Pertanto
+\[
+\hat{c}_i = c_i + \Delta\Phi_i = \big(\#\SetBit_i + \#\ResetBit_i\big) + \big(\#\SetBit_i - \#\ResetBit_i\big) = 2\cdot\#\SetBit_i \le 2
+\]
+da cui
+\[
+\sum_{i=1}^{n} c_i \le \sum_{i=1}^{n} \hat{c}_i = 2\cdot \sum_{i=1}^{n} \#\SetBit_i \le 2n.
+\]
+
+\subsection{Configurazione iniziale non nulla}
+Il vantaggio del metodo del potenziale è che gestisce con facilità il caso in cui la struttura dati \emph{non} parta dalla configurazione iniziale ``vuota''. Dalla~\eqref{eq:telescopica} si ottiene infatti
+\[
+\sum_{i=1}^{n} c_i = \sum_{i=1}^{n} \hat{c}_i - \Phi(D_n) + \Phi(D_0)
+\]
+e basta maggiorare il potenziale iniziale.
+
+\paragraph{Contatore non nullo.}
+Usiamo la stessa funzione potenziale di prima. Si ha $\Phi(D_0) \le k$, dove $k$ è il numero di bit del contatore, ma in generale non vale più $\Phi(D_i) \ge \Phi(D_0)$ (il contatore può passare per configurazioni con meno bit uguali a $1$ di quelli iniziali). Il lemma~\ref{lem:potenziale} non è quindi applicabile, ma la~\eqref{eq:telescopica} dà comunque, poiché $\Phi(D_n) \ge 0$:
+\[
+\sum_{i=1}^{n} c_i = \sum_{i=1}^{n} \hat{c}_i - \Phi(D_n) + \Phi(D_0) \le 2n + \Phi(D_0) \le 2n + k.
+\]
+Se $k = O(n)$ allora $2n+k = O(n)$ e quindi $\sum c_i = O(n)$; in generale il costo è $O(n+k)$, come già trovato con l'aggregazione.
+
+\paragraph{Stack non vuoto con \MultiPop.}
+Con $\Phi(S) = |S|$ e uno stack iniziale $D_0$ che contiene $|D_0|$ elementi si ha $\Phi(D_0) = |D_0|$ e $\Phi(D_n) \ge 0$, quindi
+\[
+\sum_{i=1}^{n} c_i = \sum_{i=1}^{n} \hat{c}_i - \Phi(D_n) + \Phi(D_0) \le 2\cdot\#\Push + |D_0| \le 2n + |D_0|.
+\]
+Se $|D_0| = O(n)$, ovvero se lo stack iniziale non è troppo grande rispetto al numero di operazioni, allora $\sum c_i = O(n)$.
+
+\begin{esercizio}[Costo pari a una potenza di $2$, con il potenziale]
+Risolvere l'esercizio~\ref{es:potenze} con il metodo del potenziale.
+\end{esercizio}
+
+\paragraph{Soluzione.}
+Poniamo $\Phi(D_0) = 0$ e, per $i \ge 1$,
+\[
+\Phi(D_i) = 2\left(i - 2^{\lfloor \lg i \rfloor}\right)
+\]
+che coincide con il credito $B_i$ accumulato dopo $i$ operazioni nella soluzione con gli accantonamenti, ed è sempre non negativa perché $2^{\lfloor \lg i \rfloor} \le i$. Calcoliamo i costi ammortizzati distinguendo i casi:
+\begin{itemize}
+    \item Se $i = 1$: $\hat{c}_1 = 1 + \Phi(D_1) - \Phi(D_0) = 1 + 0 - 0 = 1$.
+    \item Se $i$ non è una potenza di $2$: $c_i = 1$ e $\lfloor \lg i \rfloor = \lfloor \lg (i-1) \rfloor$, quindi $\Phi(D_i) - \Phi(D_{i-1}) = 2$ e $\hat{c}_i = 1 + 2 = 3$.
+    \item Se $i = 2^j$ con $j \ge 1$: $c_i = 2^j$, $\Phi(D_i) = 2(2^j - 2^j) = 0$ e $\Phi(D_{i-1}) = 2\left(2^j - 1 - 2^{j-1}\right) = 2^j - 2$, quindi $\hat{c}_i = 2^j + 0 - (2^j - 2) = 2$.
+\end{itemize}
+Si ritrovano gli stessi costi ammortizzati degli accantonamenti, e poiché $\Phi(D_n) \ge 0 = \Phi(D_0)$ vale $T(n) \le \sum \hat{c}_i \le 3n$: il costo ammortizzato per operazione è al più $3$.
+
+\section{Confronto tra i metodi}\label{sec:confronto}
+I tre metodi portano agli stessi risultati sugli esempi visti: $O(n)$ per $n$ operazioni su uno stack con \MultiPop{} e per $n$ incrementi di un contatore, quindi $O(1)$ ammortizzato per operazione. Cambia invece il modo di arrivarci, riassunto nella tabella seguente.
+
+\begin{center}
+\small
+\begin{tabular}{p{2.6cm}p{3.5cm}p{3.5cm}p{3.5cm}}
+\toprule
+ & \textbf{Aggregazione} & \textbf{Accantonamenti} & \textbf{Potenziale} \\
+\midrule
+Costo ammortizzato & Uguale per tutte le operazioni: $T(n)/n$. & Scelto per ogni tipo di operazione. & $\hat{c}_i = c_i + \Delta\Phi_i$, può variare con l'operazione. \\[2mm]
+Cosa si sceglie & Niente: si stima direttamente $T(n)$. & I costi $\hat{c}_i$. & La funzione $\Phi$. \\[2mm]
+Dove sta il lavoro pagato in anticipo & Non viene tracciato. & Credito su singoli elementi. & Potenziale della struttura nel suo insieme. \\[2mm]
+Cosa si verifica & Il calcolo di $T(n)$. & $B_j \ge 0$ per ogni $j$. & $\Phi(D_k) \ge \Phi(D_0)$ per ogni $k$. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+In sintesi, l'aggregazione è il metodo più semplice ma assegna lo stesso costo a tutte le operazioni, quindi funziona bene quando basta una stima del totale; gli accantonamenti permettono di distinguere le operazioni e hanno una lettura intuitiva in termini di monete, al prezzo di dover decidere dove si trova ogni unità di credito; il potenziale è il più generale, perché riassume tutto in una sola funzione della configurazione e gestisce con facilità il caso di una struttura dati che non parte da zero, ma richiede di trovare la funzione $\Phi$ giusta.
+
+\section{Tabelle dinamiche}\label{sec:tabelle}
+Molto spesso non si sa in anticipo quanti elementi dovrà contenere una tabella. Se si alloca poco spazio, prima o poi la tabella si riempie e un nuovo inserimento provoca un overflow; se se ne alloca troppo, gran parte della memoria resta inutilizzata. Le \textbf{tabelle dinamiche} risolvono il problema con la \textbf{riallocazione}: quando la tabella è piena se ne alloca una più grande, si copiano al suo interno tutti gli elementi e si libera quella vecchia; allo stesso modo, quando la tabella si svuota troppo, la si può sostituire con una più piccola. Una singola riallocazione è costosa, perché richiede di copiare tutti gli elementi, ma avviene raramente: è quindi la situazione ideale per l'analisi ammortizzata, che ci permetterà di dimostrare che inserimenti e cancellazioni hanno costo ammortizzato $O(1)$. Il modo in cui gli elementi sono organizzati all'interno della tabella (un array, uno heap, una tabella hash) non è importante ai fini dell'analisi.
+
+\begin{definizione}[Fattore di carico]\label{def:carico}
+Data una tabella $T$, indichiamo con $\tsize[T]$ la sua dimensione, ovvero il numero di posizioni disponibili, e con $\tnum[T]$ il numero di elementi che contiene. Il \textbf{fattore di carico} (load factor) di $T$ è
+\[
+\alpha(T) = \begin{cases} \dfrac{\tnum[T]}{\tsize[T]} & \text{se } \tsize[T] > 0 \\[3mm] 1 & \text{altrimenti.} \end{cases}
+\]
+\end{definizione}
+
+Il fattore di carico misura quanto è piena la tabella: vale $1$ quando la tabella è piena e diminuisce man mano che si svuota. Per convenzione una tabella vuota, che ha dimensione $0$, è considerata piena. Se $\alpha(T)$ resta sempre al di sopra di una costante, lo spazio inutilizzato non supera mai una frazione costante dello spazio totale: è questa la garanzia che vogliamo ottenere, insieme a un costo ammortizzato costante per le operazioni.
+
+\subsection{Inserimenti con espansione}\label{sec:tabelle-ins}
+Consideriamo per ora soltanto gli inserimenti. Quando si inserisce un elemento in una tabella piena, la strategia più comune consiste nel \textbf{raddoppiare} la dimensione della tabella: si alloca una nuova tabella di dimensione $2\cdot\tsize[T]$, vi si copiano tutti gli elementi e si libera quella vecchia. Questa operazione è detta \textbf{espansione}, ed è descritta dall'algoritmo~\ref{alg:tableinsert}.
+
+\begin{algorithm}[htbp]
+\caption{L'operazione $\TableInsert(T,x)$ alloca la tabella al primo inserimento e la raddoppia (espansione) quando è piena, copiando tutti gli elementi nella nuova tabella prima di inserire $x$.}\label{alg:tableinsert}
+\begin{algorithmic}[1]
+\Procedure{Table-Insert}{$T,x$}
+  \If{$\tsize[T] = 0$}
+    \State allocare $\mathit{Table}[T]$ di dimensione $1$
+    \State $\tsize[T] \gets 1$
+    \State $\tnum[T] \gets 0$
+  \ElsIf{$\tnum[T] = \tsize[T]$}
+    \State allocare $\mathit{new}$ di dimensione $2\cdot\tsize[T]$
+    \State copiare i $\tnum[T]$ elementi di $\mathit{Table}[T]$ in $\mathit{new}$\label{alg:tableinsert:copy}
+    \State deallocare $\mathit{Table}[T]$
+    \State $\mathit{Table}[T] \gets \mathit{new}$
+    \State $\tsize[T] \gets 2\cdot\tsize[T]$
+  \EndIf
+  \State inserire $x$ in $\mathit{Table}[T]$\label{alg:tableinsert:ins}
+  \State $\tnum[T] \gets \tnum[T] + 1$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Il costo di un inserimento.}
+Valutiamo i costi in termini di \textbf{inserimenti elementari}: costa $1$ l'inserimento di $x$ (riga~\ref{alg:tableinsert:ins}) e costa $1$ la copia di ciascun elemento durante un'espansione (riga~\ref{alg:tableinsert:copy}), mentre il costo di allocazioni e deallocazioni è costante o comunque dominato da quello delle copie. Un inserimento che non provoca un'espansione costa quindi $1$, mentre l'$i$-esimo inserimento, se provoca un'espansione, costa $i$: $i-1$ copie degli elementi già presenti più l'inserimento del nuovo elemento. Partendo da una tabella vuota, la dimensione è sempre una potenza di $2$, quindi la tabella è piena prima dell'$i$-esimo inserimento esattamente quando $i-1$ è una potenza di $2$:
+\[
+c_i = \begin{cases} i & \text{se } i-1 \in 2^{\mathbb{N}} \\ 1 & \text{altrimenti} \end{cases}
+\]
+dove $2^{\mathbb{N}} = \{1, 2, 4, 8, \dots\}$ è l'insieme delle potenze di $2$. La tabella seguente mostra i primi nove inserimenti.
+
+\begin{center}
+\small
+\begin{tabular}{cccccc}
+\toprule
+$i$ & $\tnum$ prima & $\tsize$ prima & espansione & $\tsize$ dopo & $c_i$ \\
+\midrule
+$1$ & $0$ & $0$ & (allocazione) & $1$ & $1$ \\
+$2$ & $1$ & $1$ & sì & $2$ & $2$ \\
+$3$ & $2$ & $2$ & sì & $4$ & $3$ \\
+$4$ & $3$ & $4$ & no & $4$ & $1$ \\
+$5$ & $4$ & $4$ & sì & $8$ & $5$ \\
+$6$ & $5$ & $8$ & no & $8$ & $1$ \\
+$7$ & $6$ & $8$ & no & $8$ & $1$ \\
+$8$ & $7$ & $8$ & no & $8$ & $1$ \\
+$9$ & $8$ & $8$ & sì & $16$ & $9$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Analisi naive.}
+Consideriamo $n = 2^k$ inserimenti a partire da una tabella vuota. L'inserimento di indice $2^{k-1}+1$ trova la tabella piena con $2^{k-1}$ elementi e costa
+\[
+2^{k-1} + 1 = \frac{n}{2} + 1,
+\]
+quindi il costo di un singolo inserimento nel caso peggiore è $O(n)$ e il costo di $n$ inserimenti è $n \cdot O(n) = O(n^2)$. Come negli esempi precedenti, la stima è troppo pessimistica: le espansioni sono rare, e tra un'espansione e la successiva il numero di inserimenti economici raddoppia.
+
+\subsection{Analisi con l'aggregazione}
+Il calcolo è molto simile a quello dell'esercizio~\ref{es:potenze}, con la differenza che le operazioni costose sono quelle di indice $i$ con $i-1$ potenza di $2$. Sia $n \ge 2$. Scriviamo il costo di ogni inserimento con espansione come $i = (i-1) + 1$, così da separare le copie dagli inserimenti veri e propri:
+\[
+T(n) = \sum_{\substack{i=1 \\ i-1 \in 2^{\mathbb{N}}}}^{n} i + \sum_{\substack{i=1 \\ i-1 \notin 2^{\mathbb{N}}}}^{n} 1 = \sum_{\substack{i=1 \\ i-1 \in 2^{\mathbb{N}}}}^{n} (i-1) + \sum_{\substack{i=1 \\ i-1 \in 2^{\mathbb{N}}}}^{n} 1 + \sum_{\substack{i=1 \\ i-1 \notin 2^{\mathbb{N}}}}^{n} 1.
+\]
+Le ultime due somme insieme contano tutte le $n$ operazioni, mentre nella prima i valori $i-1$ sono le potenze di $2$ comprese tra $1$ e $n-1$, ovvero $2^0, 2^1, \dots, 2^{\lfloor \lg(n-1) \rfloor}$. Si ottiene quindi
+\[
+T(n) = \sum_{j=0}^{\lfloor \lg(n-1) \rfloor} 2^j + n = 2^{\lfloor \lg(n-1) \rfloor + 1} - 1 + n \le 2(n-1) - 1 + n < 3n
+\]
+dove abbiamo usato $2^{\lfloor \lg(n-1) \rfloor} \le n-1$. Pertanto
+\[
+\text{costo ammortizzato per operazione} = \frac{T(n)}{n} < \frac{3n}{n} = 3 = O(1).
+\]
+
+\subsection{Analisi con gli accantonamenti}
+Il risultato dell'aggregazione suggerisce di addebitare $3$ unità a ogni inserimento, e gli accantonamenti permettono di capire perché proprio $3$. Poniamo
+\[
+\hat{c}_{ins} = 3
+\]
+e ripartiamo le tre unità in questo modo:
+\begin{itemize}
+    \item \textbf{Inserimento}: $1$ unità paga il costo reale dell'inserimento elementare dell'elemento.
+    \item \textbf{Copia dell'elemento}: $1$ unità viene accantonata sull'elemento stesso, e pagherà la sua copia alla prossima espansione.
+    \item \textbf{Copia di un altro elemento}: $1$ unità viene accantonata su un elemento già ricopiato in un'espansione precedente, che ha speso il proprio credito e non avrebbe altrimenti come pagare la copia successiva.
+\end{itemize}
+Il primo inserimento non trova alcun elemento già ricopiato da aiutare, quindi per esso possiamo porre $\hat{c}_{ins} = 2$. Supponiamo che subito dopo un'espansione la tabella abbia dimensione $m$: contiene allora $m/2$ elementi, tutti senza credito, perché lo hanno appena speso per farsi copiare. Prima della prossima espansione verranno inseriti altri $m/2$ elementi, ognuno dei quali accantona $2$ unità, una su di sé e una su uno dei vecchi elementi: quando la tabella è di nuovo piena, ognuno degli $m$ elementi porta con sé esattamente l'unità di credito che serve a copiarlo. La figura~\ref{fig:crediti-tabella} mostra i primi sei inserimenti.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  cell/.style={draw=Accent, minimum width=6mm, minimum height=6mm, inner sep=0pt, font=\small},
+  dk/.style={circle, fill=Accent, inner sep=0pt, minimum size=2.4mm},
+  lt/.style={circle, fill=Accent!25, draw=Accent!60, inner sep=0pt, minimum size=2.4mm},
+  lab/.style={font=\scriptsize, TextGray, anchor=north west}]
+  % \celle{x}{y}{dimensione}{elementi}{etichetta}
+  \newcommand{\celle}[5]{%
+    \foreach \j in {1,...,#3}{\node[cell] at ({#1+0.6*(\j-1)},#2) {};}
+    \foreach \e [count=\j] in {#4}{\node[font=\small] at ({#1+0.6*(\j-1)},#2) {$\e$};}
+    \node[lab] at ({#1-0.3},{#2-0.4}) {#5};}
+  % \cred{x}{y}{posizione}{stile}
+  \newcommand{\cred}[4]{\node[#4] at ({#1+0.6*(#3-1)},{#2+0.55}) {};}
+  % prima riga
+  \celle{0}{0}{1}{a}{dopo $1$ ins.}       \cred{0}{0}{1}{dk}
+  \celle{1.6}{0}{2}{a,b}{dopo $2$ ins.}   \cred{1.6}{0}{1}{lt} \cred{1.6}{0}{2}{dk}
+  \celle{3.8}{0}{4}{a,b,c}{dopo $3$ ins.} \cred{3.8}{0}{2}{lt} \cred{3.8}{0}{3}{dk}
+  \celle{7.2}{0}{4}{a,b,c,d}{dopo $4$ ins.} \cred{7.2}{0}{1}{lt} \cred{7.2}{0}{2}{lt} \cred{7.2}{0}{3}{dk} \cred{7.2}{0}{4}{dk}
+  % seconda riga
+  \celle{0}{-1.7}{8}{a,b,c,d,e}{dopo $5$ ins.}   \cred{0}{-1.7}{4}{lt} \cred{0}{-1.7}{5}{dk}
+  \celle{5.6}{-1.7}{8}{a,b,c,d,e,f}{dopo $6$ ins.} \cred{5.6}{-1.7}{3}{lt} \cred{5.6}{-1.7}{4}{lt} \cred{5.6}{-1.7}{5}{dk} \cred{5.6}{-1.7}{6}{dk}
+  % legenda
+  \node[dk] at (0.4,-3.0) {}; \node[font=\scriptsize, anchor=west] at (0.6,-3.0) {credito su un elemento inserito e non ancora ricopiato};
+  \node[lt] at (0.4,-3.5) {}; \node[font=\scriptsize, anchor=west] at (0.6,-3.5) {credito su un elemento già ricopiato};
+\end{tikzpicture}
+\caption{Crediti accantonati durante i primi sei inserimenti, con $\hat{c}_{ins} = 3$ ($2$ per il primo). Ogni elemento inserito dopo l'ultima espansione porta una moneta scura e ne deposita una chiara su un elemento già ricopiato. Dopo $4$ inserimenti la tabella è piena e ognuno dei $4$ elementi ha una moneta: sono proprio quelle che pagano le $4$ copie dell'espansione provocata dal quinto inserimento, dopo la quale gli elementi $a,b,c,d$ restano senza credito finché i nuovi inserimenti non ne depositano altro.}
+\label{fig:crediti-tabella}
+\end{figure}
+
+\paragraph{Il credito non è mai negativo.}
+Verifichiamo ora formalmente che $B_j \ge 0$ per ogni $j$. Un inserimento senza espansione aumenta il credito di $\hat{c}_i - c_i = 3 - 1 = 2$, quindi l'unico momento in cui $B_j$ potrebbe diventare negativo è subito dopo un'espansione, ovvero dopo un inserimento di indice $2^k + 1$, che porta la tabella dalla dimensione $2^k$ alla dimensione $2^{k+1}$. Poiché $c_{2^k+1} = 2^k + 1$, si ha
+\begin{equation}\label{eq:credito-espansione}
+B_{2^k+1} = B_{2^k} + \hat{c}_{2^k+1} - c_{2^k+1} = B_{2^k} + 3 - (2^k + 1) = B_{2^k} - 2^k + 2
+\end{equation}
+quindi basta dimostrare che $B_{2^k} \ge 2^k - 2$ per ogni $k$. Supponiamo per assurdo che non sia così, e sia $m$ il più piccolo intero per cui
+\[
+B_{2^m} < 2^m - 2.
+\]
+Non può essere $m = 0$, perché $B_{2^0} = B_1 = \hat{c}_1 - c_1 = 2 - 1 = 1 > 2^0 - 2$; quindi $m > 0$ e, per la minimalità di $m$, vale $B_{2^{m-1}} \ge 2^{m-1} - 2$. Tra l'inserimento $2^{m-1}+1$ e l'inserimento $2^m$ ci sono $2^{m-1}-1$ inserimenti senza espansione, ognuno dei quali aggiunge $2$ al credito, quindi usando la~\eqref{eq:credito-espansione}
+\[
+\begin{aligned}
+B_{2^m} &= B_{2^{m-1}+1} + 2\left(2^{m-1} - 1\right) = B_{2^{m-1}} - 2^{m-1} + 2 + 2^m - 2 \\
+&= B_{2^{m-1}} + 2^{m-1} \ge 2^{m-1} - 2 + 2^{m-1} = 2^m - 2
+\end{aligned}
+\]
+contraddicendo l'ipotesi. Pertanto $B_j \ge 0$ per ogni $j \ge 1$ e, per il lemma~\ref{lem:accantonamenti},
+\[
+T(n) = \sum_{i=1}^{n} c_i \le \sum_{i=1}^{n} \hat{c}_i \le 3n.
+\]
+
+\paragraph{Il credito in funzione di $\tnum$ e $\tsize$.}
+Osservando la figura~\ref{fig:crediti-tabella} si può esprimere il credito accumulato nella tabella usando soltanto $\tnum[T]$ e $\tsize[T]$. Dopo l'ultima espansione sono stati inseriti $\tnum[T] - \tsize[T]/2$ elementi, ognuno dei quali ha depositato una moneta su di sé e una su un elemento già ricopiato, quindi il credito totale è
+\[
+B = 2\left(\tnum[T] - \frac{\tsize[T]}{2}\right) = 2\cdot\tnum[T] - \tsize[T].
+\]
+Ad esempio, dopo $6$ inserimenti si ha $\tnum = 6$ e $\tsize = 8$, e infatti in figura ci sono $2\cdot 6 - 8 = 4$ monete. La formula vale anche dopo il primo inserimento, che ha accantonato una sola unità: $2\cdot 1 - 1 = 1$. Questa espressione dipende soltanto dalla configurazione della tabella, ed è il punto di partenza del metodo del potenziale.
+
+\subsection{Analisi con il potenziale}
+Usiamo come funzione potenziale proprio il credito appena trovato:
+\[
+\Phi(T) = 2\cdot\tnum[T] - \tsize[T].
+\]
+Se $T_0$ è la tabella vuota si ha $\Phi(T_0) = 0$, e poiché la tabella è sempre piena almeno per metà, ovvero $\frac{1}{2}\tsize[T] \le \tnum[T]$, vale
+\[
+\Phi(T) \ge 0 = \Phi(T_0)
+\]
+per ogni configurazione $T$. Il metodo del potenziale può quindi essere utilizzato per stimare i costi reali. Il potenziale si comporta esattamente come serve: vale $0$ subito dopo un'espansione, quando $\tnum[T] = \tsize[T]/2$, e cresce di $2$ a ogni inserimento fino a valere $\tsize[T]$ quando la tabella è piena, cioè proprio il numero di elementi da copiare alla prossima espansione. La figura~\ref{fig:potenziale-tabella} mostra questo andamento.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=0.32cm, y=0.13cm]
+  % griglia e assi
+  \foreach \y in {8,16,24,32}{\draw[RuleGray, very thin] (0,\y) -- (32,\y); \node[font=\scriptsize, TextGray, anchor=east] at (-0.3,\y) {\y};}
+  \foreach \x in {0,4,...,32}{\node[font=\scriptsize, TextGray, anchor=north] at (\x,-0.8) {\x};}
+  \draw[->] (0,0) -- (33.5,0) node[right, font=\small] {$i$};
+  \draw[->] (0,0) -- (0,35);
+  % num, size, Phi
+  \draw[Accent!60, thick] plot coordinates {(0,0) (32,32)};
+  \draw[FigColor, thick, dashed] plot coordinates {(0,0) (1,1) (2,2) (3,4) (4,4) (5,8) (6,8) (7,8) (8,8) (9,16) (10,16) (11,16) (12,16) (13,16) (14,16) (15,16) (16,16) (17,32) (18,32) (19,32) (20,32) (21,32) (22,32) (23,32) (24,32) (25,32) (26,32) (27,32) (28,32) (29,32) (30,32) (31,32) (32,32)};
+  \draw[LemmaColor, very thick] plot coordinates {(0,0) (1,1) (2,2) (3,2) (4,4) (5,2) (6,4) (7,6) (8,8) (9,2) (10,4) (11,6) (12,8) (13,10) (14,12) (15,14) (16,16) (17,2) (18,4) (19,6) (20,8) (21,10) (22,12) (23,14) (24,16) (25,18) (26,20) (27,22) (28,24) (29,26) (30,28) (31,30) (32,32)};
+  % legenda
+  \draw[Accent!60, thick] (35,24) -- (37,24) node[right, font=\small, black] {$\tnum_i$};
+  \draw[FigColor, thick, dashed] (35,19) -- (37,19) node[right, font=\small, black] {$\tsize_i$};
+  \draw[LemmaColor, very thick] (35,14) -- (37,14) node[right, font=\small, black] {$\Phi_i$};
+\end{tikzpicture}
+\caption{Andamento di $\tnum_i$, $\tsize_i$ e $\Phi_i = 2\cdot\tnum_i - \tsize_i$ durante $32$ inserimenti in una tabella inizialmente vuota, misurati dopo l'$i$-esimo inserimento. Subito prima di ogni espansione il potenziale ha raggiunto il numero di elementi presenti nella tabella, e può quindi pagare la loro copia; subito dopo scende a $0$, ma l'inserimento che ha provocato l'espansione lo riporta a $2$.}
+\label{fig:potenziale-tabella}
+\end{figure}
+
+Indichiamo con $\tnum_i$ e $\tsize_i$ il numero di elementi e la dimensione della tabella dopo l'$i$-esimo inserimento, e con $\Phi_i = 2\cdot\tnum_i - \tsize_i$ il potenziale corrispondente. In ogni caso $\tnum_i = \tnum_{i-1} + 1$, e distinguiamo tre casi.
+
+\paragraph{Inserimento senza espansione.}
+La dimensione non cambia, ovvero $\tsize_i = \tsize_{i-1}$, e il costo reale è $1$:
+\[
+\begin{aligned}
+\hat{c}_{ins} &= 1 + (2\cdot\tnum_i - \tsize_i) - (2\cdot\tnum_{i-1} - \tsize_{i-1}) \\
+&= 1 + 2(\tnum_{i-1} + 1) - \tsize_{i-1} - 2\cdot\tnum_{i-1} + \tsize_{i-1} = 3.
+\end{aligned}
+\]
+
+\paragraph{Inserimento con espansione in una tabella non vuota.}
+La tabella era piena, quindi $\tsize_{i-1} = \tnum_{i-1}$, e dopo l'espansione $\tsize_i = 2\cdot\tsize_{i-1} = 2\cdot\tnum_{i-1}$. Il costo reale è $\tnum_i = \tnum_{i-1} + 1$, ovvero $\tnum_{i-1}$ copie più l'inserimento:
+\[
+\begin{aligned}
+\hat{c}_{ins} &= (\tnum_{i-1} + 1) + \bigl(2(\tnum_{i-1} + 1) - 2\cdot\tnum_{i-1}\bigr) - (2\cdot\tnum_{i-1} - \tnum_{i-1}) \\
+&= \tnum_{i-1} + 1 + 2 - \tnum_{i-1} = 3.
+\end{aligned}
+\]
+
+\paragraph{Inserimento in una tabella vuota.}
+È il primo inserimento ($i = 1$): si ha $\tsize_1 = \tnum_1 = 1$ e $\Phi_0 = 0$, quindi
+\[
+\hat{c}_{ins} = 1 + (2\cdot 1 - 1) - 0 = 2.
+\]
+
+Ritroviamo così gli stessi costi degli accantonamenti, e poiché $\Phi_i \ge \Phi_0$
+\[
+T(n) = \sum_{i=1}^{n} c_i \le \sum_{i=1}^{n} \hat{c}_i \le 3n.
+\]
+Notiamo infine che, poiché la tabella è sempre piena almeno per metà, il fattore di carico non scende mai sotto $1/2$: lo spazio sprecato non supera mai la metà dello spazio allocato.
+
+\subsection{Inserimenti e cancellazioni}
+Per non sprecare memoria, quando si cancellano molti elementi conviene \textbf{contrarre} la tabella: si alloca una tabella più piccola, vi si copiano gli elementi rimasti e si libera quella vecchia. L'operazione $\TableDelete(T,x)$ è analoga a \TableInsert: rimuove l'elemento, con costo $1$, ed esegue una \textbf{contrazione} quando il fattore di carico diventa troppo basso. Una contrazione costa quanto il numero di elementi da copiare, quindi una cancellazione che la provoca ha costo $\tnum_{i-1}$, ovvero $\tnum_{i-1} - 1$ copie più la cancellazione stessa.
+
+\paragraph{Dimezzare a $1/2$ non funziona.}
+La strategia più naturale sembra la simmetrica dell'espansione: raddoppiare la tabella quando è piena e dimezzarla quando il fattore di carico scende sotto $1/2$. In questo modo $\alpha(T)$ non scende mai sotto $1/2$, ma il costo ammortizzato può diventare molto alto. Consideriamo $n = 2^k$ operazioni: le prime $n/2$ sono inserimenti (I), che riempiono esattamente una tabella di dimensione $n/2$, e le restanti $n/2$ seguono lo schema I, C, C, I, I, C, C, I, I, \dots, dove C indica una cancellazione. La tabella seguente mostra cosa succede.
+
+\begin{center}
+\small
+\begin{tabular}{lccccc}
+\toprule
+ & \multicolumn{1}{c}{I \dots I} & I & C & C & I \\
+\midrule
+$\tnum[T]$ & $n/2$ & $n/2 + 1$ & $n/2$ & $n/2 - 1$ & $n/2$ \\
+$\tsize[T]$ & $n/2$ & $n$ & $n$ & $n/2$ & $n/2$ \\
+$\alpha(T)$ & $1$ & $> 1/2$ & $= 1/2$ & $< 1$ & $1$ \\
+$c_i$ & $< 3n/2$ in totale & $n/2 + 1$ & $1$ & $n/2$ & $1$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent
+Il primo inserimento del secondo gruppo provoca un'espansione, la prima cancellazione riporta il fattore di carico esattamente a $1/2$ e la seconda lo fa scendere sotto, provocando una contrazione; dopo il successivo inserimento la tabella è di nuovo piena, e l'inserimento seguente provoca un'altra espansione. Ogni gruppo di quattro operazioni contiene quindi un'espansione e una contrazione, che costano circa $n/2$ ciascuna, e i gruppi sono $n/8$: il costo totale è dell'ordine di $\frac{n}{8}\cdot n = \frac{n^2}{8}$, ovvero $\Theta(n^2)$, e il costo ammortizzato per operazione è $\Theta(n)$. Il problema è che subito dopo un'espansione non si cancellano abbastanza elementi da pagare una contrazione, e subito dopo una contrazione non se ne inseriscono abbastanza da pagare un'espansione.
+
+\paragraph{Dimezzare a $1/4$.}
+La soluzione è lasciare più margine: si continua a raddoppiare la tabella quando è piena, ma la si dimezza soltanto quando una cancellazione farebbe scendere il fattore di carico sotto $1/4$. In altre parole ci accontentiamo di avere
+\[
+\alpha(T) \ge \frac{1}{4}
+\]
+in cambio di un costo ammortizzato costante.\footnote{Per semplicità trascuriamo il caso limite in cui la tabella si svuota del tutto; nel libro si assume che in quel caso la tabella venga deallocata, ponendo $\tsize[T] = 0$.} Sia dopo un'espansione sia dopo una contrazione il fattore di carico torna circa a $1/2$, e serve un numero di operazioni proporzionale a $\tnum[T]$ per arrivare alla riallocazione successiva, in un senso o nell'altro.
+
+Ci serve quindi un potenziale che valga $0$ quando $\alpha(T) = 1/2$ e cresca man mano che il fattore di carico si allontana da $1/2$, in modo da avere accumulato abbastanza potenziale da pagare la copia di tutti gli elementi quando $\alpha(T)$ arriva a $1$ oppure scende a $1/4$. Poniamo
+\[
+\Phi(T) = \begin{cases} 2\cdot\tnum[T] - \tsize[T] & \text{se } \alpha(T) \ge \dfrac{1}{2} \\[3mm] \dfrac{1}{2}\tsize[T] - \tnum[T] & \text{se } \alpha(T) \le \dfrac{1}{2}. \end{cases}
+\]
+Le due espressioni coincidono quando $\alpha(T) = 1/2$: in quel caso $\tnum[T] = \frac{1}{2}\tsize[T]$, quindi $\frac{1}{2}\tsize[T] - \tnum[T] = 0$ e $2\cdot\tnum[T] - \tsize[T] = 0$. Questo ci permette di usare l'una o l'altra, a seconda di cosa è più comodo, quando la tabella è piena esattamente per metà. Inoltre vale sempre $\Phi(T) \ge 0 = \Phi(T_0)$, perché ciascuna delle due espressioni è non negativa nel proprio intervallo. La figura~\ref{fig:ricarica} mostra l'andamento del potenziale in funzione del fattore di carico.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=9cm, y=3.2cm]
+  % zone
+  \fill[ObsColor!8] (0.25,0) rectangle (0.5,1.1);
+  \fill[Accent!6] (0.5,0) rectangle (1,1.1);
+  % assi
+  \draw[->] (0,0) -- (1.08,0) node[right, font=\small] {$\alpha(T)$};
+  \draw[->] (0,0) -- (0,1.2) node[above, font=\small] {$\Phi(T)/\tsize[T]$};
+  \foreach \x/\l in {0.25/\frac14, 0.5/\frac12, 1/1}{\draw (\x,0.02) -- (\x,-0.02) node[below, font=\scriptsize] {$\l$};}
+  \foreach \y/\l in {0.25/\frac14, 1/1}{\draw (0.01,\y) -- (-0.01,\y) node[left, font=\scriptsize] {$\l$};}
+  % Phi = num (riferimento)
+  \draw[TextGray, dashed] (0,0) -- (1.05,1.05);
+  \node[font=\scriptsize, TextGray, rotate=19.6] at (0.80,0.87) {$\Phi = \tnum[T]$};
+  % potenziale
+  \draw[LemmaColor, very thick] (0.25,0.25) -- (0.5,0) -- (1,1);
+  \fill[LemmaColor] (0.25,0.25) circle (0.6pt);
+  \fill[LemmaColor] (1,1) circle (0.6pt);
+  % etichette delle zone
+  \node[font=\scriptsize, align=center, ObsColor] at (0.375,0.6) {il potenziale\\paga la\\contrazione};
+  \node[font=\scriptsize, align=center, Accent] at (0.82,0.22) {il potenziale\\paga l'espansione};
+\end{tikzpicture}
+\caption{Potenziale della tabella, in rapporto alla sua dimensione, in funzione del fattore di carico. Il potenziale è nullo quando la tabella è piena per metà e cresce linearmente in entrambe le direzioni: quando $\alpha(T) = 1$ il potenziale vale $\tsize[T]$, cioè $\tnum[T]$, e quando $\alpha(T) = 1/4$ vale $\frac{1}{4}\tsize[T]$, cioè ancora $\tnum[T]$. In entrambi i casi tocca la retta tratteggiata $\Phi = \tnum[T]$, cioè è sufficiente a pagare la copia di tutti gli elementi.}
+\label{fig:ricarica}
+\end{figure}
+
+Indichiamo come prima con $\tnum_i$ e $\tsize_i$ i valori dopo l'$i$-esima operazione e con $\alpha_{i-1} = \alpha(T_{i-1})$ il fattore di carico prima dell'operazione, e calcoliamo i costi ammortizzati distinguendo i casi.
+
+\paragraph{Analisi degli inserimenti.}
+In ogni caso $\tnum_i = \tnum_{i-1} + 1$.
+\begin{itemize}
+    \item \textbf{Caso $\alpha_{i-1} \ge 1/2$}: anche dopo l'inserimento la tabella è piena almeno per metà, quindi si usa la prima espressione del potenziale sia prima sia dopo. Il calcolo è lo stesso già fatto nel caso dei soli inserimenti, e dà $\hat{c}_{ins} = 3$ (oppure $2$ per il primo inserimento).
+    \item \textbf{Caso $1/4 \le \alpha_{i-1} < 1/2$}: non c'è espansione, quindi $\tsize_i = \tsize_{i-1}$, e poiché $\tnum_{i-1} < \frac{1}{2}\tsize_{i-1}$ si ha $\tnum_i \le \frac{1}{2}\tsize_i$, ovvero $\alpha_i \le 1/2$. Si usa allora la seconda espressione:
+    \[
+    \begin{aligned}
+    \hat{c}_{ins} &= 1 + \left(\tfrac{1}{2}\tsize_i - \tnum_i\right) - \left(\tfrac{1}{2}\tsize_{i-1} - \tnum_{i-1}\right) \\
+    &= 1 + \tfrac{1}{2}\tsize_{i-1} - \tnum_{i-1} - 1 - \tfrac{1}{2}\tsize_{i-1} + \tnum_{i-1} = 0.
+    \end{aligned}
+    \]
+\end{itemize}
+Un inserimento in una tabella piena per meno di metà ha costo ammortizzato nullo: il suo costo reale è pagato dalla diminuzione del potenziale, perché avvicina il fattore di carico a $1/2$.
+
+\paragraph{Analisi delle cancellazioni.}
+In ogni caso $\tnum_i = \tnum_{i-1} - 1$.
+\begin{itemize}
+    \item \textbf{Caso $1/2 < \alpha_{i-1} \le 1$}: non c'è contrazione e dopo la cancellazione la tabella è ancora piena almeno per metà, quindi si usa la prima espressione con $\tsize_i = \tsize_{i-1}$:
+    \[
+    \begin{aligned}
+    \hat{c}_{canc} &= 1 + (2\cdot\tnum_i - \tsize_i) - (2\cdot\tnum_{i-1} - \tsize_{i-1}) \\
+    &= 1 + 2\cdot\tnum_{i-1} - 2 - \tsize_{i-1} - 2\cdot\tnum_{i-1} + \tsize_{i-1} = -1.
+    \end{aligned}
+    \]
+    \item \textbf{Caso $1/4 < \alpha_{i-1} \le 1/2$}: non c'è contrazione e dopo la cancellazione $\alpha_i < 1/2$, quindi si usa la seconda espressione con $\tsize_i = \tsize_{i-1}$:
+    \[
+    \begin{aligned}
+    \hat{c}_{canc} &= 1 + \left(\tfrac{1}{2}\tsize_i - \tnum_i\right) - \left(\tfrac{1}{2}\tsize_{i-1} - \tnum_{i-1}\right) \\
+    &= 1 + \tfrac{1}{2}\tsize_{i-1} - \tnum_{i-1} + 1 - \tfrac{1}{2}\tsize_{i-1} + \tnum_{i-1} = 2.
+    \end{aligned}
+    \]
+    \item \textbf{Caso $\alpha_{i-1} = 1/4$}: la cancellazione provoca una contrazione. Si ha $\tnum_{i-1} = \frac{1}{4}\tsize_{i-1}$ e $\tsize_i = \frac{1}{2}\tsize_{i-1}$, e il costo reale è $\tnum_{i-1}$. Anche dopo la contrazione $\alpha_i < 1/2$, quindi
+    \[
+    \begin{aligned}
+    \hat{c}_{canc} &= \tnum_{i-1} + \left(\tfrac{1}{2}\tsize_i - \tnum_i\right) - \left(\tfrac{1}{2}\tsize_{i-1} - \tnum_{i-1}\right) \\
+    &= \tfrac{1}{4}\tsize_{i-1} + \left(\tfrac{1}{4}\tsize_{i-1} - \tfrac{1}{4}\tsize_{i-1} + 1\right) - \left(\tfrac{1}{2}\tsize_{i-1} - \tfrac{1}{4}\tsize_{i-1}\right) \\
+    &= \tfrac{1}{4}\tsize_{i-1} + 1 - \tfrac{1}{4}\tsize_{i-1} = 1.
+    \end{aligned}
+    \]
+\end{itemize}
+
+\paragraph{Riassumendo.}
+I costi ammortizzati delle due operazioni sono
+\[
+\hat{c}_{ins} = \begin{cases} 0 & \text{se } \frac{1}{4} \le \alpha(T) < \frac{1}{2} \\[1mm] 3 & \text{se } \frac{1}{2} \le \alpha(T) \le 1 \end{cases}
+\qquad\qquad
+\hat{c}_{canc} = \begin{cases} -1 & \text{se } \frac{1}{2} < \alpha(T) \le 1 \\[1mm] 2 & \text{se } \frac{1}{4} < \alpha(T) \le \frac{1}{2} \\[1mm] 1 & \text{se } \alpha(T) = \frac{1}{4} \end{cases}
+\]
+dove $\alpha(T)$ è il fattore di carico prima dell'operazione. Pertanto $\hat{c}_{ins} \le 3$ e $\hat{c}_{canc} \le 2 < 3$, e poiché $\Phi(T_i) \ge 0 = \Phi(T_0)$ si ottiene
+\[
+T(n) = \sum_{i=1}^{n} c_i \le \sum_{i=1}^{n} \hat{c}_i \le 3n.
+\]
+Qualsiasi sequenza di $n$ inserimenti e cancellazioni su una tabella inizialmente vuota costa quindi $O(n)$, e il costo ammortizzato di ciascuna operazione è $O(1)$.
+
+In sintesi, raddoppiare la tabella quando è piena garantisce un costo ammortizzato costante per gli inserimenti e uno spreco di memoria al più pari a metà dello spazio allocato; dimezzarla appena scende sotto metà sembra la scelta simmetrica, ma porta a sequenze di costo $\Theta(n^2)$; dimezzarla soltanto sotto $1/4$ mantiene il costo ammortizzato costante anche con le cancellazioni, al prezzo di uno spreco di memoria che può arrivare a tre quarti dello spazio allocato.
+
+\section*{Riferimenti}
+Il materiale visto in questo capitolo comprende:
+\begin{itemize}
+    \item Materiale visto a lezione.
+    \item Capitolo 17 (\emph{Amortized Analysis}, sezioni 17.1--17.4) del libro T.\,H.~Cormen, C.\,E.~Leiserson, R.\,L.~Rivest, C.~Stein, \emph{Introduction to Algorithms}.
+\end{itemize}
