@@ -145,6 +145,16 @@
   title={Lemma~\thetcbcounter\ifblank{#1}{}{\ (#1)}.},
 }
 
+% \begin{teorema}[Titolo opzionale] ... \end{teorema}
+%   come il lemma, con numerazione propria per capitolo
+\newtcolorbox[auto counter, number within=chapter]{teorema}[1][]{
+  boxbase,
+  colback=LemmaColor!7, coltitle=LemmaColor,
+  borderline west={2.5pt}{0pt}{LemmaColor},
+  attach title to upper={\tcblabelfix\ },
+  title={Teorema~\thetcbcounter\ifblank{#1}{}{\ (#1)}.},
+}
+
 % \begin{esercizio}[Titolo opzionale] testo \end{esercizio}
 %   numerato per capitolo (nelle appendici: Esercizio A.1, A.2, ...);
 %   la soluzione segue come \paragraph{Soluzione.}
@@ -176,6 +186,16 @@
   borderline west={1pt}{0pt}{RuleGray},
   title={Esempio.}, fonttitle=\bfseries,
   sidebyside, sidebyside gap=10pt, lefthand ratio=0.52, sidebyside align=center,
+  unbreakable,
+}
+
+% caso con testo a sinistra e figura a destra: \begin{casofig}{Titolo} testo \tcblower <figura> \end{casofig}
+\newtcolorbox{casofig}[1]{
+  boxbase,
+  colback=white, coltitle=black,
+  borderline west={1pt}{0pt}{RuleGray},
+  title={#1.}, fonttitle=\bfseries,
+  sidebyside, sidebyside gap=12pt, lefthand ratio=0.47, sidebyside align=center,
   unbreakable,
 }
 
@@ -324,6 +344,7 @@ Versione: \today
 \mainmatter
 
 \input{chapters/analisi_ammortizzata}
+\input{chapters/splay_trees}
 
 % =====================================================
 % APPENDICI
