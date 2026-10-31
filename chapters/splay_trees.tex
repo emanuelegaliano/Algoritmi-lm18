@@ -1,11 +1,5 @@
 \chapter{Splay trees}\label{ch:splay}
 
-% nomi delle operazioni
-\newcommand{\Search}{\textsc{Search}}
-\newcommand{\Insert}{\textsc{Insert}}
-\newcommand{\Delete}{\textsc{Delete}}
-\newcommand{\Splay}{\textsc{Splay}}
-
 Il costo delle operazioni su un albero binario di ricerca dipende dalla profondità dei nodi a cui si accede, e quindi in ultima analisi dall'altezza dell'albero. Per evitare che l'albero degeneri in una lista, gli alberi bilanciati come gli AVL o i red-black memorizzano in ogni nodo un'informazione aggiuntiva (un'altezza, un colore) e la usano per mantenere un \emph{invariante di bilanciamento}, che garantisce un costo $O(\lg n)$ nel caso peggiore per ogni singola operazione. Gli \textbf{splay tree}, introdotti da Sleator e Tarjan nel 1985, seguono una strada diversa: sono alberi binari di ricerca \textbf{auto-aggiustanti} (self-adjusting), ovvero non memorizzano alcuna informazione di bilanciamento e si riorganizzano da soli a ogni accesso, secondo una regola fissa. In cambio rinunciano alla garanzia sulla singola operazione e offrono una garanzia \emph{ammortizzata}, che verrà dimostrata con il metodo del potenziale visto nel capitolo~\ref{ch:ammortizzata}. In questo capitolo partiamo dall'idea alla base degli splay tree e vediamo perché la sua realizzazione più immediata non funziona.
 
 \section{L'idea di fondo}\label{sec:splay-idea}
@@ -37,6 +31,7 @@ Sia $x$ il figlio sinistro di un nodo $y$, siano $A$ e $B$ i sottoalberi sinistr
 
 \begin{figure}[htbp]
 \centering
+\begin{widget}{rotation}[case=rotate]
 \begin{tikzpicture}[>=Stealth,
   nd/.style={circle, draw=Accent, fill=Accent!6, minimum size=6.5mm, inner sep=0pt, font=\small}]
   % \subtree{x}{y}{etichetta}: sottoalbero con vertice in (x,y)
@@ -59,6 +54,7 @@ Sia $x$ il figlio sinistro di un nodo $y$, siano $A$ e $B$ i sottoalberi sinistr
   \draw[->, thick] (1.7,-0.6) -- node[above, font=\scriptsize] {rotazione a destra} (3.9,-0.6);
   \draw[<-, thick] (1.7,-1.1) -- node[below, font=\scriptsize] {rotazione a sinistra} (3.9,-1.1);
 \end{tikzpicture}
+\end{widget}
 \caption{Rotazione a destra su $y$ (da sinistra a destra) e rotazione a sinistra su $x$ (da destra a sinistra). In entrambe le configurazioni le chiavi rispettano l'ordine $A < x < B < y < C$: la rotazione cambia la forma dell'albero ma non l'ordinamento. Il nodo $x$ e il sottoalbero $A$ salgono di un livello, il nodo $y$ e il sottoalbero $C$ scendono di un livello, mentre $B$ resta alla stessa profondità.}
 \label{fig:rotazione}
 \end{figure}
@@ -155,6 +151,7 @@ $\Search(1)$ deve risalire tutta la catena e costa $N-1$ rotazioni. Il problema 
 
 \begin{figure}[htbp]
 \centering
+\begin{widget}{splay-tree}[tree={7,6,5,4,3,2,1}, mode=rotate, compare=false, actions={search}, ops={search 1, search 2}]
 \begin{tikzpicture}[
   nd/.style={circle, draw=Accent, fill=Accent!6, minimum size=5.5mm, inner sep=0pt, font=\small},
   hl/.style={nd, draw=FigColor, fill=FigColor!20}]
@@ -183,6 +180,7 @@ $\Search(1)$ deve risalire tutta la catena e costa $N-1$ rotazioni. Il problema 
     \node[font=\small] at (-0.3,-4.4) {(c)};
   \end{scope}
 \end{tikzpicture}
+\end{widget}
 \caption{Il caso $N = 7$ con sole rotazioni singole: l'albero dopo $\Insert(1),\dots,\Insert(7)$ (a), dopo $\Search(1)$ (b) e dopo $\Search(2)$ (c). In ogni albero è evidenziato il nodo cercato dall'operazione successiva, che si trova sempre in fondo a una catena: $1$ a profondità $6$, $2$ a profondità $6$ e $3$ a profondità $5$. Ogni ricerca porta il nodo cercato alla radice, ma lascia il nodo successivo quasi altrettanto in profondità.}
 \label{fig:catena}
 \end{figure}
@@ -221,21 +219,14 @@ Dopo $\Search(N)$ l'albero ha radice $N$ e sottoalbero sinistro uguale alla cate
 
 Portare alla radice il nodo acceduto con sole rotazioni singole è semplice, e rende economici gli accessi ripetuti allo stesso nodo. Tuttavia non riduce la profondità degli altri nodi del cammino di accesso, e una sequenza scelta in modo opportuno può costare $\Theta(N)$ per operazione. Per ottenere un costo ammortizzato $O(\lg N)$ serve una regola che, mentre porta il nodo acceduto alla radice, riduca anche la profondità dei nodi che incontra. È ciò che fanno le operazioni \textbf{zig-zig} e \textbf{zig-zag}, che ruotano i nodi a coppie tenendo conto anche del nonno del nodo acceduto.
 
-% stili comuni per le figure con alberi di chiavi numeriche
-\tikzset{splaytree/.style={
-  nd/.style={circle, draw=Accent, fill=Accent!6, minimum size=5.5mm, inner sep=0pt, font=\scriptsize},
-  hl/.style={nd, draw=FigColor, fill=FigColor!20},
-  path/.style={very thick, FigColor},
-  lab/.style={font=\small}}}
-
 \section{Le operazioni zig, zig-zag e zig-zig}\label{sec:zig}
 Il problema della strategia precedente è che guarda un solo livello alla volta. Ogni rotazione fa salire $x$ di un livello, ma non tiene conto di come è fatto il cammino sopra di lui. Gli splay tree risolvono il problema guardando \textbf{due livelli alla volta}: oltre al nodo $x$ e al padre $p$, consideriamo anche il nonno $g$ (grandparent). Le rotazioni da eseguire vengono scelte in base alla posizione reciproca dei tre nodi, e si distinguono tre casi:
 
-\begin{casofig}{Zig}
+\begin{casofig}[Zig]
 Se $p$ è la radice, $x$ non ha un nonno e basta una sola rotazione tra $x$ e $p$, come nella strategia precedente. Questo caso si presenta al più una volta, all'ultimo passo, quando $x$ si trova a profondità $1$. Costa $1$ rotazione.
 \tcblower
-\resizebox{\linewidth}{!}{%
-\begin{tikzpicture}[>=Stealth,
+\begin{widget}{rotation}[case=zig]
+\begin{tikzpicture}[scale=0.82, transform shape, >=Stealth,
   nd/.style={circle, draw=Accent, fill=Accent!6, minimum size=6mm, inner sep=0pt, font=\small}]
   % \subtree{x}{y}{etichetta}: sottoalbero con vertice in (x,y)
   \newcommand{\subtree}[3]{%
@@ -254,14 +245,15 @@ Se $p$ è la radice, $x$ non ha un nonno e basta una sola rotazione tra $x$ e $p
   \draw (x2) -- (4.1,-0.9); \subtree{4.1}{-0.9}{A}
   \draw (p2) -- (5.3,-1.8); \subtree{5.3}{-1.8}{B}
   \draw (p2) -- (6.5,-1.8); \subtree{6.5}{-1.8}{C}
-\end{tikzpicture}}
+\end{tikzpicture}
+\end{widget}
 \end{casofig}
 
-\begin{casofig}{Zig-zag}
+\begin{casofig}[Zig-zag]
 Se $x$ è figlio destro di $p$ e $p$ è figlio sinistro di $g$ (o viceversa), il cammino da $g$ a $x$ cambia direzione. In questo caso si ruota prima $x$ con $p$, e poi $x$ con $g$. Alla fine $x$ prende il posto di $g$, con $p$ come figlio sinistro e $g$ come figlio destro. I sottoalberi $A, B, C, D$ restano in ordine. Costa $2$ rotazioni.
 \tcblower
-\resizebox{\linewidth}{!}{%
-\begin{tikzpicture}[>=Stealth,
+\begin{widget}{rotation}[case=zigzag]
+\begin{tikzpicture}[scale=0.76, transform shape, >=Stealth,
   nd/.style={circle, draw=Accent, fill=Accent!6, minimum size=6mm, inner sep=0pt, font=\small}]
   % \subtree{x}{y}{etichetta}: sottoalbero con vertice in (x,y)
   \newcommand{\subtree}[3]{%
@@ -284,14 +276,15 @@ Se $x$ è figlio destro di $p$ e $p$ è figlio sinistro di $g$ (o viceversa), il
   \draw (p2) -- (5.1,-1.8); \subtree{5.1}{-1.8}{B}
   \draw (g2) -- (6.1,-1.8); \subtree{6.1}{-1.8}{C}
   \draw (g2) -- (7.1,-1.8); \subtree{7.1}{-1.8}{D}
-\end{tikzpicture}}
+\end{tikzpicture}
+\end{widget}
 \end{casofig}
 
-\begin{casofig}{Zig-zig}
+\begin{casofig}[Zig-zig]
 Se $x$ e $p$ sono entrambi figli sinistri (o entrambi figli destri), il cammino da $g$ a $x$ procede sempre nella stessa direzione. In questo caso l'ordine delle rotazioni si inverte: si ruota \textbf{prima $p$ con $g$}, e solo dopo $x$ con $p$. Alla fine $x$ prende il posto di $g$, $p$ diventa il suo figlio e $g$ diventa il figlio di $p$. Costa $2$ rotazioni.
 \tcblower
-\resizebox{\linewidth}{!}{%
-\begin{tikzpicture}[>=Stealth,
+\begin{widget}{rotation}[case=zigzig]
+\begin{tikzpicture}[scale=0.68, transform shape, >=Stealth,
   nd/.style={circle, draw=Accent, fill=Accent!6, minimum size=6mm, inner sep=0pt, font=\small}]
   % \subtree{x}{y}{etichetta}: sottoalbero con vertice in (x,y)
   \newcommand{\subtree}[3]{%
@@ -314,7 +307,8 @@ Se $x$ e $p$ sono entrambi figli sinistri (o entrambi figli destri), il cammino 
   \draw (p2) -- (5.3,-1.8); \subtree{5.3}{-1.8}{B}
   \draw (g2) -- (6.2,-2.7); \subtree{6.2}{-2.7}{C}
   \draw (g2) -- (7.4,-2.7); \subtree{7.4}{-2.7}{D}
-\end{tikzpicture}}
+\end{tikzpicture}
+\end{widget}
 \end{casofig}
 
 Ogni caso ha il suo \textbf{simmetrico}, che si ottiene scambiando ovunque sinistra e destra.
@@ -336,7 +330,7 @@ L'operazione $\Splay(x,T)$ consiste nei seguenti passi:
 
 Se $x$ è presente nell'albero, la ricerca si ferma proprio su $x$, che diventa quindi la radice. Se invece $x$ non è presente, la ricerca si ferma sull'ultimo nodo visitato, ed è quel nodo a essere portato alla radice. Questo nodo è il predecessore o il successore di $x$ tra le chiavi dell'albero, e lo utilizzeremo per realizzare \Insert{} e \Delete.
 
-L'algoritmo~\ref{alg:splay} descrive l'operazione, dove $\textsc{Ruota}(v)$ indica la rotazione che porta il nodo $v$ al posto del padre.\footnote{Ovvero una rotazione a destra sul padre se $v$ è un figlio sinistro, a sinistra se $v$ è un figlio destro. Per risalire il cammino supponiamo che ogni nodo abbia un puntatore al padre.}
+L'algoritmo~\ref{alg:splay} descrive l'operazione, dove $\Ruota(v)$ indica la rotazione che porta il nodo $v$ al posto del padre.\footnote{Ovvero una rotazione a destra sul padre se $v$ è un figlio sinistro, a sinistra se $v$ è un figlio destro. Per risalire il cammino supponiamo che ogni nodo abbia un puntatore al padre.}
 
 \begin{algorithm}[htbp]
 \caption{L'operazione $\Splay(x,T)$ porta alla radice il nodo $z$ in cui termina la ricerca di $x$. A ogni passo si sceglie tra zig, zig-zig e zig-zag in base alla posizione di $z$ rispetto al padre e al nonno.}\label{alg:splay}
@@ -428,6 +422,7 @@ L'effetto dello zig-zig si vede meglio su una catena. Consideriamo la catena di 
 
 \begin{figure}[htbp]
 \centering
+\begin{widget}{splay-tree}[tree={7,6,5,4,3,2,1}, compare=false, actions={search}, ops={search 1}]
 \begin{tikzpicture}[splaytree]
   \begin{scope}[xshift=2.7cm]
 \node[hl] (a1) at (-2.70,-3.72) {1};
@@ -494,6 +489,7 @@ L'effetto dello zig-zig si vede meglio su una catena. Consideriamo la catena di 
 \node[lab] at (1.35,-4.5) {(d)};
   \end{scope}
 \end{tikzpicture}
+\end{widget}
 \caption{$\Splay(1,T)$ sulla catena di sette nodi (a). Il primo zig-zig coinvolge i nodi $1$, $2$ e $3$ (b), il secondo i nodi $1$, $4$ e $5$ (c), il terzo i nodi $1$, $6$ e $7$ (d). Ogni zig-zig fa salire il nodo $1$ di due livelli e ripiega sotto di lui i due nodi superati. L'albero finale ha altezza $4$, mentre la catena di partenza aveva altezza $6$.}
 \label{fig:splay-catena}
 \end{figure}
@@ -575,6 +571,7 @@ Eseguiamo $\Insert(19)$ sull'albero di figura~\ref{fig:insert-19}(a). La ricerca
 
 \begin{figure}[htbp]
 \centering
+\begin{widget}{splay-tree}[tree={12,5,25,20,30,15,24,13,18,16}, compare=false, actions={insert}, ops={insert 19}]
 \begin{tikzpicture}[>=Stealth, splaytree]
   % (a) albero di partenza
   \begin{scope}[xshift=0.45cm]
@@ -675,6 +672,7 @@ Eseguiamo $\Insert(19)$ sull'albero di figura~\ref{fig:insert-19}(a). La ricerca
 \node[lab] at (-0.45,-3.3) {(d)};
   \end{scope}
 \end{tikzpicture}
+\end{widget}
 \caption{$\Insert(19)$. Nell'albero di partenza (a) è evidenziato il cammino della ricerca di $19$, che si ferma sul nodo $18$. Lo Splay porta $18$ alla radice con due zig-zag (b). Il nuovo nodo $19$ viene inserito come figlio destro di $18$, sopra il sottoalbero di radice $25$ (c), e lo zig finale lo porta alla radice (d).}
 \label{fig:insert-19}
 \end{figure}
@@ -726,6 +724,7 @@ Riprendiamo l'albero ottenuto alla fine dell'esempio precedente ed eseguiamo $\D
 
 \begin{figure}[htbp]
 \centering
+\begin{widget}{splay-tree}[tree={19,18,25,12,20,30,5,15,24,13,16}, compare=false, actions={delete}, ops={delete 16}]
 \begin{tikzpicture}[>=Stealth, splaytree]
   % (a) albero di partenza
   \begin{scope}[xshift=2.7cm]
@@ -829,6 +828,7 @@ Riprendiamo l'albero ottenuto alla fine dell'esempio precedente ed eseguiamo $\D
 \node[lab] at (0.67,-3.9) {(d)};
   \end{scope}
 \end{tikzpicture}
+\end{widget}
 \caption{$\Delete(16)$ sull'albero ottenuto con $\Insert(19)$. Nell'albero di partenza (a) è evidenziato il cammino della ricerca di $16$. Lo Splay porta $16$ alla radice con due zig-zig (b). Cancellando $16$ si ottengono $T_1$ e $T_2$ (c): il massimo di $T_1$ è $15$, che è già la radice, quindi $\Splay(16,T_1)$ non esegue rotazioni. Infine $T_2$ viene agganciato come sottoalbero destro di $15$ (d).}
 \label{fig:delete-16}
 \end{figure}
@@ -867,6 +867,7 @@ Consideriamo l'albero di figura~\ref{fig:potenziale-splay}. La radice $18$ conti
 
 \begin{figure}[htbp]
 \centering
+\begin{widget}{splay-tree}[tree={18,15,19,12,25,5,13,20,30,24}, compare=false, actions={search}, ops={search 24}, ranks]
 \begin{tikzpicture}[splaytree, lb/.style={font=\scriptsize, FigColor}]
   % S(v)
   \begin{scope}[xscale=1.6, yscale=1.3]
@@ -901,6 +902,7 @@ Consideriamo l'albero di figura~\ref{fig:potenziale-splay}. La radice $18$ conti
 \node[lab] at (0.2,-3.3) {$R(v)$};
   \end{scope}
 \end{tikzpicture}
+\end{widget}
 \caption{Lo stesso albero con accanto a ogni nodo la dimensione $S(v)$ del suo sottoalbero (a sinistra) e il suo rango $R(v) = \lg S(v)$ (a destra). Il potenziale dell'albero è la somma dei ranghi, ovvero $5 + \lg 150$.}
 \label{fig:potenziale-splay}
 \end{figure}
@@ -926,11 +928,11 @@ Vediamo prima perché questo lemma ci basta. Una sequenza di $M$ operazioni di \
     \item \textbf{Operazioni elementari}: $O(M)$ operazioni come l'inserimento o la cancellazione di un nodo.
     \item \textbf{Operazioni di Splay}: $M' = O(M)$ operazioni $\Splay_1(x_1), \Splay_2(x_2), \dots, \Splay_{M'}(x_{M'})$.
 \end{itemize}
-Sia $T_j$ la configurazione dello splay tree su cui viene eseguita l'operazione $\Splay_j$. Per il lemma~\ref{lem:splay}, e poiché $R(x_j) \ge 0$, il costo ammortizzato di ciascuna è
+Sia $T_j$ la configurazione dello splay tree su cui viene eseguita l'operazione $\Splay_j$ ed $x_j$ il nodo su cui viene eseguita. Per il lemma~\ref{lem:splay}, e poiché $R(x_j) \ge 0$, il costo ammortizzato di ciascuna è
 \[
 \hat{c}_{\Splay_j} \le 3\big(R(\mathit{root}(T_j)) - R(x_j)\big) + 1 \le 3R(\mathit{root}(T_j)) + 1.
 \]
-Poniamo
+Questo perché il rango del nodo $x_j$ è sempre non negativo, quindi il costo ammortizzato è al più $3R(\mathit{root}(T_j)) + 1$. Dopo poniamo
 \[
 N^* = \max_{j = 1, \dots, M'} |\mathit{nodes}(T_j)|,
 \]

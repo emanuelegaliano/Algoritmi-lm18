@@ -1,0 +1,1064 @@
+\chapter{B-trees}\label{ch:btree}
+I B-tree, a differenza di altri alberi bilanciati, sono pensati per funzionare bene in memoria secondaria (es. dischi rigidi o SSD). La loro struttura è progettata per minimizzare il numero di accessi a disco necessari per trovare un elemento, rendendoli particolarmente adatti per database e sistemi di file.
+
+Come gli alberi binari di ricerca bilanciati, un B-tree con $n$ chiavi ha altezza $O(\lg n)$. La differenza sta nei nodi: un nodo di un albero binario contiene una sola chiave e ha al più due figli, mentre un nodo di un B-tree contiene \textbf{molte chiavi} e può avere da pochi a migliaia di figli.
+
+Il numero di figli di un nodo è detto \textbf{fattore di ramificazione} (branching factor), e compare nella base del logaritmo che esprime l'altezza dell'albero: più è grande, più l'albero è basso. In questo capitolo partiamo dal modello di memoria che motiva i B-tree, e da questo arriviamo alla loro definizione.
+
+\section{Memoria principale e memoria secondaria}\label{sec:btree-memoria}
+Un calcolatore dispone di due livelli di memoria con caratteristiche molto diverse:
+\begin{itemize}
+    \item \textbf{Memoria principale} (RAM): rapida e volatile, con una capacità limitata rispetto a quella dell'archiviazione.
+    \item \textbf{Memoria secondaria} (HDD o SSD): capiente e persistente, ma con accessi generalmente molto più lenti.
+\end{itemize}
+La CPU lavora soltanto su dati presenti in RAM. Un dato che si trova in memoria secondaria va prima trasferito in memoria principale, e il trasferimento non avviene un dato alla volta ma per \textbf{pagine}, ovvero blocchi di dimensione fissa.
+
+Il problema è la differenza nei tempi di accesso. Assumendo un tempo di accesso alla RAM dell'ordine di $100$\,ns, un accesso casuale a un SSD costa circa $10^2$--$10^3$ volte di più, e un accesso casuale a un HDD circa $10^5$ volte di più.\footnote{Sono valori indicativi: il confronto dipende dal dispositivo, dalla dimensione della richiesta e dal carico.} Un algoritmo che lavora su dati in memoria secondaria, quindi, rischia di passare molto più tempo ad aspettare i dati che a elaborarli.
+
+\subsection{Hard disk}
+Un \textbf{hard disk} (HDD, Hard Disk Drive) è composto da uno o più piatti magnetici che ruotano a velocità costante attorno a un asse comune. Ogni piatto viene letto e scritto da una \textbf{testina}, montata all'estremità di un braccio che si sposta verso il centro o verso il bordo del piatto. La superficie che passa sotto la testina, quando questa è ferma, è detta \textbf{traccia}.
+
+Il tempo di una lettura casuale è la somma di tre contributi:
+\[
+T_{\text{lettura}} \approx T_{\text{seek}} + T_{\text{rot,att}} + T_{\text{trasf}}
+\]
+dove $T_{\text{seek}}$ (seek time) è il tempo necessario a posizionare la testina sulla traccia, $T_{\text{rot,att}}$ è la \textbf{latenza rotazionale}, ovvero l'attesa del settore desiderato, e $T_{\text{trasf}}$ è il tempo di lettura o scrittura dopo il posizionamento.
+
+I primi due contributi sono dovuti a movimenti meccanici. Per un disco da $7200$ rotazioni al minuto, un giro completo dura:
+\[
+T_{\text{rot}} = \frac{60\,\text{s}}{7200} \simeq 8.33\,\text{ms}
+\]
+In media il settore desiderato si trova a mezzo giro di distanza, quindi la latenza rotazionale media vale:
+\[
+T_{\text{rot,att}} = \frac{T_{\text{rot}}}{2} \simeq 4.17\,\text{ms}
+\]
+e il posizionamento della testina richiede in genere altri millisecondi. Complessivamente, una lettura casuale costa tra $5$ e $15$\,ms. Una volta posizionata la testina, invece, il disco legge i dati in sequenza a una \textbf{banda} di circa $200$--$250$\,MB/s.
+
+\paragraph{Esempio.}
+Supponiamo di leggere una pagina da $8$\,KiB\footnote{KiB (kibibyte) $= 2^{10} = 1024$ byte e MiB (mebibyte) $= 2^{20} = 1\,048\,576$ byte, mentre MB (megabyte) $= 10^6$ byte.} da un disco con una banda di $200$\,MB/s. Il tempo ideale di trasferimento è:
+\[
+T_{\text{trasf}} = \frac{B}{v} = \frac{8 \cdot 1024}{200 \cdot 10^6}\,\text{s} \simeq 0.041\,\text{ms}
+\]
+dove $B$ è la quantità di dati da trasferire e $v$ è la banda. Se ipotizziamo una latenza meccanica di $10$\,ms, la lettura costa:
+\[
+T_{\text{lettura}} \approx 10 + 0.041 = 10.041\,\text{ms}
+\]
+La latenza è quindi circa $10/0.041 \simeq 244$ volte il tempo di trasferimento: quasi tutto il tempo serve a \textbf{raggiungere} i dati, e non a trasferirli.\footnote{Il calcolo è ideale, in quanto basato sulla banda sequenziale: non è una misura di una lettura casuale di $8$\,KiB.}
+
+Ne consegue che le letture casuali di piccoli blocchi sono costose. Per ammortizzare il tempo speso nei movimenti meccanici conviene trasferire più dati per ogni richiesta: il disco non legge un singolo dato ma un'intera pagina, ovvero un blocco di bit consecutivi su una traccia. Una volta raggiunta la pagina, leggerne un byte o leggerla tutta costa quasi lo stesso.
+
+\subsection{Solid-state drive}
+Un \textbf{SSD} (Solid-State Drive) memorizza i dati elettronicamente, in genere su memoria flash NAND. Non ha testine mobili né latenza rotazionale, tuttavia la latenza non scompare: la richiesta, il controller, l'accesso alla flash, la correzione degli errori e il trasferimento richiedono comunque tempo. Per piccole letture casuali si parla tipicamente di decine o centinaia di microsecondi, a seconda dell'SSD, dell'interfaccia (SATA o NVMe) e del carico.
+
+Per confrontare i dispositivi conviene distinguere due grandezze, che spesso vengono confuse:
+\begin{itemize}
+    \item \textbf{Latenza}: il tempo per iniziare e completare una specifica richiesta di lettura. Per gli HDD include gli effetti meccanici.
+    \item \textbf{Banda}: la velocità sostenuta nel trasferimento di molti dati. Il tempo per copiare $B$ byte con banda $v$ è $T_{\text{copia}} \approx B/v$.
+\end{itemize}
+La tabella~\ref{tab:latenza-banda} riporta alcuni valori tipici.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Dispositivo & Lettura casuale (4 KiB) & Banda sequenziale & Copia ideale di 1 MiB \\
+\midrule
+HDD, 7200 RPM & $5$--$15$\,ms & $200$\,MB/s & $5.2$\,ms \\
+SSD SATA & $\sim 80\,\mu$s & $550$\,MB/s & $1.9$\,ms \\
+SSD NVMe & $\sim 80\,\mu$s & $5000$\,MB/s & $0.21$\,ms \\
+\bottomrule
+\end{tabular}
+\caption{Latenza e banda di alcuni dispositivi rappresentativi. I valori sono illustrativi, e i tempi di copia di 1 MiB sono calcolati dalla banda con $T_{\text{copia}} \approx B/v$: non sono misure di una singola lettura casuale.}
+\label{tab:latenza-banda}
+\end{table}
+
+Anche sull'SSD più veloce, una lettura casuale costa centinaia di volte un accesso alla RAM. Ridurre il numero di trasferimenti, quindi, resta un obiettivo importante anche quando non ci sono parti meccaniche.
+
+\subsection{Che cosa intendiamo per pagina}
+Il termine pagina viene usato a tre livelli distinti:
+\begin{itemize}
+    \item \textbf{Settore dell'HDD}: comunemente i settori fisici sono da $4$\,KiB, e per ragioni di compatibilità possono essere esposti al sistema operativo come otto settori logici da $512$ byte ciascuno (512e).
+    \item \textbf{Pagina dell'SSD}: i settori logici sono da $512$ o $4096$ byte, mentre le pagine NAND interne hanno dimensione variabile (ad esempio $4$--$16$\,KiB) e sono raggruppate in blocchi di cancellazione più grandi.
+    \item \textbf{Pagina del software}: l'unità scelta dal DBMS o dal gestore della memoria. Ad esempio, SQLite usa spesso pagine da $4$\,KiB e PostgreSQL di norma da $8$\,KiB.
+\end{itemize}
+Nel seguito, per pagina intendiamo la \textbf{pagina logica} scelta dall'implementazione del B-tree. Questa non coincide necessariamente con il settore dell'HDD o con la pagina fisica di un chip NAND, e non dipende dal fatto che si utilizzi un HDD o un SSD.
+
+\section{Il modello di costo}\label{sec:btree-costo}
+Nelle applicazioni tipiche dei B-tree la quantità di dati è così grande da non entrare tutta in memoria principale. Gli algoritmi, quindi, copiano in RAM le pagine che servono quando servono, e riscrivono in memoria secondaria quelle modificate. Ogni nodo del B-tree occupa una pagina, e per gli algoritmi l'accesso alla memoria secondaria si riduce a due primitive:
+\begin{itemize}
+    \item \PageRead$(x)$: carica in RAM la pagina del nodo $x$. Se la pagina è già in memoria principale, l'operazione non fa nulla e non richiede accessi alla memoria secondaria.
+    \item \PageWrite$(x)$: registra in memoria secondaria le modifiche fatte agli attributi del nodo $x$.
+\end{itemize}
+Gli attributi di un nodo si possono leggere solo dopo averne caricato la pagina. Lo schema tipico con cui un algoritmo lavora su un nodo è quello dell'algoritmo~\ref{alg:page-access}.
+
+\begin{algorithm}[htbp]
+\caption{Schema tipico di accesso a un nodo $x$ del B-tree. La scrittura si omette se nessun attributo di $x$ è stato modificato.}\label{alg:page-access}
+\begin{algorithmic}
+  \State $x \gets$ puntatore a un nodo del B-tree
+  \State \Call{Page-Read}{$x$}
+  \State operazioni che leggono e/o modificano gli attributi di $x$
+  \State \Call{Page-Write}{$x$} \Comment{omessa se nessun attributo di $x$ è cambiato}
+  \State altre operazioni che leggono gli attributi di $x$
+\end{algorithmic}
+\end{algorithm}
+
+Gli algoritmi sui B-tree tengono in memoria principale soltanto un numero costante di pagine alla volta. In questo modo la dimensione della RAM non limita la dimensione del B-tree che possiamo gestire.\footnote{Il sistema può tenere in memoria principale un numero limitato di pagine, e scarica quelle non più in uso. Gli algoritmi che vedremo ignorano questo aspetto.}
+
+\paragraph{Il costo di un'operazione.}
+Il tempo di esecuzione di un'operazione su un B-tree ha due componenti, che studiamo separatamente:
+\begin{itemize}
+    \item \textbf{Numero di I/O}: quante pagine dobbiamo leggere o scrivere. Dipende dall'altezza del B-tree.
+    \item \textbf{Tempo CPU}: quanto lavoro svolgiamo su dati già presenti in RAM, ovvero confronti tra chiavi, spostamenti di chiavi e puntatori, gestione delle divisioni e delle fusioni dei nodi (che vedremo più avanti).
+\end{itemize}
+Il costo complessivo è quindi dato da:
+\[
+\text{costo} = \text{costo I/O} + \text{costo CPU}
+\]
+Il tempo di accesso a una pagina non è costante: su un HDD, ad esempio, dipende dalla distanza tra la traccia corrente e quella desiderata e dalla posizione di partenza del disco. Utilizziamo comunque il numero di pagine lette o scritte come prima approssimazione del tempo speso in memoria secondaria.\footnote{Sui sistemi reali, cache, buffer pool e scritture ritardate possono cambiare il numero di richieste fisiche eseguite. Una pagina già in cache evita una lettura fisica, e sui dispositivi moderni gli I/O possono essere asincroni e concorrenti.}
+
+Poiché il costo è dominato dagli I/O, conviene che ogni \PageRead{} porti in memoria principale quanta più informazione possibile. Per questo motivo un nodo di un B-tree è in genere grande quanto un'intera pagina, ed è proprio la dimensione della pagina a limitare il numero di chiavi, e quindi di figli, di un nodo.
+
+\section{Perché i B-tree}\label{sec:btree-perche}
+Quando la visita di un nodo può richiedere un I/O costoso, il problema diventa ridurre il numero di pagine da consultare.
+
+Si potrebbe pensare di utilizzare un albero binario di ricerca bilanciato, memorizzando ogni nodo in una pagina. Con un miliardo di chiavi l'albero ha circa
+\[
+\log_2 10^9 \approx 29.9
+\]
+livelli, quindi una ricerca richiede una trentina di letture di pagina. Su un HDD, con circa $10$\,ms per lettura, si tratta di circa $0.3$\,s per una singola ricerca. Inoltre ogni lettura porta in RAM una pagina di qualche KiB, ma di questa pagina si utilizza una sola chiave.
+
+L'idea dei B-tree è sfruttare tutta la pagina:
+\begin{itemize}
+    \item Un nodo contiene \textbf{numerose chiavi}.
+    \item Un nodo può essere contenuto in \textbf{una pagina}.
+    \item Più chiavi per nodo significano \textbf{più figli}.
+    \item L'altezza diminuisce, e servono \textbf{meno accessi} alle pagine.
+\end{itemize}
+Con nodi da circa $100$ figli, per lo stesso numero di chiavi si ottiene:
+\[
+\log_{100} 10^9 = 4.5
+\]
+ovvero sono sufficienti circa cinque livelli, se l'albero è abbastanza pieno.
+
+Il prezzo da pagare è il lavoro all'interno del nodo: più chiavi per nodo significano meno pagine lungo il cammino, ma più confronti e più lavoro all'interno della pagina. Questo lavoro avviene però in RAM, e costa molto meno di un I/O.
+
+\paragraph{Esempio.}
+Il fattore di ramificazione dipende dalla dimensione di una chiave rispetto a quella della pagina, e può variare molto (ad esempio tra $50$ e $2000$). Consideriamo un B-tree in cui ogni nodo contiene $1000$ chiavi e ogni nodo interno ha $1001$ figli, come in figura~\ref{fig:btree-1001}. I nodi e le chiavi per livello sono:
+\begin{itemize}
+    \item \textbf{Livello 0}: $1$ nodo, quindi $1 \cdot 1000 = 1000$ chiavi.
+    \item \textbf{Livello 1}: $1001$ nodi, quindi $1001 \cdot 1000 = 1\,001\,000$ chiavi.
+    \item \textbf{Livello 2}: $1001^2$ nodi, quindi $1001^2 \cdot 1000 = 1\,002\,001\,000$ chiavi.
+\end{itemize}
+L'albero ha altezza $h = 2$, e il solo livello delle foglie contiene oltre un miliardo di chiavi. Una ricerca dalla radice a una foglia attraversa appena \textbf{tre nodi}, e se teniamo la radice sempre in memoria principale bastano due letture di pagina.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, >=Stealth]
+  \node[lab] (r) at (0,0.95) {$\mathit{root}[T]$};
+  \node[bn] (a) at (0,0) {1000};
+  \draw[->] (r) -- (a);
+  % livello 1
+  \node[bn] (b1) at (-2.6,-1.3) {1000};
+  \node[bn] (b2) at (0,-1.3) {1000};
+  \node at (1.5,-1.3) {$\cdots$};
+  \node[bn] (b3) at (2.9,-1.3) {1000};
+  \draw (a) -- (b1); \draw (a) -- (b2); \draw (a) -- (b3);
+  % livello 2, figli di uno solo dei nodi del livello 1
+  \node[bn] (c1) at (-1.4,-2.6) {1000};
+  \node[bn] (c2) at (0,-2.6) {1000};
+  \node at (1.2,-2.6) {$\cdots$};
+  \node[bn] (c3) at (2.4,-2.6) {1000};
+  \draw (b2) -- (c1); \draw (b2) -- (c2); \draw (b2) -- (c3);
+  % nodi e chiavi per livello
+  \node[lab, anchor=west, align=left] at (4.3,0) {$1$ nodo, $1000$ chiavi};
+  \node[lab, anchor=west, align=left] at (4.3,-1.3) {$1001$ nodi, $1\,001\,000$ chiavi};
+  \node[lab, anchor=west, align=left] at (4.3,-2.6) {$1001^2$ nodi, $1\,002\,001\,000$ chiavi};
+\end{tikzpicture}
+\caption{Un B-tree di altezza $2$ con oltre un miliardo di chiavi. In ogni nodo è riportato il numero di chiavi che contiene: ogni nodo ha $1000$ chiavi e ogni nodo interno ha $1001$ figli. La rappresentazione è schematica: i puntini omettono la maggior parte dei nodi e dei puntatori, e del livello $2$ sono mostrati solo i figli di un nodo.}
+\label{fig:btree-1001}
+\end{figure}
+
+\begin{osservazione}[B-tree e B$^+$-tree]
+Studieremo la forma classica dei B-tree, in cui le chiavi e i dati associati a ciascuna chiave si trovano, almeno concettualmente, negli stessi nodi. Una variante molto usata, il \textbf{B$^+$-tree}, conserva invece i record (o i loro riferimenti) nelle foglie. I nodi interni contengono soltanto chiavi e puntatori, servono a dirigere la ricerca, e in questo modo il loro fattore di ramificazione è il più grande possibile. Sistemi come PostgreSQL e SQLite utilizzano strutture della famiglia dei B-tree per organizzare indici e dati.
+\end{osservazione}
+
+\section{Definizione}\label{sec:btree-def}
+Prima della definizione formale consideriamo l'albero di figura~\ref{fig:btree-esempio}, le cui chiavi sono le consonanti dell'alfabeto inglese. Si notano subito tre proprietà:
+\begin{itemize}
+    \item Le chiavi in ogni nodo sono ordinate.
+    \item Un nodo interno con $k$ chiavi ha $k+1$ figli.
+    \item Tutte le foglie sono alla stessa profondità.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, >=Stealth]
+  \node[lab] (r) at (0,0.95) {$\mathit{root}[T]$};
+  \node[hl, rectangle split parts=1] (m) at (0,0) {M};
+  \draw[->] (r) -- (m);
+  % livello 1
+  \node[bn, rectangle split parts=2] (dh) at (-3.3,-1.3) {D \nodepart{two} H};
+  \node[hl, rectangle split parts=3] (qtx) at (3.1,-1.3) {Q \nodepart{two} T \nodepart{three} X};
+  \draw (m.south west) -- (dh.north);
+  \draw[path] (m.south east) -- (qtx.north);
+  % livello 2
+  \node[bn, rectangle split parts=2] (bc) at (-5.2,-2.6) {B \nodepart{two} C};
+  \node[bn, rectangle split parts=2] (fg) at (-3.3,-2.6) {F \nodepart{two} G};
+  \node[bn, rectangle split parts=3] (jkl) at (-1.4,-2.6) {J \nodepart{two} K \nodepart{three} L};
+  \node[bn, rectangle split parts=2] (np) at (0.6,-2.6) {N \nodepart{two} P};
+  \node[hl, rectangle split parts=2] (rs) at (2.4,-2.6) {R \nodepart{two} S};
+  \node[bn, rectangle split parts=2] (vw) at (4.2,-2.6) {V \nodepart{two} W};
+  \node[bn, rectangle split parts=2] (yz) at (6.0,-2.6) {Y \nodepart{two} Z};
+  \draw (dh.south west) -- (bc.north);
+  \draw (dh.one split south) -- (fg.north);
+  \draw (dh.south east) -- (jkl.north);
+  \draw (qtx.south west) -- (np.north);
+  \draw[path] (qtx.one split south) -- (rs.north);
+  \draw (qtx.two split south) -- (vw.north);
+  \draw (qtx.south east) -- (yz.north);
+  % livelli
+  \foreach \y/\l in {0/0, -1.3/1, -2.6/2}
+    \node[lab, anchor=west] at (-7.4,\y) {livello \l};
+\end{tikzpicture}
+\caption{Un B-tree di altezza $2$ le cui chiavi sono le consonanti dell'alfabeto inglese. Ogni nodo interno con $k$ chiavi ha $k+1$ figli, e i puntatori ai figli partono dagli spazi tra una chiave e la successiva. In evidenza i nodi visitati da una ricerca della chiave R.}
+\label{fig:btree-esempio}
+\end{figure}
+
+I B-tree generalizzano gli alberi binari di ricerca in modo naturale. In un albero binario di ricerca la chiave di un nodo divide le chiavi in due intervalli: quelle minori stanno nel sottoalbero sinistro, quelle maggiori nel destro. In un B-tree, invece, le $k$ chiavi di un nodo interno fanno da \textbf{separatori}, e dividono l'intervallo delle chiavi gestite dal nodo in $k+1$ sottointervalli, ciascuno gestito da un figlio. Durante una ricerca, quindi, in ogni nodo prendiamo una decisione a $k+1$ vie, in base ai confronti con le sue chiavi.
+
+Torniamo all'esempio e cerchiamo la chiave R. Nella radice R è maggiore di M, quindi si scende nel secondo figlio. Nel nodo con Q, T e X vale Q $<$ R $<$ T, quindi si scende nel secondo figlio, ovvero nella foglia con R e S, dove la chiave viene trovata. La ricerca ha visitato tre nodi, uno per livello.
+
+Possiamo ora dare la definizione formale. Come per gli alberi binari di ricerca, supponiamo che le informazioni associate a una chiave (dette informazioni satellite) si trovino nello stesso nodo della chiave, e che si spostino con essa quando la chiave passa da un nodo all'altro.\footnote{In pratica, insieme a ogni chiave si può memorizzare soltanto un puntatore a un'altra pagina, che contiene le informazioni satellite.}
+
+\begin{definizione}[B-tree]\label{def:btree}
+Un \textbf{B-tree} $T$ è un albero radicato con le seguenti proprietà:
+\begin{description}
+    \item[P0.] La radice di $T$ è denotata con $\mathit{root}[T]$.
+    \item[P1.] Ogni nodo $x$ di $T$ ha i seguenti campi:
+    \begin{itemize}
+        \item $n[x]$: il numero di chiavi contenute in $x$.
+        \item Le $n[x]$ chiavi, ordinate in modo non decrescente: $\mathit{key}_1[x] \le \mathit{key}_2[x] \le \cdots \le \mathit{key}_{n[x]}[x]$.
+        \item $\mathit{leaf}[x]$: un campo booleano che vale vero se $x$ è una foglia e falso se $x$ è un nodo interno.
+    \end{itemize}
+    \item[P2.] Se $x$ è un nodo interno con $m = n[x]$ chiavi, allora ha esattamente $m+1$ figli, individuati dai puntatori $c_1[x], \ldots, c_{m+1}[x]$. Le chiavi di $x$ separano le chiavi dei sottoalberi: se $k_i$ è una qualsiasi chiave del sottoalbero radicato in $c_i[x]$, allora
+    \[
+    k_1 \le \mathit{key}_1[x] \le k_2 \le \mathit{key}_2[x] \le \cdots \le \mathit{key}_m[x] \le k_{m+1}.
+    \]
+    \item[P3.] Tutte le foglie hanno la stessa profondità $h$, detta \textbf{altezza} dell'albero.
+    \item[P4.] $T$ è parametrizzato da un intero $t \ge 2$, detto \textbf{grado minimo} e memorizzato in $\mathit{degree}[T]$, tale che:
+    \begin{itemize}
+        \item Ogni nodo diverso dalla radice contiene almeno $t-1$ chiavi.
+        \item Ogni nodo contiene al più $2t-1$ chiavi.
+        \item La radice, se $T$ non è vuoto, contiene almeno una chiave.
+    \end{itemize}
+\end{description}
+\end{definizione}
+
+Vediamo il significato delle proprietà più importanti.
+
+\paragraph{Figli e sottoalberi.}
+Le foglie non hanno figli, quindi i loro puntatori $c_i$ non sono definiti. In un nodo interno, invece, la proprietà P2 dice che il figlio $c_i[x]$ contiene solo chiavi comprese tra $\mathit{key}_{i-1}[x]$ e $\mathit{key}_i[x]$, come si vede in figura~\ref{fig:btree-figli}. Ne consegue che, durante la ricerca di una chiave, il confronto con le chiavi di $x$ permette di individuare l'\textbf{unico sottoalbero} in cui proseguire, a meno che la chiave non sia già presente in $x$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree]
+  % \subtree{x}{y}: sottoalbero con vertice in (x,y)
+  \newcommand{\subtree}[2]{%
+    \draw[Accent, fill=Accent!3] (#1,#2) -- ({#1-0.55},{#2-0.9}) -- ({#1+0.55},{#2-0.9}) -- cycle;
+    \node at (#1,{#2-0.6}) {$\cdots$};}
+  \node[bn, rectangle split parts=3] (x) at (0,0) {$\mathit{key}_1$ \nodepart{two} $\mathit{key}_2$ \nodepart{three} $\mathit{key}_3$};
+  \node[lab, anchor=south] at (x.north) {$x$};
+  \subtree{-3.6}{-1.5} \subtree{-1.2}{-1.5} \subtree{1.2}{-1.5} \subtree{3.6}{-1.5}
+  \draw (x.south west) -- node[lab, above left] {$c_1[x]$} (-3.6,-1.5);
+  \draw (x.one split south) -- node[lab, left] {$c_2[x]$} (-1.2,-1.5);
+  \draw (x.two split south) -- node[lab, right] {$c_3[x]$} (1.2,-1.5);
+  \draw (x.south east) -- node[lab, above right] {$c_4[x]$} (3.6,-1.5);
+  \node[lab] at (-3.6,-2.75) {$\le \mathit{key}_1$};
+  \node[lab] at (-1.2,-2.75) {tra $\mathit{key}_1$ e $\mathit{key}_2$};
+  \node[lab] at (1.2,-2.75) {tra $\mathit{key}_2$ e $\mathit{key}_3$};
+  \node[lab] at (3.6,-2.75) {$\ge \mathit{key}_3$};
+\end{tikzpicture}
+\caption{Un nodo interno $x$ con $m = 3$ chiavi ha esattamente $4$ figli. Sotto ogni sottoalbero è indicato l'intervallo in cui cadono le sue chiavi, dove $\mathit{key}_i$ sta per $\mathit{key}_i[x]$.}
+\label{fig:btree-figli}
+\end{figure}
+
+\paragraph{Bilanciamento delle foglie.}
+La proprietà P3 rende il B-tree \textbf{perfettamente bilanciato}: ogni cammino dalla radice a una foglia attraversa esattamente $h+1$ nodi, e quindi richiede lo stesso numero di letture di pagina. L'albero di figura~\ref{fig:btree-esempio}, ad esempio, ha tutte le foglie a profondità $2$ e quindi altezza $h = 2$.
+
+\paragraph{Grado minimo.}
+La proprietà P4 fissa un limite inferiore e un limite superiore al numero di chiavi di ogni nodo. Per un nodo $x$ diverso dalla radice vale:
+\[
+t - 1 \le n[x] \le 2t - 1
+\]
+e, per la proprietà P2, se $x$ è un nodo interno il numero dei suoi figli è compreso tra $t$ e $2t$. Un nodo che contiene esattamente $2t-1$ chiavi si dice \textbf{pieno}.
+
+La radice fa eccezione al limite inferiore. Se l'albero non è vuoto contiene almeno una chiave, quindi una radice che è anche un nodo interno ha almeno $2$ figli. Se invece l'albero è vuoto, la radice è una foglia con zero chiavi.
+
+In pratica $t$ si sceglie in funzione della dimensione della pagina, in modo che un nodo pieno occupi una pagina. Il limite inferiore, invece, garantisce che ogni nodo diverso dalla radice sia pieno almeno per metà circa: come vedremo, è proprio questo vincolo a impedire che l'albero diventi troppo alto.
+
+\paragraph{Esempio: alberi 2-3-4.}
+Il B-tree più semplice si ottiene con $t = 2$. In questo caso un nodo interno diverso dalla radice contiene da $1$ a $3$ chiavi, e quindi ha da $2$ a $4$ figli (figura~\ref{fig:234}). Per questo motivo un B-tree con $t = 2$ è detto \textbf{albero 2-3-4}. In pratica si utilizzano valori di $t$ molto più grandi, che danno alberi di altezza minore.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree]
+  % i puntatori ai figli partono dai bordi del nodo e dagli spazi tra una chiave e l'altra
+  \node[bn, rectangle split parts=1] (a) at (-4.2,0) {10};
+  \node[bn, rectangle split parts=2] (b) at (0,0) {10 \nodepart{two} 20};
+  \node[bn, rectangle split parts=3] (c) at (4.4,0) {10 \nodepart{two} 20 \nodepart{three} 30};
+  \foreach \n/\a in {a/south west, a/south east,
+                     b/south west, b/one split south, b/south east,
+                     c/south west, c/one split south, c/two split south, c/south east}
+    \draw (\n.\a) -- ++(0,-0.55) node[circle, fill=Accent, inner sep=1pt] {};
+  \node[lab] at (-4.2,-1.25) {nodo a 2 figli};
+  \node[lab] at (0,-1.25) {nodo a 3 figli};
+  \node[lab] at (4.4,-1.25) {nodo a 4 figli};
+\end{tikzpicture}
+\caption{I tre tipi di nodo interno di un albero 2-3-4, ovvero di un B-tree con grado minimo $t = 2$: un nodo diverso dalla radice contiene da $1$ a $3$ chiavi, e quindi ha da $2$ a $4$ figli.}
+\label{fig:234}
+\end{figure}
+
+L'albero di figura~\ref{fig:btree-esempio} è un albero 2-3-4: ogni nodo diverso dalla radice contiene $2$ o $3$ chiavi. Osserviamo però che lo stesso albero rispetta anche i vincoli per $t = 3$, in quanto ogni nodo diverso dalla radice contiene almeno $t - 1 = 2$ chiavi e al più $2t - 1 = 5$. Il grado minimo, infatti, è un parametro della struttura e non si ricava dalla forma dell'albero.
+
+\begin{osservazione}[I nodi non devono essere pieni]
+Il B-tree classico non richiede che i nodi interni siano pieni: garantisce soltanto un'occupazione minima, tranne che per la radice.
+\end{osservazione}
+
+\section{Altezza di un B-tree}\label{sec:btree-altezza}
+Il numero di accessi al disco richiesti dalla maggior parte delle operazioni su un B-tree è proporzionale all'altezza del B-tree. Il teorema \ref{thm:btree-altezza} fornisce un limite superiore all'altezza di un B-tree in funzione del numero di chiavi e del grado minimo.
+
+\begin{teorema}[Altezza di un B-tree]\label{thm:btree-altezza}
+    Se $n \ge 1$, allora per ogni B-tree $T$ con $n$ chiavi, altezza $h$ e grado minimo $t \ge 2$ si ha:
+    \[
+        h \le \log_t \frac{n+1}{2} \,.
+    \]
+\end{teorema}
+
+\begin{proof}
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+  \node[lab] (r) at (0,0.95) {$\mathit{root}[T]$};
+  \node[bn] (a) at (0,0) {$1$};
+  \draw[->] (r) -- (a);
+  % profondità 1: la radice ha una chiave, quindi due figli
+  \node[bn] (b1) at (-3.5,-1.3) {$t-1$};
+  \node[bn] (b2) at (3.5,-1.3) {$t-1$};
+  \draw (a) -- (b1); \draw (a) -- (b2);
+  % profondità 2: ogni nodo ha t-1 chiavi, quindi t figli
+  \foreach \p/\x/\i in {b1/-5.0/1, b1/-3.8/2, b1/-2.0/3, b2/2.0/4, b2/3.2/5, b2/5.0/6} {
+    \node[bn] (n\i) at (\x,-2.6) {$t-1$};
+    \draw (\p) -- (n\i);
+  }
+  \node at (-2.9,-2.6) {$\cdots$};
+  \node at (4.1,-2.6) {$\cdots$};
+  \draw[decorate, decoration={brace, mirror, amplitude=4pt}, TextGray]
+    (-5.5,-3.0) -- node[lab, below=4pt] {$t$ figli} (-1.5,-3.0);
+  % profondità 3, figli di uno solo dei nodi di profondità 2
+  \foreach \x/\i in {0.8/1, 2.0/2, 3.8/3} {
+    \node[bn] (m\i) at (\x,-3.9) {$t-1$};
+    \draw (n4) -- (m\i);
+  }
+  \node at (2.9,-3.9) {$\cdots$};
+  % nodi per profondità
+  \foreach \y/\d/\nodi in {0/0/{$1$ nodo}, -1.3/1/{$2$ nodi}, -2.6/2/{$2t$ nodi}, -3.9/3/{$2t^2$ nodi}}
+    \node[lab, anchor=west] at (5.9,\y) {profondità $\d$: \nodi};
+\end{tikzpicture}
+\caption{Un B-tree di altezza $3$ con il minimo numero di chiavi possibile. In ogni nodo è riportato il numero di chiavi che contiene: la radice ha una sola chiave e quindi due figli, mentre ogni altro nodo ha $t-1$ chiavi e, se è interno, $t$ figli. Il numero di nodi viene quindi moltiplicato per $t$ a ogni livello dopo il primo. La rappresentazione è schematica: i puntini omettono una parte dei nodi, e della profondità $3$ sono mostrati solo i figli di un nodo.}
+\label{fig:btree-minimo}
+\end{figure}
+
+    Per la definizione \ref{def:btree}, la radice di un B-tree non vuoto contiene almeno una chiave e tutti gli altri nodi ne contengono almeno $t-1$. Data l'altezza $h$ del B-tree, allora $T$ ha almeno 2 nodi a profondità 1, almeno $2t$ nodi a profondità 2 e almeno $2t^{h-1}$ nodi a profondità $h$ (come si vede in figura \ref{fig:btree-minimo} per $h = 3$). Quindi, il numero $n$ di chiavi soddisfa la disuguaglianza:
+    \begin{align*}
+        n &\ge 1 + (t-1) \sum_{i=1}^h 2t^{i-1} \\
+            &= 1 + 2(t-1) \sum_{i=0}^{h-1} t^i \\
+            &= 1 + 2(t-1) \frac{t^h - 1}{t - 1} \qquad\text{(somma di una serie geometrica)} \\
+            &= 2t^h - 1.
+    \end{align*}
+    da cui $t^h \le (n+1)/2$. Dal conteggio precedente, riordinando i termini:
+    \[
+    t^h \le \frac{n+1}{2} \implies h \le \log_t \frac{n+1}{2}.
+    \]
+\end{proof}
+
+\begin{osservazione}
+    Anche quando i nodi sono il meno pieni possibile, l'albero non può diventare troppo alto. Una conseguenza per gli algoritmi è che il numero di accessi logici alle pagine è quindi $O(\log_t n)$, e quindi $O(\log n)$ per ogni operazione se $t$ è fissato.
+\end{osservazione}
+
+\section{Operazioni sui B-tree}\label{sec:btree-op}
+Le operazioni che studiamo sono quattro:
+\begin{itemize}
+    \item \BTreeSearch$(x,k)$: cerca la chiave $k$ nel sottoalbero radicato in $x$.
+    \item \BTreeCreate$(T)$: crea un B-tree vuoto.
+    \item \BTreeInsert$(T,k)$: inserisce la chiave $k$ nel B-tree $T$.
+    \item \BTreeDelete$(x,k)$: cancella la chiave $k$ dal sottoalbero radicato in $x$.
+\end{itemize}
+Per tutte valgono due convenzioni sulla gestione dei nodi in memoria:
+\begin{itemize}
+    \item La \textbf{radice} del B-tree si suppone sempre residente in memoria principale. Non serve quindi un \PageRead{} della radice, mentre serve un \PageWrite{} ogni volta che la radice viene modificata.
+    \item Prima di passare un nodo $x$ come parametro a una procedura, si suppone che la sua pagina sia già stata caricata con \PageRead$(x)$, se necessario.
+\end{itemize}
+Inoltre, tutti gli algoritmi che vedremo sono \textbf{a singola passata}: la visita procede lungo un cammino dalla radice verso le foglie, ed esegue le eventuali ristrutturazioni dei nodi durante la discesa, senza bisogno di risalire.
+
+\subsection{Ricerca}\label{sec:btree-search}
+La ricerca in un B-tree è molto simile a quella in un albero binario di ricerca. L'unica differenza è che in ogni nodo interno $x$ non si prende una decisione a due vie, ma una decisione a $n[x]+1$ vie: si confronta $k$ con le chiavi del nodo, in ordine crescente, e se $k$ non è presente si sceglie uno tra gli $n[x]+1$ figli.
+
+\begin{algorithm}[htbp]
+\caption{La ricerca di $k$ nel sottoalbero radicato in $x$. La chiamata iniziale è \BTreeSearch$(\mathit{root}[T],k)$.}\label{alg:btree-search}
+\begin{algorithmic}[1]
+\Procedure{B-Tree-Search}{$x,k$}
+  \State $i \gets 1$
+  \While{$i \le n[x]$ \textbf{and} $k > \mathit{key}_i[x]$}
+    \State $i \gets i+1$
+  \EndWhile
+  \If{$i \le n[x]$ \textbf{and} $k = \mathit{key}_i[x]$}
+    \State \Return $(x,i)$
+  \EndIf
+  \If{$\mathit{leaf}[x]$}
+    \State \Return \textsc{nil}
+  \EndIf
+  \State \Call{Page-Read}{$c_i[x]$}
+  \State \Return \Call{B-Tree-Search}{$c_i[x],k$}
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Il ciclo iniziale trova il più piccolo indice $i$ tale che $k \le \mathit{key}_i[x]$, oppure pone $i = n[x]+1$ se $k$ è maggiore di tutte le chiavi del nodo. Se $\mathit{key}_i[x] = k$ la chiave è stata trovata, e la procedura restituisce la coppia $(x,i)$, ovvero il nodo e la posizione della chiave al suo interno. Altrimenti, se $x$ è una foglia la ricerca termina senza successo e restituisce \textsc{nil}. Se invece $x$ è un nodo interno, per la proprietà P2 la chiave può trovarsi solo nel sottoalbero radicato in $c_i[x]$: si legge la sua pagina e si prosegue ricorsivamente.
+
+Torniamo all'esempio di figura~\ref{fig:btree-esempio} e cerchiamo R. Dalla radice M scegliamo il figlio destro, in quanto R $>$ M. Nel nodo con Q, T e X scegliamo l'intervallo tra Q e T, ovvero il secondo figlio, e nella foglia con R e S troviamo R.
+
+\paragraph{Costo.}
+I nodi visitati dalla ricerca formano un cammino dalla radice a una foglia, quindi il numero di pagine lette è
+\[
+O(h) = O(\log_t n).
+\]
+Il tempo CPU dipende da come cerchiamo $k$ all'interno di un nodo. Con la \textbf{ricerca lineare} dell'algoritmo~\ref{alg:btree-search} il ciclo costa $O(t)$ (dove $t$ è il grado del B-tree) per nodo, in quanto $n[x] \le 2t-1$, e il tempo CPU complessivo è $O(t\,h) = O(t \log_t n)$. Poiché le chiavi di un nodo sono ordinate, possiamo usare invece la \textbf{ricerca binaria}, che costa $O(\lg t)$ confronti per nodo. In questo caso il tempo CPU diventa:
+\[
+O(\lg t \cdot \log_t n) = O\left(\lg t \cdot \frac{\lg n}{\lg t}\right) = O(\lg n)
+\]
+e non dipende più da $t$.
+
+\subsection{Creazione di un albero vuoto}\label{sec:btree-create}
+Per costruire un B-tree si crea prima un nodo radice vuoto con \BTreeCreate{}, e poi si aggiungono le chiavi con \BTreeInsert{}. Entrambe le procedure usano una procedura ausiliaria, \AllocateNode{}, che alloca in tempo $O(1)$ una pagina della memoria secondaria da usare come nuovo nodo. Un nodo appena allocato non richiede un \PageRead{}, in quanto sul disco non c'è ancora alcuna informazione utile per quel nodo.
+
+\begin{algorithm}[htbp]
+\caption{La creazione di un B-tree vuoto: la radice è una foglia senza chiavi.}\label{alg:btree-create}
+\begin{algorithmic}[1]
+\Procedure{B-Tree-Create}{$T$}
+  \State $x \gets$ \Call{Allocate-Node}{}
+  \State $\mathit{leaf}[x] \gets$ \textsc{true}
+  \State $n[x] \gets 0$
+  \State \Call{Page-Write}{$x$}
+  \State $\mathit{root}[T] \gets x$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+La procedura richiede $O(1)$ operazioni di I/O e tempo CPU $O(1)$.
+
+\subsection{Inserimento}\label{sec:btree-insert}
+L'inserimento in un B-tree è molto più complicato di quello in un albero binario di ricerca. Come in un albero binario, cerchiamo la foglia in cui deve comparire la nuova chiave $k$. Non possiamo però creare una nuova foglia e appenderla all'albero, perché le foglie non sarebbero più tutte alla stessa profondità (proprietà P3). La chiave va quindi inserita in una foglia \textbf{esistente}:
+\begin{itemize}
+    \item Se la foglia \textbf{non è piena}, inseriamo $k$ nella posizione ordinata.
+    \item Se la foglia \textbf{è piena}, dobbiamo prima dividerla in due nodi e promuovere la chiave mediana nel padre.
+\end{itemize}
+Il problema è che anche il padre potrebbe essere pieno. In questo caso dovremmo dividere anche lui, e la divisione potrebbe propagarsi verso l'alto fino alla radice: dopo essere scesi fino alla foglia, saremmo costretti a \textbf{risalire} l'albero. Ad esempio, con $t = 2$ un nodo è pieno quando contiene $3$ chiavi, e l'inserimento di una chiave in una foglia come $[30, 35, 40]$ richiede una divisione.
+
+Per evitare la risalita si usa una strategia \textbf{top-down}: invece di dividere i nodi risalendo, durante la discesa \textbf{dividiamo ogni nodo pieno che incontriamo}, prima di scendere al suo interno, compresa la foglia. In questo modo, quando dobbiamo dividere un nodo, il padre non è mai pieno, e l'inserimento si esegue con un'unica discesa dalla radice alla foglia.
+
+\paragraph{Divisione di un figlio pieno.}
+L'operazione elementare dell'inserimento è \BTreeSplitChild$(x,i)$. La procedura riceve un nodo interno $x$ non pieno e un indice $i$ tale che il figlio $y = c_i[x]$ è pieno, ovvero $n[y] = 2t-1$, e lo divide in due attorno alla sua chiave \textbf{mediana} $\mathit{key}_t[y]$:
+\begin{itemize}
+    \item Le $t-1$ chiavi di $y$ maggiori della mediana passano in un nuovo nodo $z$, che diventa il figlio $c_{i+1}[x]$, subito dopo $y$.
+    \item Se $y$ non è una foglia, anche i puntatori ai figli si dividono: i primi $t$ restano in $y$, gli ultimi $t$ passano in $z$.
+    \item La mediana sale nel padre $x$, dove separa $y$ da $z$.
+\end{itemize}
+Dopo la divisione vale $n[y] = n[z] = t-1$, e il padre $x$ ha una chiave e un figlio in più (figura~\ref{fig:split-child}). Ad esempio, con $t = 3$ la divisione della foglia [A, B, C, D, E], figlia di un nodo [G, M], porta la mediana C nel padre, che diventa [C, G, M], e lascia le due foglie [A, B] e [D, E].
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+  % \subtree{x}{y}{etichetta}: sottoalbero con vertice in (x,y)
+  \newcommand{\subtree}[3]{%
+    \draw[Accent, fill=Accent!3] (#1,#2) -- ({#1-0.3},{#2-0.62}) -- ({#1+0.3},{#2-0.62}) -- cycle;
+    \node[font=\scriptsize] at (#1,{#2-0.43}) {$#3$};}
+  % prima della divisione
+  \node[bn, rectangle split parts=2] (x) at (2.1,0) {\makebox[1.1em]{$\cdots$} \nodepart{two} \makebox[1.1em]{$\cdots$}};
+  \node[lab, left] at (x.west) {$x$};
+  \node[bn, rectangle split parts=5] (y) at (2.1,-1.3) {\makebox[1.1em]{$k_1$} \nodepart{two} \makebox[1.1em]{$k_2$} \nodepart{three} \makebox[1.1em]{$k_3$} \nodepart{four} \makebox[1.1em]{$k_4$} \nodepart{five} \makebox[1.1em]{$k_5$}};
+  \node[lab, left] at (y.west) {$y = c_i[x]$};
+  \draw (x.one split south) -- (y.north);
+  \foreach \a/\px/\l in {south west/0.0/T_1, one split south/0.84/T_2, two split south/1.68/T_3,
+                         three split south/2.52/T_4, four split south/3.36/T_5, south east/4.2/T_6} {
+    \draw (y.\a) -- (\px,-2.3);
+    \subtree{\px}{-2.3}{\l}
+  }
+  % freccia
+  \draw[->, thick] (4.75,-1.3) -- node[lab, above] {divisione} (6.05,-1.3);
+  % dopo la divisione
+  \node[hl, rectangle split parts=3] (x2) at (8.8,0) {\makebox[1.1em]{$\cdots$} \nodepart{two} \makebox[1.1em]{$k_3$} \nodepart{three} \makebox[1.1em]{$\cdots$}};
+  \node[lab, left] at (x2.west) {$x$};
+  \node[bn, rectangle split parts=2] (y2) at (7.2,-1.3) {\makebox[1.1em]{$k_1$} \nodepart{two} \makebox[1.1em]{$k_2$}};
+  \node[lab, left] at (y2.west) {$y$};
+  \node[bn, rectangle split parts=2] (z2) at (10.4,-1.3) {\makebox[1.1em]{$k_4$} \nodepart{two} \makebox[1.1em]{$k_5$}};
+  \node[lab, right] at (z2.east) {$z$};
+  \draw (x2.one split south) -- (y2.north);
+  \draw (x2.two split south) -- (z2.north);
+  \foreach \n/\a/\px/\l in {y2/south west/6.36/T_1, y2/one split south/7.2/T_2, y2/south east/8.04/T_3,
+                            z2/south west/9.56/T_4, z2/one split south/10.4/T_5, z2/south east/11.24/T_6} {
+    \draw (\n.\a) -- (\px,-2.3);
+    \subtree{\px}{-2.3}{\l}
+  }
+\end{tikzpicture}
+\caption{La divisione del figlio pieno $y = c_i[x]$ con $t = 3$, ovvero con $2t - 1 = 5$ chiavi. La mediana $k_3$ sale nel padre $x$, le chiavi $k_1, k_2$ restano in $y$ e le chiavi $k_4, k_5$ passano nel nuovo nodo $z$. Se $y$ non è una foglia, i suoi $2t$ sottoalberi si dividono a metà: i primi $t$ restano in $y$ e gli ultimi $t$ passano in $z$.}
+\label{fig:split-child}
+\end{figure}
+
+\begin{algorithm}[htbp]
+\caption{La divisione del figlio pieno $y = c_i[x]$ di un nodo $x$ non pieno. Si assume che $x$ e $y$ siano già in memoria principale.}\label{alg:split-child}
+\begin{algorithmic}[1]
+\Procedure{B-Tree-Split-Child}{$x,i$}
+  \State $y \gets c_i[x]$
+  \State $z \gets$ \Call{Allocate-Node}{}
+  \State $\mathit{leaf}[z] \gets \mathit{leaf}[y]$
+  \State $n[z] \gets t-1$
+  \For{$j \gets 1$ \textbf{to} $t-1$} \Comment{le ultime $t-1$ chiavi di $y$ passano in $z$}
+    \State $\mathit{key}_j[z] \gets \mathit{key}_{j+t}[y]$
+  \EndFor
+  \If{\textbf{not} $\mathit{leaf}[y]$} \Comment{insieme agli ultimi $t$ figli}
+    \For{$j \gets 1$ \textbf{to} $t$}
+      \State $c_j[z] \gets c_{j+t}[y]$
+    \EndFor
+  \EndIf
+  \State $n[y] \gets t-1$
+  \For{$j \gets n[x]+1$ \textbf{downto} $i+1$} \Comment{si fa posto a $z$ tra i figli di $x$}
+    \State $c_{j+1}[x] \gets c_j[x]$
+  \EndFor
+  \State $c_{i+1}[x] \gets z$
+  \For{$j \gets n[x]$ \textbf{downto} $i$} \Comment{e alla mediana tra le chiavi di $x$}
+    \State $\mathit{key}_{j+1}[x] \gets \mathit{key}_j[x]$
+  \EndFor
+  \State $\mathit{key}_i[x] \gets \mathit{key}_t[y]$
+  \State $n[x] \gets n[x]+1$
+  \State \Call{Page-Write}{$y$}, \Call{Page-Write}{$z$}, \Call{Page-Write}{$x$}
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+La procedura si limita a ``tagliare e incollare'' chiavi e puntatori. I cicli che copiano le chiavi e i figli di $y$ in $z$ costano $\Theta(t)$, mentre gli altri eseguono $O(t)$ iterazioni, quindi il tempo CPU è $\Theta(t)$. Le operazioni di I/O, invece, sono $O(1)$: l'allocazione di una pagina e la scrittura dei tre nodi modificati.
+
+\paragraph{La radice piena.}
+\BTreeSplitChild{} divide il figlio di un nodo, ma la radice non ha un padre. Per dividere una radice piena $r$ si crea quindi una nuova radice $s$ vuota, che ha $r$ come unico figlio, e poi si divide $r$ come figlio di $s$ (figura~\ref{fig:root-split}). La nuova radice contiene solo la mediana di $r$ e ha le due metà come figli, e l'albero \textbf{cresce di un livello}.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+  \node[bn, rectangle split parts=5] (p0) at (1.250,0.000) {\makebox[0.75em]{G} \nodepart{two} \makebox[0.75em]{M} \nodepart{three} \makebox[0.75em]{P} \nodepart{four} \makebox[0.75em]{T} \nodepart{five} \makebox[0.75em]{X}};
+  \node[hl, rectangle split parts=1] (q0) at (6.075,0.000) {\makebox[0.75em]{P}};
+  \node[hl, rectangle split parts=2] (q1) at (5.400,-1.000) {\makebox[0.75em]{G} \nodepart{two} \makebox[0.75em]{M}};
+  \draw (q0.south west) -- (q1.north);
+  \node[hl, rectangle split parts=2] (q2) at (6.750,-1.000) {\makebox[0.75em]{T} \nodepart{two} \makebox[0.75em]{X}};
+  \draw (q0.south east) -- (q2.north);
+  \draw[->, thick] (2.90,-0.50) -- node[lab, above] {divisione} (4.50,-0.50);
+\end{tikzpicture}
+\caption{La divisione della radice piena [G, M, P, T, X] con $t = 3$. La mediana P diventa la nuova radice, con le due metà [G, M] e [T, X] come figli, e l'altezza passa da $0$ a $1$. In evidenza i nodi modificati.}
+\label{fig:root-split}
+\end{figure}
+
+La divisione della radice è l'\textbf{unico modo} in cui l'altezza di un B-tree può aumentare. A differenza di un albero binario di ricerca, quindi, un B-tree cresce dall'alto e non dal basso, ed è proprio per questo che tutte le foglie restano alla stessa profondità. L'algoritmo~\ref{alg:btree-insert} gestisce il caso della radice piena e poi passa il lavoro a \BTreeInsertNonfull{}, che riceve sempre un nodo non pieno.
+
+\begin{algorithm}[htbp]
+\caption{L'inserimento della chiave $k$ nel B-tree $T$. Se la radice è piena, viene prima divisa sotto una nuova radice $s$.}\label{alg:btree-insert}
+\begin{algorithmic}[1]
+\Procedure{B-Tree-Insert}{$T,k$}
+  \State $r \gets \mathit{root}[T]$
+  \If{$n[r] = 2t-1$}
+    \State $s \gets$ \Call{Allocate-Node}{}
+    \State $\mathit{root}[T] \gets s$
+    \State $\mathit{leaf}[s] \gets$ \textsc{false}
+    \State $n[s] \gets 0$
+    \State $c_1[s] \gets r$
+    \State \Call{B-Tree-Split-Child}{$s,1$}
+    \State \Call{B-Tree-Insert-Nonfull}{$s,k$}
+  \Else
+    \State \Call{B-Tree-Insert-Nonfull}{$r,k$}
+  \EndIf
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Inserimento in un nodo non pieno.}
+\BTreeInsertNonfull$(x,k)$ inserisce $k$ nel sottoalbero radicato in $x$, supponendo che $x$ non sia pieno. Se $x$ è una foglia l'inserimento è diretto:
+\begin{enumerate}
+    \item Si cerca la posizione ordinata per la nuova chiave.
+    \item Si spostano verso destra le chiavi maggiori di $k$.
+    \item Si scrive $k$ nella posizione corretta e si incrementa $n[x]$.
+    \item Si registra la modifica con \PageWrite$(x)$.
+\end{enumerate}
+Ad esempio, l'inserimento di E nella foglia [A, D, G] sposta G di una posizione a destra e produce [A, D, E, G], con lavoro CPU $O(t)$ e $O(1)$ operazioni di I/O.
+
+Se invece $x$ è un nodo interno, si individua il figlio $c_i[x]$ in cui scendere e se ne legge la pagina. Se il figlio è pieno, prima di scendere lo si divide con \BTreeSplitChild$(x,i)$. Dopo la divisione la chiave mediana di $c_i[x]$ è salita in $x$ come $\mathit{key}_i[x]$, e il confronto tra $k$ e la mediana dice in quale delle due metà proseguire: se $k > \mathit{key}_i[x]$ si scende nella nuova metà destra, altrimenti nella sinistra.\footnote{Nel primo caso non serve un \PageRead{} del nuovo figlio, perché è il nodo $z$ appena creato da \BTreeSplitChild{}, che si trova già in memoria principale.} In entrambi i casi il figlio in cui si scende non è pieno, quindi vale l'\textbf{invariante}: \BTreeInsertNonfull$(x,k)$ riceve sempre un nodo $x$ che non è pieno.
+
+\begin{algorithm}[htbp]
+\caption{L'inserimento di $k$ nel sottoalbero radicato nel nodo non pieno $x$. Ogni figlio pieno incontrato durante la discesa viene diviso prima di scendere al suo interno.}\label{alg:insert-nonfull}
+\begin{algorithmic}[1]
+\Procedure{B-Tree-Insert-Nonfull}{$x,k$}
+  \State $i \gets n[x]$
+  \If{$\mathit{leaf}[x]$}
+    \While{$i \ge 1$ \textbf{and} $k < \mathit{key}_i[x]$}
+      \State $\mathit{key}_{i+1}[x] \gets \mathit{key}_i[x]$
+      \State $i \gets i-1$
+    \EndWhile
+    \State $\mathit{key}_{i+1}[x] \gets k$
+    \State $n[x] \gets n[x]+1$
+    \State \Call{Page-Write}{$x$}
+  \Else
+    \While{$i \ge 1$ \textbf{and} $k < \mathit{key}_i[x]$}
+      \State $i \gets i-1$
+    \EndWhile
+    \State $i \gets i+1$
+    \State \Call{Page-Read}{$c_i[x]$}
+    \If{$n[c_i[x]] = 2t-1$}
+      \State \Call{B-Tree-Split-Child}{$x,i$}
+      \If{$k > \mathit{key}_i[x]$}
+        \State $i \gets i+1$
+      \EndIf
+    \EndIf
+    \State \Call{B-Tree-Insert-Nonfull}{$c_i[x],k$}
+  \EndIf
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Costo.}
+L'eventuale divisione iniziale della radice costa $O(1)$ operazioni di I/O. La discesa successiva attraversa $O(h)$ livelli, e tra una chiamata ricorsiva e la successiva si esegue solo un numero costante di \PageRead{} e \PageWrite{}. Il numero di pagine lette o scritte è quindi:
+\[
+O(h) = O(\log_t n).
+\]
+In ogni livello il lavoro CPU è al più $O(t)$, per la ricerca della posizione e per l'eventuale divisione, quindi il tempo CPU complessivo è $O(t\,h) = O(t\log_t n)$. Per $t$ fissato entrambi i limiti diventano $O(\log n)$. Inoltre, \BTreeInsertNonfull{} è ricorsiva in coda (tail-recursive) e si può scrivere come un ciclo \textbf{while}: in ogni istante bastano quindi $O(1)$ pagine in memoria principale.
+
+\paragraph{Esempio.}
+Consideriamo il B-tree di figura~\ref{fig:btree-insert} con $t = 3$: ogni nodo diverso dalla radice ha da $2$ a $5$ chiavi, e un nodo con $5$ chiavi è pieno. Inseriamo, nell'ordine, B, Q, L e F:
+\begin{itemize}
+    \item \textbf{Inserimento di B}: la foglia [A, C, D, E] ha $4 < 2t-1$ chiavi, quindi B si inserisce direttamente. La foglia diventa [A, B, C, D, E], ed è ora piena.
+    \item \textbf{Inserimento di Q}: Q dovrebbe scendere nella foglia [R, S, T, U, V], che è piena. Prima di scendere la foglia si divide in [R, S] e [U, V], la mediana T sale nella radice, e poi Q si inserisce in [R, S], formando [Q, R, S].
+    \item \textbf{Inserimento di L}: la radice [G, M, P, T, X] è piena e si divide subito. La mediana P diventa la nuova radice e l'altezza passa da $1$ a $2$. Poi L scende fino alla foglia [J, K], che diventa [J, K, L].
+    \item \textbf{Inserimento di F}: F dovrebbe scendere nella foglia [A, B, C, D, E], che è piena. La foglia si divide, la mediana C sale nel padre [G, M], che diventa [C, G, M], e F si inserisce in [D, E].
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{b-tree}[tree={(G M P X (A C D E) (J K) (N O) (R S T U V) (Y Z))}, t=3, ops={insert B, insert Q, insert L, insert F}, actions={insert, search}]
+\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+  % (a) Albero iniziale.
+  \node[lab, anchor=north west, align=left, text width=3.0999999999999996cm] at (-3.30,0.30) {(a) Albero iniziale.};
+  \node[bn, rectangle split parts=4] (s0n0) at (4.450,0.000) {\makebox[0.75em]{G} \nodepart{two} \makebox[0.75em]{M} \nodepart{three} \makebox[0.75em]{P} \nodepart{four} \makebox[0.75em]{X}};
+  \node[bn, rectangle split parts=4] (s0n1) at (1.000,-1.000) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{C} \nodepart{three} \makebox[0.75em]{D} \nodepart{four} \makebox[0.75em]{E}};
+  \draw (s0n0.south west) -- (s0n1.north);
+  \node[bn, rectangle split parts=2] (s0n2) at (2.850,-1.000) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K}};
+  \draw (s0n0.one split south) -- (s0n2.north);
+  \node[bn, rectangle split parts=2] (s0n3) at (4.200,-1.000) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (s0n0.two split south) -- (s0n3.north);
+  \node[bn, rectangle split parts=5] (s0n4) at (6.300,-1.000) {\makebox[0.75em]{R} \nodepart{two} \makebox[0.75em]{S} \nodepart{three} \makebox[0.75em]{T} \nodepart{four} \makebox[0.75em]{U} \nodepart{five} \makebox[0.75em]{V}};
+  \draw (s0n0.three split south) -- (s0n4.north);
+  \node[bn, rectangle split parts=2] (s0n5) at (8.400,-1.000) {\makebox[0.75em]{Y} \nodepart{two} \makebox[0.75em]{Z}};
+  \draw (s0n0.south east) -- (s0n5.north);
+  % (b) Inserimento di B.
+  \node[lab, anchor=north west, align=left, text width=3.0999999999999996cm] at (-3.30,-1.80) {(b) Inserimento di B.};
+  \node[bn, rectangle split parts=4] (s1n0) at (4.700,-2.100) {\makebox[0.75em]{G} \nodepart{two} \makebox[0.75em]{M} \nodepart{three} \makebox[0.75em]{P} \nodepart{four} \makebox[0.75em]{X}};
+  \node[hl, rectangle split parts=5] (s1n1) at (1.250,-3.100) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B} \nodepart{three} \makebox[0.75em]{C} \nodepart{four} \makebox[0.75em]{D} \nodepart{five} \makebox[0.75em]{E}};
+  \draw (s1n0.south west) -- (s1n1.north);
+  \node[bn, rectangle split parts=2] (s1n2) at (3.350,-3.100) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K}};
+  \draw (s1n0.one split south) -- (s1n2.north);
+  \node[bn, rectangle split parts=2] (s1n3) at (4.700,-3.100) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (s1n0.two split south) -- (s1n3.north);
+  \node[bn, rectangle split parts=5] (s1n4) at (6.800,-3.100) {\makebox[0.75em]{R} \nodepart{two} \makebox[0.75em]{S} \nodepart{three} \makebox[0.75em]{T} \nodepart{four} \makebox[0.75em]{U} \nodepart{five} \makebox[0.75em]{V}};
+  \draw (s1n0.three split south) -- (s1n4.north);
+  \node[bn, rectangle split parts=2] (s1n5) at (8.900,-3.100) {\makebox[0.75em]{Y} \nodepart{two} \makebox[0.75em]{Z}};
+  \draw (s1n0.south east) -- (s1n5.north);
+  % (c) Inserimento di Q.
+  \node[lab, anchor=north west, align=left, text width=3.0999999999999996cm] at (-3.30,-3.90) {(c) Inserimento di Q.};
+  \node[hl, rectangle split parts=5] (s2n0) at (4.875,-4.200) {\makebox[0.75em]{G} \nodepart{two} \makebox[0.75em]{M} \nodepart{three} \makebox[0.75em]{P} \nodepart{four} \makebox[0.75em]{T} \nodepart{five} \makebox[0.75em]{X}};
+  \node[bn, rectangle split parts=5] (s2n1) at (1.250,-5.200) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B} \nodepart{three} \makebox[0.75em]{C} \nodepart{four} \makebox[0.75em]{D} \nodepart{five} \makebox[0.75em]{E}};
+  \draw (s2n0.south west) -- (s2n1.north);
+  \node[bn, rectangle split parts=2] (s2n2) at (3.350,-5.200) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K}};
+  \draw (s2n0.one split south) -- (s2n2.north);
+  \node[bn, rectangle split parts=2] (s2n3) at (4.700,-5.200) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (s2n0.two split south) -- (s2n3.north);
+  \node[hl, rectangle split parts=3] (s2n4) at (6.300,-5.200) {\makebox[0.75em]{Q} \nodepart{two} \makebox[0.75em]{R} \nodepart{three} \makebox[0.75em]{S}};
+  \draw (s2n0.three split south) -- (s2n4.north);
+  \node[hl, rectangle split parts=2] (s2n5) at (7.900,-5.200) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V}};
+  \draw (s2n0.four split south) -- (s2n5.north);
+  \node[bn, rectangle split parts=2] (s2n6) at (9.250,-5.200) {\makebox[0.75em]{Y} \nodepart{two} \makebox[0.75em]{Z}};
+  \draw (s2n0.south east) -- (s2n6.north);
+  % (d) Inserimento di L.
+  \node[lab, anchor=north west, align=left, text width=3.0999999999999996cm] at (-3.30,-6.00) {(d) Inserimento di L.};
+  \node[hl, rectangle split parts=1] (s3n0) at (5.125,-6.300) {\makebox[0.75em]{P}};
+  \node[hl, rectangle split parts=2] (s3n1) at (2.850,-7.300) {\makebox[0.75em]{G} \nodepart{two} \makebox[0.75em]{M}};
+  \node[bn, rectangle split parts=5] (s3n2) at (1.250,-8.300) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B} \nodepart{three} \makebox[0.75em]{C} \nodepart{four} \makebox[0.75em]{D} \nodepart{five} \makebox[0.75em]{E}};
+  \draw (s3n1.south west) -- (s3n2.north);
+  \node[hl, rectangle split parts=3] (s3n3) at (3.600,-8.300) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K} \nodepart{three} \makebox[0.75em]{L}};
+  \draw (s3n1.one split south) -- (s3n3.north);
+  \node[bn, rectangle split parts=2] (s3n4) at (5.200,-8.300) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (s3n1.south east) -- (s3n4.north);
+  \draw (s3n0.south west) -- (s3n1.north);
+  \node[hl, rectangle split parts=2] (s3n5) at (8.150,-7.300) {\makebox[0.75em]{T} \nodepart{two} \makebox[0.75em]{X}};
+  \node[bn, rectangle split parts=3] (s3n6) at (6.800,-8.300) {\makebox[0.75em]{Q} \nodepart{two} \makebox[0.75em]{R} \nodepart{three} \makebox[0.75em]{S}};
+  \draw (s3n5.south west) -- (s3n6.north);
+  \node[bn, rectangle split parts=2] (s3n7) at (8.400,-8.300) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V}};
+  \draw (s3n5.one split south) -- (s3n7.north);
+  \node[bn, rectangle split parts=2] (s3n8) at (9.750,-8.300) {\makebox[0.75em]{Y} \nodepart{two} \makebox[0.75em]{Z}};
+  \draw (s3n5.south east) -- (s3n8.north);
+  \draw (s3n0.south east) -- (s3n5.north);
+  % (e) Inserimento di F.
+  \node[lab, anchor=north west, align=left, text width=3.0999999999999996cm] at (-3.30,-9.10) {(e) Inserimento di F.};
+  \node[bn, rectangle split parts=1] (s4n0) at (5.300,-9.400) {\makebox[0.75em]{P}};
+  \node[hl, rectangle split parts=3] (s4n1) at (3.025,-10.400) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{G} \nodepart{three} \makebox[0.75em]{M}};
+  \node[hl, rectangle split parts=2] (s4n2) at (0.500,-11.400) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+  \draw (s4n1.south west) -- (s4n2.north);
+  \node[hl, rectangle split parts=3] (s4n3) at (2.100,-11.400) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E} \nodepart{three} \makebox[0.75em]{F}};
+  \draw (s4n1.one split south) -- (s4n3.north);
+  \node[bn, rectangle split parts=3] (s4n4) at (3.950,-11.400) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K} \nodepart{three} \makebox[0.75em]{L}};
+  \draw (s4n1.two split south) -- (s4n4.north);
+  \node[bn, rectangle split parts=2] (s4n5) at (5.550,-11.400) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (s4n1.south east) -- (s4n5.north);
+  \draw (s4n0.south west) -- (s4n1.north);
+  \node[bn, rectangle split parts=2] (s4n6) at (8.500,-10.400) {\makebox[0.75em]{T} \nodepart{two} \makebox[0.75em]{X}};
+  \node[bn, rectangle split parts=3] (s4n7) at (7.150,-11.400) {\makebox[0.75em]{Q} \nodepart{two} \makebox[0.75em]{R} \nodepart{three} \makebox[0.75em]{S}};
+  \draw (s4n6.south west) -- (s4n7.north);
+  \node[bn, rectangle split parts=2] (s4n8) at (8.750,-11.400) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V}};
+  \draw (s4n6.one split south) -- (s4n8.north);
+  \node[bn, rectangle split parts=2] (s4n9) at (10.100,-11.400) {\makebox[0.75em]{Y} \nodepart{two} \makebox[0.75em]{Z}};
+  \draw (s4n6.south east) -- (s4n9.north);
+  \draw (s4n0.south east) -- (s4n6.north);
+\end{tikzpicture}
+\end{widget}
+\caption{Inserimento delle chiavi B, Q, L e F in un B-tree con grado minimo $t = 3$. In evidenza i nodi modificati da ciascun inserimento. Nell'inserimento di Q e di F una foglia piena viene divisa prima di scendere, mentre nell'inserimento di L si divide la radice e l'albero cresce di un livello.}
+\label{fig:btree-insert}
+\end{figure}
+
+\subsection{Cancellazione}\label{sec:btree-delete}
+La cancellazione è simile all'inserimento, ma un po' più complicata, perché una chiave si può cancellare da qualsiasi nodo e non soltanto da una foglia. Quando si cancella una chiave da un nodo interno, inoltre, bisogna riorganizzare i figli del nodo. In ogni caso la cancellazione deve preservare l'ordinamento delle chiavi, la profondità comune delle foglie e l'occupazione minima dei nodi.
+
+Se la chiave $k$ si trova in una foglia con almeno $t$ chiavi, possiamo rimuoverla direttamente: nella foglia restano almeno $t - 1$ chiavi. Il problema nasce quando un nodo ha già il numero minimo di chiavi, ovvero $t - 1$: rimuovendone una violeremmo l'occupazione minima. Come per l'inserimento, un algoritmo che se ne accorge solo dopo essere sceso dovrebbe risalire l'albero per riparare i nodi.
+
+La soluzione è simmetrica a quella dell'inserimento. Quando scendiamo da un nodo $x$ verso un figlio, garantiamo \textbf{prima di scendere} che il figlio abbia almeno $t$ chiavi, ovvero una in più del minimo. In questo modo qualsiasi chiave si debba togliere da quel nodo, l'occupazione minima resta rispettata. La radice fa eccezione, perché può avere meno di $t-1$ chiavi.
+
+La procedura \BTreeDelete$(x,k)$ cancella la chiave $k$ dal sottoalbero radicato in $x$, e distingue tre casi.
+
+\paragraph{Caso 1: $k$ si trova in una foglia $x$.}
+Si elimina $k$ da $x$. Per l'invariante, $x$ ha almeno $t$ chiavi (oppure è la radice), quindi dopo la rimozione ne restano almeno $t-1$ e la foglia è ancora valida.
+
+\paragraph{Caso 2: $k$ si trova in un nodo interno $x$.}
+Sia $k = \mathit{key}_i[x]$, e siano $y = c_i[x]$ e $z = c_{i+1}[x]$ i figli immediatamente a sinistra e a destra di $k$. Non possiamo semplicemente togliere $k$, perché $x$ perderebbe una chiave ma non un figlio, e si distinguono tre sottocasi.
+
+\begin{casofig}[2a]
+Se il figlio $y$ contiene almeno $t$ chiavi, sostituiamo $k$ con il suo \textbf{predecessore} $k'$, ovvero la chiave massima del sottoalbero radicato in $y$. Il predecessore si trova seguendo i figli più a destra fino a raggiungere una foglia. Poi si cancella ricorsivamente $k'$ dal sottoalbero di $y$, e la ricerca e la cancellazione di $k'$ si eseguono con una sola discesa. Nell'esempio, con $t = 3$, il figlio [J, K, L] ha $t$ chiavi: M viene sostituita da L, e la foglia diventa [J, K].
+\tcblower
+\begin{widget}{b-tree}[tree={(C G M (A B) (D E) (J K L) (N O))}, t=3, ops={delete M}, actions={}]
+\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+  \node[bn, rectangle split parts=3] (p0) at (2.775,0.000) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{G} \nodepart{three} \makebox[0.75em]{M}};
+  \node[bn, rectangle split parts=2] (p1) at (0.500,-1.000) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+  \draw (p0.south west) -- (p1.north);
+  \node[bn, rectangle split parts=2] (p2) at (1.850,-1.000) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E}};
+  \draw (p0.one split south) -- (p2.north);
+  \node[bn, rectangle split parts=3] (p3) at (3.450,-1.000) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K} \nodepart{three} \makebox[0.75em]{L}};
+  \draw (p0.two split south) -- (p3.north);
+  \node[bn, rectangle split parts=2] (p4) at (5.050,-1.000) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (p0.south east) -- (p4.north);
+  \node[hl, rectangle split parts=3] (q0) at (2.775,-2.550) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{G} \nodepart{three} \makebox[0.75em]{L}};
+  \node[bn, rectangle split parts=2] (q1) at (0.750,-3.550) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+  \draw (q0.south west) -- (q1.north);
+  \node[bn, rectangle split parts=2] (q2) at (2.100,-3.550) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E}};
+  \draw (q0.one split south) -- (q2.north);
+  \node[hl, rectangle split parts=2] (q3) at (3.450,-3.550) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K}};
+  \draw (q0.two split south) -- (q3.north);
+  \node[bn, rectangle split parts=2] (q4) at (4.800,-3.550) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (q0.south east) -- (q4.north);
+  \draw[->, thick] (2.77,-1.45) -- node[lab, right] {cancellazione di M} (2.77,-2.09);
+\end{tikzpicture}
+\end{widget}
+\end{casofig}
+
+\begin{casofig}[2b]
+Se $y$ ha solo $t-1$ chiavi ma il figlio $z$ ne contiene almeno $t$, si procede in modo simmetrico. Sostituiamo $k$ con il suo \textbf{successore} $k''$, ovvero la chiave minima del sottoalbero radicato in $z$, che si trova seguendo i figli più a sinistra. Poi si cancella ricorsivamente $k''$ dal sottoalbero di $z$. Nell'esempio, [A, B] ha solo $2$ chiavi mentre [N, O, P] ne ha $3$: M viene sostituita da N, e la foglia diventa [O, P].
+\tcblower
+\begin{widget}{b-tree}[tree={(M T (A B) (N O P) (U V W))}, t=3, ops={delete M}, actions={}]
+\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+  \node[bn, rectangle split parts=2] (p0) at (2.350,0.000) {\makebox[0.75em]{M} \nodepart{two} \makebox[0.75em]{T}};
+  \node[bn, rectangle split parts=2] (p1) at (0.500,-1.000) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+  \draw (p0.south west) -- (p1.north);
+  \node[bn, rectangle split parts=3] (p2) at (2.100,-1.000) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O} \nodepart{three} \makebox[0.75em]{P}};
+  \draw (p0.one split south) -- (p2.north);
+  \node[bn, rectangle split parts=3] (p3) at (3.950,-1.000) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V} \nodepart{three} \makebox[0.75em]{W}};
+  \draw (p0.south east) -- (p3.north);
+  \node[hl, rectangle split parts=2] (q0) at (2.350,-2.550) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{T}};
+  \node[bn, rectangle split parts=2] (q1) at (0.750,-3.550) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+  \draw (q0.south west) -- (q1.north);
+  \node[hl, rectangle split parts=2] (q2) at (2.100,-3.550) {\makebox[0.75em]{O} \nodepart{two} \makebox[0.75em]{P}};
+  \draw (q0.one split south) -- (q2.north);
+  \node[bn, rectangle split parts=3] (q3) at (3.700,-3.550) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V} \nodepart{three} \makebox[0.75em]{W}};
+  \draw (q0.south east) -- (q3.north);
+  \draw[->, thick] (2.35,-1.45) -- node[lab, right] {cancellazione di M} (2.35,-2.09);
+\end{tikzpicture}
+\end{widget}
+\end{casofig}
+
+\begin{casofig}[2c]
+Se entrambi i figli $y$ e $z$ hanno esattamente $t-1$ chiavi, li \textbf{fondiamo} insieme a $k$: in $y$ finiscono $k$ e tutto il contenuto di $z$, e $x$ perde sia $k$ sia il puntatore a $z$. Il nodo fuso ha
+\[
+(t-1) + 1 + (t-1) = 2t-1
+\]
+chiavi. Il nodo $z$ si libera, e si cancella ricorsivamente $k$ dal nodo fuso. Nell'esempio, la fusione produce [D, E, G, J, K] e, rimossa G, resta [D, E, J, K].
+\tcblower
+\begin{widget}{b-tree}[tree={(C G L (A B) (D E) (J K) (N O))}, t=3, ops={delete G}, actions={}]
+\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+  \node[bn, rectangle split parts=3] (p0) at (2.525,0.000) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{G} \nodepart{three} \makebox[0.75em]{L}};
+  \node[bn, rectangle split parts=2] (p1) at (0.500,-1.000) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+  \draw (p0.south west) -- (p1.north);
+  \node[bn, rectangle split parts=2] (p2) at (1.850,-1.000) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E}};
+  \draw (p0.one split south) -- (p2.north);
+  \node[bn, rectangle split parts=2] (p3) at (3.200,-1.000) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K}};
+  \draw (p0.two split south) -- (p3.north);
+  \node[bn, rectangle split parts=2] (p4) at (4.550,-1.000) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (p0.south east) -- (p4.north);
+  \node[hl, rectangle split parts=2] (q0) at (2.525,-2.550) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{L}};
+  \node[bn, rectangle split parts=2] (q1) at (0.675,-3.550) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+  \draw (q0.south west) -- (q1.north);
+  \node[hl, rectangle split parts=4] (q2) at (2.525,-3.550) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E} \nodepart{three} \makebox[0.75em]{J} \nodepart{four} \makebox[0.75em]{K}};
+  \draw (q0.one split south) -- (q2.north);
+  \node[bn, rectangle split parts=2] (q3) at (4.375,-3.550) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (q0.south east) -- (q3.north);
+  \draw[->, thick] (2.52,-1.45) -- node[lab, right] {cancellazione di G} (2.52,-2.09);
+\end{tikzpicture}
+\end{widget}
+\end{casofig}
+
+\paragraph{Caso 3: $k$ non si trova nel nodo interno $x$.}
+Si determina il figlio $c_i[x]$ il cui sottoalbero deve contenere $k$, se $k$ è presente nell'albero. Se $c_i[x]$ ha almeno $t$ chiavi si scende direttamente. Se invece ne ha solo $t-1$, prima di scendere bisogna dargli una chiave in più, e si distinguono due sottocasi.
+
+\begin{casofig}[3a]
+Se $c_i[x]$ ha un fratello immediato con almeno $t$ chiavi, si esegue un \textbf{prestito}. La chiave di $x$ che separa i due fratelli scende in $c_i[x]$, e la chiave del fratello più vicina a $c_i[x]$ sale in $x$ al suo posto. Se i figli sono nodi interni, insieme alla chiave passa da un fratello all'altro anche il puntatore al sottoalbero corrispondente. Nell'esempio, 30 scende nel figlio $[10, 20]$ e 40, il minimo del fratello destro, sale nel padre. Il figlio ha ora $t$ chiavi e la discesa può proseguire.
+\tcblower
+\begin{widget}{b-tree}[tree={(30 (10 20) (40 50 60))}, t=3, ops={delete 10}, actions={}]
+\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+  \node[bn, rectangle split parts=1] (p0) at (1.675,0.000) {\makebox[1.1em]{30}};
+  \node[bn, rectangle split parts=2] (p1) at (0.600,-1.000) {\makebox[1.1em]{10} \nodepart{two} \makebox[1.1em]{20}};
+  \draw (p0.south west) -- (p1.north);
+  \node[bn, rectangle split parts=3] (p2) at (2.450,-1.000) {\makebox[1.1em]{40} \nodepart{two} \makebox[1.1em]{50} \nodepart{three} \makebox[1.1em]{60}};
+  \draw (p0.south east) -- (p2.north);
+  \node[hl, rectangle split parts=1] (q0) at (1.675,-2.550) {\makebox[1.1em]{40}};
+  \node[hl, rectangle split parts=2] (q1) at (0.900,-3.550) {\makebox[1.1em]{20} \nodepart{two} \makebox[1.1em]{30}};
+  \draw (q0.south west) -- (q1.north);
+  \node[hl, rectangle split parts=2] (q2) at (2.450,-3.550) {\makebox[1.1em]{50} \nodepart{two} \makebox[1.1em]{60}};
+  \draw (q0.south east) -- (q2.north);
+  \draw[->, thick] (1.68,-1.45) -- node[lab, right] {cancellazione di 10} (1.68,-2.09);
+\end{tikzpicture}
+\end{widget}
+\end{casofig}
+
+\begin{casofig}[3b]
+Se $c_i[x]$ e i suoi fratelli immediati hanno tutti $t-1$ chiavi, nessuno può prestarne una. Si esegue allora una \textbf{fusione}: $c_i[x]$ si fonde con un fratello e con la chiave di $x$ che li separa, che diventa la mediana del nodo fuso. Il padre perde una chiave e un puntatore, e il nodo fuso ha $2t-1$ chiavi. Nell'esempio, $[15, 20]$ si fonde con $[35, 40]$ e con 30, e la cancellazione di 20 prosegue nel nodo fuso.
+\tcblower
+\begin{widget}{b-tree}[tree={(10 30 (1 5) (15 20) (35 40))}, t=3, ops={delete 20}, actions={}]
+\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+  \node[bn, rectangle split parts=2] (p0) at (2.150,0.000) {\makebox[1.1em]{10} \nodepart{two} \makebox[1.1em]{30}};
+  \node[bn, rectangle split parts=2] (p1) at (0.600,-1.000) {\makebox[1.1em]{1} \nodepart{two} \makebox[1.1em]{5}};
+  \draw (p0.south west) -- (p1.north);
+  \node[bn, rectangle split parts=2] (p2) at (2.150,-1.000) {\makebox[1.1em]{15} \nodepart{two} \makebox[1.1em]{20}};
+  \draw (p0.one split south) -- (p2.north);
+  \node[bn, rectangle split parts=2] (p3) at (3.700,-1.000) {\makebox[1.1em]{35} \nodepart{two} \makebox[1.1em]{40}};
+  \draw (p0.south east) -- (p3.north);
+  \node[hl, rectangle split parts=1] (q0) at (2.150,-2.550) {\makebox[1.1em]{10}};
+  \node[bn, rectangle split parts=2] (q1) at (0.775,-3.550) {\makebox[1.1em]{1} \nodepart{two} \makebox[1.1em]{5}};
+  \draw (q0.south west) -- (q1.north);
+  \node[hl, rectangle split parts=4] (q2) at (2.925,-3.550) {\makebox[1.1em]{15} \nodepart{two} \makebox[1.1em]{30} \nodepart{three} \makebox[1.1em]{35} \nodepart{four} \makebox[1.1em]{40}};
+  \draw (q0.south east) -- (q2.north);
+  \draw[->, thick] (2.15,-1.45) -- node[lab, right] {cancellazione di 20} (2.15,-2.09);
+\end{tikzpicture}
+\end{widget}
+\end{casofig}
+
+\noindent
+Dopo l'eventuale prestito o fusione, si cancella ricorsivamente $k$ dal sottoalbero del figlio appropriato.
+
+\paragraph{La radice che diventa vuota.}
+Nei casi 2c e 3b la fusione toglie una chiave al padre. Se il padre è la radice e aveva una sola chiave, la radice resta senza chiavi e con un unico figlio: in questo caso si elimina la vecchia radice, e il figlio diventa la nuova radice. L'altezza dell'albero diminuisce di uno, e la radice torna ad avere almeno una chiave. Simmetricamente all'inserimento, questo è l'unico modo in cui l'altezza di un B-tree può diminuire.
+
+\paragraph{Riepilogo.}
+La cancellazione top-down si può riassumere così:
+\begin{enumerate}
+    \item Si cerca $k$ nel nodo corrente $x$.
+    \item Se $k$ è in $x$, la si elimina direttamente se $x$ è una foglia. Se $x$ è interno, si ricorre al predecessore, al successore o alla fusione dei due figli adiacenti.
+    \item Se $k$ non è in $x$, si sceglie il figlio $c_i[x]$ che può contenere $k$.
+    \item Prima di scendere, se $c_i[x]$ ha $t-1$ chiavi, si prende in prestito una chiave da un fratello con almeno $t$ chiavi, oppure si fondono due figli.
+    \item Si prosegue ricorsivamente. Se la radice resta vuota, la si sostituisce con il suo unico figlio.
+\end{enumerate}
+Poiché la maggior parte delle chiavi di un B-tree si trova nelle foglie, ci aspettiamo che in pratica la maggior parte delle cancellazioni riguardi proprio le foglie. In questo caso la procedura esegue un'unica discesa, senza risalire. Quando si cancella una chiave da un nodo interno, invece, la discesa può dover tornare al nodo da cui è stata tolta la chiave, per sostituirla con il predecessore o il successore (casi 2a e 2b).
+
+\paragraph{Costo.}
+Anche se la procedura sembra complicata, tra una chiamata ricorsiva e la successiva si esegue solo un numero costante di \PageRead{} e \PageWrite{}, quindi il numero di operazioni di I/O è $O(h) = O(\log_t n)$. Assumendo $O(t)$ lavoro per nodo, per le ricerche nei nodi, i prestiti e le fusioni, il tempo CPU è $O(t\,h) = O(t\log_t n)$.
+
+\paragraph{Esempio.}
+Partiamo dall'albero ottenuto alla fine dell'esempio sull'inserimento, sempre con $t = 3$, e cancelliamo nell'ordine F, M, G, D e B (figura~\ref{fig:btree-delete}):
+\begin{itemize}
+    \item \textbf{Cancellazione di F} (caso 1): F si trova nella foglia [D, E, F] e si elimina direttamente. La foglia [D, E] contiene ancora $t-1 = 2$ chiavi.
+    \item \textbf{Cancellazione di M} (caso 2a): M è nel nodo interno [C, G, M], e il figlio che lo precede, [J, K, L], contiene $t = 3$ chiavi. M viene sostituita dal predecessore L, che si cancella dalla foglia.
+    \item \textbf{Cancellazione di G} (caso 2c): G è nel nodo interno [C, G, L], e i due figli adiacenti [D, E] e [J, K] hanno $t-1$ chiavi. La fusione produce [D, E, G, J, K] e, rimossa G, resta [D, E, J, K].
+    \item \textbf{Cancellazione di D} (caso 3b): D non è nella radice e dovrebbe scendere in [C, L], che ha solo $t-1$ chiavi, come il suo unico fratello [T, X]. I due nodi si fondono con P, e la radice, rimasta vuota, viene sostituita dal nodo fuso [C, L, P, T, X]: l'altezza passa da $2$ a $1$. Poi D si elimina dalla foglia [D, E, J, K].
+    \item \textbf{Cancellazione di B} (caso 3a): B dovrebbe scendere in [A, B], che ha solo $t-1$ chiavi, mentre il fratello [E, J, K] ne ha $t$. C scende in [A, B] ed E sale nella radice, poi B si elimina da [A, B, C] e resta [A, C].
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{b-tree}[tree={(P (C G M (A B) (D E F) (J K L) (N O)) (T X (Q R S) (U V) (Y Z)))}, t=3, ops={delete F, delete M, delete G, delete D, delete B}, actions={delete, insert, search}]
+\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+  % (a) Albero iniziale.
+  \node[lab, anchor=north west, align=left, text width=3.0999999999999996cm] at (-3.30,0.30) {(a) Albero iniziale.};
+  \node[bn, rectangle split parts=1] (s0n0) at (5.300,0.000) {\makebox[0.75em]{P}};
+  \node[bn, rectangle split parts=3] (s0n1) at (3.025,-0.900) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{G} \nodepart{three} \makebox[0.75em]{M}};
+  \node[bn, rectangle split parts=2] (s0n2) at (0.500,-1.800) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+  \draw (s0n1.south west) -- (s0n2.north);
+  \node[bn, rectangle split parts=3] (s0n3) at (2.100,-1.800) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E} \nodepart{three} \makebox[0.75em]{F}};
+  \draw (s0n1.one split south) -- (s0n3.north);
+  \node[bn, rectangle split parts=3] (s0n4) at (3.950,-1.800) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K} \nodepart{three} \makebox[0.75em]{L}};
+  \draw (s0n1.two split south) -- (s0n4.north);
+  \node[bn, rectangle split parts=2] (s0n5) at (5.550,-1.800) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (s0n1.south east) -- (s0n5.north);
+  \draw (s0n0.south west) -- (s0n1.north);
+  \node[bn, rectangle split parts=2] (s0n6) at (8.500,-0.900) {\makebox[0.75em]{T} \nodepart{two} \makebox[0.75em]{X}};
+  \node[bn, rectangle split parts=3] (s0n7) at (7.150,-1.800) {\makebox[0.75em]{Q} \nodepart{two} \makebox[0.75em]{R} \nodepart{three} \makebox[0.75em]{S}};
+  \draw (s0n6.south west) -- (s0n7.north);
+  \node[bn, rectangle split parts=2] (s0n8) at (8.750,-1.800) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V}};
+  \draw (s0n6.one split south) -- (s0n8.north);
+  \node[bn, rectangle split parts=2] (s0n9) at (10.100,-1.800) {\makebox[0.75em]{Y} \nodepart{two} \makebox[0.75em]{Z}};
+  \draw (s0n6.south east) -- (s0n9.north);
+  \draw (s0n0.south east) -- (s0n6.north);
+  % (b) Cancellazione di F: caso 1.
+  \node[lab, anchor=north west, align=left, text width=3.0999999999999996cm] at (-3.30,-2.40) {(b) Cancellazione di F: caso 1.};
+  \node[bn, rectangle split parts=1] (s1n0) at (5.050,-2.700) {\makebox[0.75em]{P}};
+  \node[bn, rectangle split parts=3] (s1n1) at (2.775,-3.600) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{G} \nodepart{three} \makebox[0.75em]{M}};
+  \node[bn, rectangle split parts=2] (s1n2) at (0.500,-4.500) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+  \draw (s1n1.south west) -- (s1n2.north);
+  \node[hl, rectangle split parts=2] (s1n3) at (1.850,-4.500) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E}};
+  \draw (s1n1.one split south) -- (s1n3.north);
+  \node[bn, rectangle split parts=3] (s1n4) at (3.450,-4.500) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K} \nodepart{three} \makebox[0.75em]{L}};
+  \draw (s1n1.two split south) -- (s1n4.north);
+  \node[bn, rectangle split parts=2] (s1n5) at (5.050,-4.500) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (s1n1.south east) -- (s1n5.north);
+  \draw (s1n0.south west) -- (s1n1.north);
+  \node[bn, rectangle split parts=2] (s1n6) at (8.000,-3.600) {\makebox[0.75em]{T} \nodepart{two} \makebox[0.75em]{X}};
+  \node[bn, rectangle split parts=3] (s1n7) at (6.650,-4.500) {\makebox[0.75em]{Q} \nodepart{two} \makebox[0.75em]{R} \nodepart{three} \makebox[0.75em]{S}};
+  \draw (s1n6.south west) -- (s1n7.north);
+  \node[bn, rectangle split parts=2] (s1n8) at (8.250,-4.500) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V}};
+  \draw (s1n6.one split south) -- (s1n8.north);
+  \node[bn, rectangle split parts=2] (s1n9) at (9.600,-4.500) {\makebox[0.75em]{Y} \nodepart{two} \makebox[0.75em]{Z}};
+  \draw (s1n6.south east) -- (s1n9.north);
+  \draw (s1n0.south east) -- (s1n6.north);
+  % (c) Cancellazione di M: caso 2a.
+  \node[lab, anchor=north west, align=left, text width=3.0999999999999996cm] at (-3.30,-5.10) {(c) Cancellazione di M: caso 2a.};
+  \node[bn, rectangle split parts=1] (s2n0) at (4.800,-5.400) {\makebox[0.75em]{P}};
+  \node[hl, rectangle split parts=3] (s2n1) at (2.525,-6.300) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{G} \nodepart{three} \makebox[0.75em]{L}};
+  \node[bn, rectangle split parts=2] (s2n2) at (0.500,-7.200) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+  \draw (s2n1.south west) -- (s2n2.north);
+  \node[bn, rectangle split parts=2] (s2n3) at (1.850,-7.200) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E}};
+  \draw (s2n1.one split south) -- (s2n3.north);
+  \node[hl, rectangle split parts=2] (s2n4) at (3.200,-7.200) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K}};
+  \draw (s2n1.two split south) -- (s2n4.north);
+  \node[bn, rectangle split parts=2] (s2n5) at (4.550,-7.200) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (s2n1.south east) -- (s2n5.north);
+  \draw (s2n0.south west) -- (s2n1.north);
+  \node[bn, rectangle split parts=2] (s2n6) at (7.500,-6.300) {\makebox[0.75em]{T} \nodepart{two} \makebox[0.75em]{X}};
+  \node[bn, rectangle split parts=3] (s2n7) at (6.150,-7.200) {\makebox[0.75em]{Q} \nodepart{two} \makebox[0.75em]{R} \nodepart{three} \makebox[0.75em]{S}};
+  \draw (s2n6.south west) -- (s2n7.north);
+  \node[bn, rectangle split parts=2] (s2n8) at (7.750,-7.200) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V}};
+  \draw (s2n6.one split south) -- (s2n8.north);
+  \node[bn, rectangle split parts=2] (s2n9) at (9.100,-7.200) {\makebox[0.75em]{Y} \nodepart{two} \makebox[0.75em]{Z}};
+  \draw (s2n6.south east) -- (s2n9.north);
+  \draw (s2n0.south east) -- (s2n6.north);
+  % (d) Cancellazione di G: caso 2c.
+  \node[lab, anchor=north west, align=left, text width=3.0999999999999996cm] at (-3.30,-7.80) {(d) Cancellazione di G: caso 2c.};
+  \node[bn, rectangle split parts=1] (s3n0) at (4.625,-8.100) {\makebox[0.75em]{P}};
+  \node[hl, rectangle split parts=2] (s3n1) at (2.350,-9.000) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{L}};
+  \node[bn, rectangle split parts=2] (s3n2) at (0.500,-9.900) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+  \draw (s3n1.south west) -- (s3n2.north);
+  \node[hl, rectangle split parts=4] (s3n3) at (2.350,-9.900) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E} \nodepart{three} \makebox[0.75em]{J} \nodepart{four} \makebox[0.75em]{K}};
+  \draw (s3n1.one split south) -- (s3n3.north);
+  \node[bn, rectangle split parts=2] (s3n4) at (4.200,-9.900) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (s3n1.south east) -- (s3n4.north);
+  \draw (s3n0.south west) -- (s3n1.north);
+  \node[bn, rectangle split parts=2] (s3n5) at (7.150,-9.000) {\makebox[0.75em]{T} \nodepart{two} \makebox[0.75em]{X}};
+  \node[bn, rectangle split parts=3] (s3n6) at (5.800,-9.900) {\makebox[0.75em]{Q} \nodepart{two} \makebox[0.75em]{R} \nodepart{three} \makebox[0.75em]{S}};
+  \draw (s3n5.south west) -- (s3n6.north);
+  \node[bn, rectangle split parts=2] (s3n7) at (7.400,-9.900) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V}};
+  \draw (s3n5.one split south) -- (s3n7.north);
+  \node[bn, rectangle split parts=2] (s3n8) at (8.750,-9.900) {\makebox[0.75em]{Y} \nodepart{two} \makebox[0.75em]{Z}};
+  \draw (s3n5.south east) -- (s3n8.north);
+  \draw (s3n0.south east) -- (s3n5.north);
+  % (e) Cancellazione di D: caso 3b.
+  \node[lab, anchor=north west, align=left, text width=3.0999999999999996cm] at (-3.30,-10.50) {(e) Cancellazione di D: caso 3b.};
+  \node[hl, rectangle split parts=5] (s4n0) at (4.375,-10.800) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{L} \nodepart{three} \makebox[0.75em]{P} \nodepart{four} \makebox[0.75em]{T} \nodepart{five} \makebox[0.75em]{X}};
+  \node[bn, rectangle split parts=2] (s4n1) at (0.500,-11.700) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+  \draw (s4n0.south west) -- (s4n1.north);
+  \node[hl, rectangle split parts=3] (s4n2) at (2.100,-11.700) {\makebox[0.75em]{E} \nodepart{two} \makebox[0.75em]{J} \nodepart{three} \makebox[0.75em]{K}};
+  \draw (s4n0.one split south) -- (s4n2.north);
+  \node[bn, rectangle split parts=2] (s4n3) at (3.700,-11.700) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (s4n0.two split south) -- (s4n3.north);
+  \node[bn, rectangle split parts=3] (s4n4) at (5.300,-11.700) {\makebox[0.75em]{Q} \nodepart{two} \makebox[0.75em]{R} \nodepart{three} \makebox[0.75em]{S}};
+  \draw (s4n0.three split south) -- (s4n4.north);
+  \node[bn, rectangle split parts=2] (s4n5) at (6.900,-11.700) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V}};
+  \draw (s4n0.four split south) -- (s4n5.north);
+  \node[bn, rectangle split parts=2] (s4n6) at (8.250,-11.700) {\makebox[0.75em]{Y} \nodepart{two} \makebox[0.75em]{Z}};
+  \draw (s4n0.south east) -- (s4n6.north);
+  % (f) Cancellazione di B: caso 3a.
+  \node[lab, anchor=north west, align=left, text width=3.0999999999999996cm] at (-3.30,-12.30) {(f) Cancellazione di B: caso 3a.};
+  \node[hl, rectangle split parts=5] (s5n0) at (4.125,-12.600) {\makebox[0.75em]{E} \nodepart{two} \makebox[0.75em]{L} \nodepart{three} \makebox[0.75em]{P} \nodepart{four} \makebox[0.75em]{T} \nodepart{five} \makebox[0.75em]{X}};
+  \node[hl, rectangle split parts=2] (s5n1) at (0.500,-13.500) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{C}};
+  \draw (s5n0.south west) -- (s5n1.north);
+  \node[hl, rectangle split parts=2] (s5n2) at (1.850,-13.500) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K}};
+  \draw (s5n0.one split south) -- (s5n2.north);
+  \node[bn, rectangle split parts=2] (s5n3) at (3.200,-13.500) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+  \draw (s5n0.two split south) -- (s5n3.north);
+  \node[bn, rectangle split parts=3] (s5n4) at (4.800,-13.500) {\makebox[0.75em]{Q} \nodepart{two} \makebox[0.75em]{R} \nodepart{three} \makebox[0.75em]{S}};
+  \draw (s5n0.three split south) -- (s5n4.north);
+  \node[bn, rectangle split parts=2] (s5n5) at (6.400,-13.500) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V}};
+  \draw (s5n0.four split south) -- (s5n5.north);
+  \node[bn, rectangle split parts=2] (s5n6) at (7.750,-13.500) {\makebox[0.75em]{Y} \nodepart{two} \makebox[0.75em]{Z}};
+  \draw (s5n0.south east) -- (s5n6.north);
+\end{tikzpicture}
+\end{widget}
+\caption{Cancellazione delle chiavi F, M, G, D e B da un B-tree con grado minimo $t = 3$, in cui ogni nodo diverso dalla radice ha almeno $2$ chiavi. In evidenza i nodi modificati da ciascuna cancellazione. Nella cancellazione di D la radice resta vuota e l'albero perde un livello.}
+\label{fig:btree-delete}
+\end{figure}
+
+\section{Riepilogo dei costi}\label{sec:btree-costi}
+La tabella~\ref{tab:btree-costi} riassume il costo nel caso peggiore delle operazioni viste, separando le operazioni di I/O dal tempo CPU.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lcc}
+\toprule
+Operazione & I/O logici & Tempo CPU \\
+\midrule
+\BTreeSearch{} & $O(\log_t n)$ & $O(t\log_t n)$ \\
+\BTreeSearch{} con ricerca binaria & $O(\log_t n)$ & $O(\log n)$ \\
+\BTreeCreate{} & $O(1)$ & $O(1)$ \\
+\BTreeSplitChild{} & $O(1)$ & $O(t)$ \\
+\BTreeInsert{} & $O(\log_t n)$ & $O(t\log_t n)$ \\
+\BTreeDelete{} & $O(\log_t n)$ & $O(t\log_t n)$ \\
+\bottomrule
+\end{tabular}
+\caption{Il costo nel caso peggiore delle operazioni su un B-tree con $n$ chiavi e grado minimo $t$.}
+\label{tab:btree-costi}
+\end{table}
+
+I B-tree sono quindi alberi bilanciati con un grande fattore di ramificazione, e mantengono tutte le operazioni logaritmiche. Il numero di pagine lette o scritte cresce come $\log_t n$, e non come $\log_2 n$: è questo il motivo per cui i B-tree sono ancora oggi la struttura di riferimento per organizzare i dati in pagine, sia su HDD sia su SSD.
+
+\section*{Riferimenti}
+Il materiale visto in questo capitolo comprende:
+\begin{itemize}
+    \item Materiale visto a lezione.
+    \item Capitolo 18 (\emph{B-Trees}, sezioni 18.1--18.3) del libro T.\,H.~Cormen, C.\,E.~Leiserson, R.\,L.~Rivest, C.~Stein, \emph{Introduction to Algorithms}.
+\end{itemize}

@@ -1,0 +1,24 @@
+/* alberi disegnati con tree-view.js (widget rotation e splay-tree) */
+.w-tree .tv-edge { stroke: var(--ink-soft); stroke-width: 1.5; transition: stroke calc(0.3s / var(--speed, 1)); }
+.w-tree .tv-edge.tv-path { stroke: var(--fig); stroke-width: 3.5; stroke-linecap: round; }
+.w-tree .tv-edge.tv-rot { stroke: var(--hot); stroke-width: 3; }
+.w-tree .tv-item { transition: opacity calc(0.45s / var(--speed, 1)); }
+.w-tree .tv-new, .w-tree .tv-gone { opacity: 0; }
+.w-tree .tv-gone { pointer-events: none; }
+.w-tree .tv-node {
+  fill: color-mix(in oklab, var(--accent) 8%, var(--surface)); stroke: var(--accent); stroke-width: 1.6;
+  transition: fill calc(0.3s / var(--speed, 1)), stroke calc(0.3s / var(--speed, 1));
+}
+.w-tree .tv-hl .tv-node { fill: color-mix(in oklab, var(--fig) 28%, var(--surface)); stroke: var(--fig); stroke-width: 2.4; }
+.w-tree .tv-onpath .tv-node { stroke: var(--fig); }
+.w-tree .tv-label { text-anchor: middle; dominant-baseline: central; font-family: var(--font-serif); font-size: 14px; fill: var(--ink); pointer-events: none; }
+.w-tree .tv-var .tv-label { font-style: italic; font-size: 16px; }
+/* il contorno del colore dello sfondo tiene leggibile l'etichetta anche sopra un arco */
+.w-tree .tv-note {
+  font-family: var(--font-mono); font-size: 11px; fill: var(--fig); pointer-events: none;
+  paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round;
+}
+.w-tree .tv-tri { fill: color-mix(in oklab, var(--accent) 5%, var(--surface)); stroke: var(--accent); stroke-width: 1.3; stroke-linejoin: round; }
+.w-tree .tv-tri-label { text-anchor: middle; font-family: var(--font-serif); font-style: italic; font-size: 15px; fill: var(--ink); }
+.w-tree .tv-click { cursor: pointer; }
+.w-tree .tv-click:hover .tv-node { stroke-width: 2.8; }

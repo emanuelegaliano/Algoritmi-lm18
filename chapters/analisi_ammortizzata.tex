@@ -1,19 +1,5 @@
 \chapter{Analisi ammortizzata}\label{ch:ammortizzata}
 
-% nomi delle operazioni e macro di comodo
-\newcommand{\Push}{\textsc{Push}}
-\newcommand{\Pop}{\textsc{Pop}}
-\newcommand{\MultiPop}{\textsc{MultiPop}}
-\newcommand{\MultiPush}{\textsc{MultiPush}}
-\newcommand{\Increment}{\textsc{Increment}}
-\newcommand{\Decrement}{\textsc{Decrement}}
-\newcommand{\SetBit}{\textsc{Set}}
-\newcommand{\ResetBit}{\textsc{Reset}}
-\newcommand{\TableInsert}{\textsc{Table-Insert}}
-\newcommand{\TableDelete}{\textsc{Table-Delete}}
-\newcommand{\tnum}{\mathit{num}}
-\newcommand{\tsize}{\mathit{size}}
-
 Quando si studia una struttura dati si è soliti calcolare il costo di ogni singola operazione nel caso peggiore, e da quello ricavare il costo di una sequenza di operazioni. Il problema di questo approccio è che molte strutture dati hanno operazioni che sono occasionalmente molto costose ma che, proprio per questo, lasciano la struttura in uno stato in cui le operazioni successive costano poco: l'analisi del caso peggiore della singola operazione non tiene conto di questo effetto e finisce per fornire stime troppo pessimistiche. L'\textbf{analisi ammortizzata} (amortized analysis) studia invece il costo di un'intera sequenza di operazioni e lo ripartisce in qualche modo tra le operazioni che la compongono. A differenza dell'analisi del caso medio non interviene alcuna probabilità, e si ottiene comunque una garanzia sul caso peggiore. In questo capitolo vediamo i tre metodi principali dell'analisi ammortizzata (aggregazione, accantonamenti e potenziale), applicandoli a due esempi: uno stack con l'operazione aggiuntiva \MultiPop{} e un contatore binario con l'operazione \Increment{}. Infine li usiamo per studiare un'applicazione reale, le \emph{tabelle dinamiche}, ovvero tabelle che vengono riallocate quando si riempiono o si svuotano troppo.
 
 \section{L'idea di fondo}\label{sec:idea}
@@ -51,7 +37,7 @@ Uno stack $S$ è una struttura dati che si accede solo dalla cima, e che support
 \begin{itemize}
     \item $\Push(S,x)$: inserisce l'elemento $x$ in cima allo stack.
     \item $\Pop(S)$: rimuove l'elemento in cima allo stack, se c'è; su uno stack vuoto non ha alcun effetto.
-    \item $\textsc{StackEmpty}(S)$: restituisce vero se lo stack è vuoto, falso altrimenti.
+    \item $\StackEmpty(S)$: restituisce vero se lo stack è vuoto, falso altrimenti.
 \end{itemize}
 Ognuna di queste operazioni costa $O(1)$, e per semplicità attribuiamo costo $1$ a \Push{} e a \Pop{}. Più precisamente, contiamo soltanto i \Push{} e i \Pop{} \emph{effettivi}, ovvero quelli che inseriscono o rimuovono davvero un elemento: un \Pop{} eseguito su uno stack vuoto ha quindi costo $0$. Aggiungiamo ora l'operazione \textbf{\MultiPop}$(S,k)$, che rimuove i $k$ elementi in cima allo stack, oppure l'intero stack se questo ne contiene meno di $k$. Si tratta di un'operazione \emph{derivata}, ovvero ottenuta ripetendo più volte un'operazione elementare.
 
@@ -59,7 +45,7 @@ Ognuna di queste operazioni costa $O(1)$, e per semplicità attribuiamo costo $1
 \caption{L'operazione $\MultiPop(S,k)$ ripete \Pop{} finché lo stack non si svuota o finché non sono stati rimossi $k$ elementi.}\label{alg:multipop}
 \begin{algorithmic}[1]
 \Procedure{MultiPop}{$S,k$}
-  \While{\textbf{not} \Call{StackEmpty}{$S$} \textbf{and} $k>0$}
+  \While{\textbf{not} \StackEmpty($S$) \textbf{and} $k>0$}
     \State \Call{Pop}{$S$}
     \State $k \gets k-1$
   \EndWhile
@@ -75,6 +61,7 @@ dove $|S|$ è il numero di elementi presenti nello stack al momento della chiama
 
 \begin{figure}[htbp]
 \centering
+\begin{widget}{stack}[items={4,8,15,16,23,42}, ops={multipop 4, multipop 7}]
 \begin{tikzpicture}[>=Stealth, el/.style={draw=Accent, fill=Accent!6, minimum width=11mm, minimum height=5.5mm, inner sep=0pt, font=\small}]
   % (a) stack iniziale
   \foreach \v [count=\i from 0] in {4,8,15,16,23,42}{\node[el] at (0,{0.55*\i}) {\v};}
@@ -94,6 +81,7 @@ dove $|S|$ è il numero di elementi presenti nello stack al momento della chiama
   \draw[->, thick] (1.5,1.4) -- node[above, font=\scriptsize] {$\MultiPop(S,4)$} (3.9,1.4);
   \draw[->, thick] (6.7,0.5) -- node[above, font=\scriptsize] {$\MultiPop(S,7)$} (9.1,0.5);
 \end{tikzpicture}
+\end{widget}
 \caption{Effetto di \MultiPop{} su uno stack contenente sei elementi (a, la cima è l'elemento 42). $\MultiPop(S,4)$ rimuove i quattro elementi in cima e lascia 4 e 8 (b); la chiamata successiva $\MultiPop(S,7)$ svuota lo stack (c), perché ne erano rimasti solo due: in questo caso il costo è $\min(2,7)=2$ e non $7$.}
 \label{fig:multipop}
 \end{figure}
@@ -263,6 +251,7 @@ In generale, per $i = 0,1,\dots,k-1$ il bit $A[i]$ cambia $\lfloor n/2^i \rfloor
 
 \begin{figure}[htbp]
 \centering
+\begin{widget}{binary-counter}[bits=8, steps=16]
 \begin{tikzpicture}[
   cb0/.style={minimum width=7mm, minimum height=4.4mm, inner sep=0pt, font=\scriptsize\ttfamily, draw=RuleGray, fill=white},
   cb1/.style={minimum width=7mm, minimum height=4.4mm, inner sep=0pt, font=\scriptsize\ttfamily, draw=RuleGray, fill=Accent!25},
@@ -294,6 +283,7 @@ In generale, per $i = 0,1,\dots,k-1$ il bit $A[i]$ cambia $\lfloor n/2^i \rfloor
 \cbrow{15}{0/0,0/0,0/0,0/0,1/0,1/0,1/0,1/1}{26}
 \cbrow{16}{0/0,0/0,0/0,1/1,0/1,0/1,0/1,0/1}{31}
 \end{tikzpicture}
+\end{widget}
 \caption{Un contatore a $8$ bit durante $16$ incrementi consecutivi, a partire da $0$. A sinistra il valore del contatore, al centro i bit $A[7],\dots,A[0]$ (i bit evidenziati sono quelli che sono cambiati nel passaggio dal valore precedente), a destra il costo totale, ovvero il numero complessivo di bit modificati dall'inizio. $A[0]$ cambia a ogni incremento, $A[1]$ una volta ogni due, $A[2]$ una volta ogni quattro e così via; il costo totale è sempre minore del doppio del numero di incrementi.}
 \label{fig:contatore}
 \end{figure}
@@ -435,8 +425,8 @@ a fronte dei costi reali $c_{\Push} = 1$, $c_{\Pop} = 1$ e $c_{\MultiPop} = \min
 \begin{esempiofig}
 Consideriamo uno stack con quattro elementi, ognuno dei quali porta con sé una moneta, cioè l'unità di credito accantonata dal suo \Push. Eseguiamo $\MultiPop(S,3)$: il costo reale è $3$, ma al \MultiPop{} non addebitiamo nulla. Le tre monete degli elementi rimossi bastano a pagare le tre operazioni \Pop, e sullo stack resta un solo elemento con la sua moneta: il credito è sempre uguale al numero di elementi presenti.
 \tcblower
-\resizebox{\linewidth}{!}{%
-\begin{tikzpicture}[>=Stealth,
+\begin{widget}{stack}[items={x,x,x,x}, ops={multipop 3}, coins]
+\begin{tikzpicture}[scale=0.76, transform shape, >=Stealth,
   el/.style={draw=Accent, fill=Accent!6, minimum width=8mm, minimum height=5.5mm, inner sep=0pt, font=\small},
   coin/.style={circle, draw=ObsColor, fill=ObsColor!25, minimum size=3.6mm, inner sep=0pt, font=\tiny}]
   % stack prima
@@ -452,7 +442,8 @@ Consideriamo uno stack con quattro elementi, ognuno dei quali porta con sé una 
   % monete usate
   \foreach \i in {0,1,2}{\node[coin, fill=ObsColor!10, draw=ObsColor!50] at (7.0,{0.6*\i}) {1};}
   \node[font=\scriptsize, TextGray, align=center] at (7.0,-0.8) {pagano\\le $3$ \Pop};
-\end{tikzpicture}}
+\end{tikzpicture}
+\end{widget}
 \end{esempiofig}
 
 Verifichiamo che il credito non sia mai negativo. In ogni istante $j$ vale
@@ -752,6 +743,7 @@ Il primo inserimento non trova alcun elemento già ricopiato da aiutare, quindi 
 
 \begin{figure}[htbp]
 \centering
+\begin{widget}{dynamic-table}[steps=6]
 \begin{tikzpicture}[
   cell/.style={draw=Accent, minimum width=6mm, minimum height=6mm, inner sep=0pt, font=\small},
   dk/.style={circle, fill=Accent, inner sep=0pt, minimum size=2.4mm},
@@ -776,6 +768,7 @@ Il primo inserimento non trova alcun elemento già ricopiato da aiutare, quindi 
   \node[dk] at (0.4,-3.0) {}; \node[font=\scriptsize, anchor=west] at (0.6,-3.0) {credito su un elemento inserito e non ancora ricopiato};
   \node[lt] at (0.4,-3.5) {}; \node[font=\scriptsize, anchor=west] at (0.6,-3.5) {credito su un elemento già ricopiato};
 \end{tikzpicture}
+\end{widget}
 \caption{Crediti accantonati durante i primi sei inserimenti, con $\hat{c}_{ins} = 3$ ($2$ per il primo). Ogni elemento inserito dopo l'ultima espansione porta una moneta scura e ne deposita una chiara su un elemento già ricopiato. Dopo $4$ inserimenti la tabella è piena e ognuno dei $4$ elementi ha una moneta: sono proprio quelle che pagano le $4$ copie dell'espansione provocata dal quinto inserimento, dopo la quale gli elementi $a,b,c,d$ restano senza credito finché i nuovi inserimenti non ne depositano altro.}
 \label{fig:crediti-tabella}
 \end{figure}
@@ -821,6 +814,7 @@ per ogni configurazione $T$. Il metodo del potenziale può quindi essere utilizz
 
 \begin{figure}[htbp]
 \centering
+\begin{widget}{dynamic-table}[steps=32, coins=false, chart]
 \begin{tikzpicture}[x=0.32cm, y=0.13cm]
   % griglia e assi
   \foreach \y in {8,16,24,32}{\draw[RuleGray, very thin] (0,\y) -- (32,\y); \node[font=\scriptsize, TextGray, anchor=east] at (-0.3,\y) {\y};}
@@ -836,6 +830,7 @@ per ogni configurazione $T$. Il metodo del potenziale può quindi essere utilizz
   \draw[FigColor, thick, dashed] (35,19) -- (37,19) node[right, font=\small, black] {$\tsize_i$};
   \draw[LemmaColor, very thick] (35,14) -- (37,14) node[right, font=\small, black] {$\Phi_i$};
 \end{tikzpicture}
+\end{widget}
 \caption{Andamento di $\tnum_i$, $\tsize_i$ e $\Phi_i = 2\cdot\tnum_i - \tsize_i$ durante $32$ inserimenti in una tabella inizialmente vuota, misurati dopo l'$i$-esimo inserimento. Subito prima di ogni espansione il potenziale ha raggiunto il numero di elementi presenti nella tabella, e può quindi pagare la loro copia; subito dopo scende a $0$, ma l'inserimento che ha provocato l'espansione lo riporta a $2$.}
 \label{fig:potenziale-tabella}
 \end{figure}
@@ -910,6 +905,7 @@ Le due espressioni coincidono quando $\alpha(T) = 1/2$: in quel caso $\tnum[T] =
 
 \begin{figure}[htbp]
 \centering
+\begin{widget}{table-potential}
 \begin{tikzpicture}[x=9cm, y=3.2cm]
   % zone
   \fill[ObsColor!8] (0.25,0) rectangle (0.5,1.1);
@@ -930,6 +926,7 @@ Le due espressioni coincidono quando $\alpha(T) = 1/2$: in quel caso $\tnum[T] =
   \node[font=\scriptsize, align=center, ObsColor] at (0.375,0.6) {il potenziale\\paga la\\contrazione};
   \node[font=\scriptsize, align=center, Accent] at (0.82,0.22) {il potenziale\\paga l'espansione};
 \end{tikzpicture}
+\end{widget}
 \caption{Potenziale della tabella, in rapporto alla sua dimensione, in funzione del fattore di carico. Il potenziale è nullo quando la tabella è piena per metà e cresce linearmente in entrambe le direzioni: quando $\alpha(T) = 1$ il potenziale vale $\tsize[T]$, cioè $\tnum[T]$, e quando $\alpha(T) = 1/4$ vale $\frac{1}{4}\tsize[T]$, cioè ancora $\tnum[T]$. In entrambi i casi tocca la retta tratteggiata $\Phi = \tnum[T]$, cioè è sufficiente a pagare la copia di tutti gli elementi.}
 \label{fig:ricarica}
 \end{figure}

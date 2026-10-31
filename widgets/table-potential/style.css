@@ -1,0 +1,27 @@
+.w-tpot .cellt {
+  fill: var(--surface); stroke: var(--accent); stroke-width: 1; opacity: 0;
+  transition: opacity calc(0.35s / var(--speed, 1)), fill calc(0.35s / var(--speed, 1));
+}
+.w-tpot .cellt.alloc { opacity: 1; }
+.w-tpot .cellt.full { fill: color-mix(in oklab, var(--accent-soft) 40%, var(--surface)); }
+.w-tpot .cap { text-anchor: middle; font-family: var(--font-mono); font-size: 12px; fill: var(--ink-soft); }
+.w-tpot .zone-c { fill: color-mix(in oklab, var(--obs) 10%, transparent); }
+.w-tpot .zone-e { fill: color-mix(in oklab, var(--accent) 7%, transparent); }
+.w-tpot .axis { stroke: var(--ink-soft); stroke-width: 1; }
+.w-tpot .ref { stroke: var(--ink-soft); stroke-dasharray: 5 4; stroke-width: 1; }
+.w-tpot .ref-l { font-style: italic; }
+.w-tpot .vcurve { fill: none; stroke: var(--lemma); stroke-width: 3; stroke-linejoin: round; }
+.w-tpot .tick { font-size: 11px; fill: var(--ink-soft); dominant-baseline: central; }
+.w-tpot .tick.end { text-anchor: end; }
+.w-tpot .tick.mid { text-anchor: middle; }
+.w-tpot .trail { fill: none; stroke: var(--fig); stroke-width: 1.5; stroke-dasharray: 3 3; opacity: 0.7; }
+.w-tpot .dot {
+  fill: var(--fig); stroke: var(--surface); stroke-width: 2;
+  transition: cx calc(0.45s / var(--speed, 1)) ease, cy calc(0.45s / var(--speed, 1)) ease;
+}
+.w-tpot .bar { transition: opacity calc(0.3s / var(--speed, 1)); }
+.w-tpot .bar.ins { fill: color-mix(in oklab, var(--accent-soft) 55%, var(--surface)); }
+.w-tpot .bar.del { fill: color-mix(in oklab, var(--obs) 45%, var(--surface)); }
+.w-tpot .bar.cur { stroke: var(--ink); stroke-width: 1.5; }
+.w-tpot .bar.later { opacity: 0.15; }
+.w-tpot .sc { font-variant: small-caps; letter-spacing: 0.03em; }

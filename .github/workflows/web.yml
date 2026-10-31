@@ -1,0 +1,80 @@
+# Versione web degli appunti su GitHub Pages, a ogni push su main.
+# Il sito si genera con texweb; nella stessa pagina si pubblica anche il PDF.
+name: Versione web
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# un solo deploy alla volta; quelli in coda vengono sostituiti dal più recente
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # TeX Live completo: serve per compilare il PDF e le figure TikZ in SVG
+    container: texlive/texlive:latest
+    steps:
+      - name: Strumenti di sistema
+        run: apt-get update && apt-get install -y --no-install-recommends ghostscript git
+
+      - name: Appunti
+        uses: actions/checkout@v4
+        with:
+          path: notes
+
+      - name: texweb
+        uses: actions/checkout@v4
+        with:
+          repository: emanuelegaliano/texweb
+          path: texweb
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: texweb/package-lock.json
+
+      - name: Dipendenze di texweb
+        run: npm ci
+        working-directory: texweb
+
+      # le figure TikZ già compilate: si ricompilano solo quelle modificate
+      - name: Cache delle figure
+        uses: actions/cache@v4
+        with:
+          path: notes/.texweb/cache
+          key: tikz-${{ hashFiles('notes/**/*.tex') }}
+          restore-keys: tikz-
+
+      - name: PDF
+        run: make
+        working-directory: notes
+
+      - name: Sito
+        run: |
+          make web TEXWEB=../texweb/bin/texweb.js
+          cp Algoritmi.pdf out/web/Algoritmi.pdf
+        working-directory: notes
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: notes/out/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -31,8 +31,29 @@
 % =====================================================
 \usepackage{graphicx}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning,decorations.pathreplacing,calc}
+\usetikzlibrary{arrows.meta,positioning,decorations.pathreplacing,calc,shapes.multipart}
 \usepackage{subcaption}
+
+% stili comuni per le figure con alberi di chiavi numeriche (capitolo sugli splay tree)
+\tikzset{splaytree/.style={
+  nd/.style={circle, draw=Accent, fill=Accent!6, minimum size=5.5mm, inner sep=0pt, font=\scriptsize},
+  hl/.style={nd, draw=FigColor, fill=FigColor!20},
+  path/.style={very thick, FigColor},
+  lab/.style={font=\small}}}
+
+% stili comuni per le figure dei B-tree: un nodo è un rettangolo diviso in tante parti quante sono le chiavi,
+% da usare con rectangle split parts=<numero di chiavi> e \nodepart{two}, \nodepart{three}, ...
+% lo sfondo si dà con rectangle split part fill e non con fill: con il driver dvisvgm della versione web
+% un fill normale copre il testo delle parti dopo la prima
+\tikzset{btree/.style={
+  bn/.style={rectangle split, rectangle split horizontal, rectangle split parts=1, draw=Accent,
+    rectangle split part fill={Accent!6}, inner xsep=4pt, inner ysep=3pt, minimum height=5.5mm, font=\small},
+  hl/.style={bn, draw=FigColor, rectangle split part fill={FigColor!20}},
+  path/.style={very thick, FigColor},
+  lab/.style={font=\scriptsize, color=TextGray}}}
+
+% figure interattive della versione web (texweb): nel PDF si stampa la figura statica
+\usepackage{texweb}
 
 % =====================================================
 % CODE LISTINGS
@@ -189,12 +210,12 @@
   unbreakable,
 }
 
-% caso con testo a sinistra e figura a destra: \begin{casofig}{Titolo} testo \tcblower <figura> \end{casofig}
-\newtcolorbox{casofig}[1]{
+% caso con testo a sinistra e figura a destra: \begin{casofig}[Titolo] testo \tcblower <figura> \end{casofig}
+\newtcolorbox{casofig}[1][]{
   boxbase,
   colback=white, coltitle=black,
   borderline west={1pt}{0pt}{RuleGray},
-  title={#1.}, fonttitle=\bfseries,
+  title={Caso\ifblank{#1}{}{\ (#1)}.}, fonttitle=\bfseries,
   sidebyside, sidebyside gap=12pt, lefthand ratio=0.47, sidebyside align=center,
   unbreakable,
 }
@@ -249,6 +270,41 @@
       .. ($(current page.south west)+(0.92\paperwidth,0.48\paperheight)$);
   \end{tikzpicture}
 }
+
+% =====================================================
+% NOMI DELLE OPERAZIONI
+% =====================================================
+% stanno nel preambolo e non nei capitoli perché anche la versione web (texweb) li conosca
+% analisi ammortizzata
+\newcommand{\Push}{\textsc{Push}}
+\newcommand{\Pop}{\textsc{Pop}}
+\newcommand{\StackEmpty}{\textsc{StackEmpty}}
+\newcommand{\MultiPop}{\textsc{MultiPop}}
+\newcommand{\MultiPush}{\textsc{MultiPush}}
+\newcommand{\Increment}{\textsc{Increment}}
+\newcommand{\Decrement}{\textsc{Decrement}}
+\newcommand{\SetBit}{\textsc{Set}}
+\newcommand{\ResetBit}{\textsc{Reset}}
+\newcommand{\TableInsert}{\textsc{Table-Insert}}
+\newcommand{\TableDelete}{\textsc{Table-Delete}}
+\newcommand{\tnum}{\mathit{num}}
+\newcommand{\tsize}{\mathit{size}}
+% splay tree
+\newcommand{\Search}{\textsc{Search}}
+\newcommand{\Insert}{\textsc{Insert}}
+\newcommand{\Delete}{\textsc{Delete}}
+\newcommand{\Splay}{\textsc{Splay}}
+\newcommand{\Ruota}{\textsc{Ruota}}
+% B-tree
+\newcommand{\PageRead}{\textsc{Page-Read}}
+\newcommand{\PageWrite}{\textsc{Page-Write}}
+\newcommand{\AllocateNode}{\textsc{Allocate-Node}}
+\newcommand{\BTreeSearch}{\textsc{B-Tree-Search}}
+\newcommand{\BTreeCreate}{\textsc{B-Tree-Create}}
+\newcommand{\BTreeInsert}{\textsc{B-Tree-Insert}}
+\newcommand{\BTreeInsertNonfull}{\textsc{B-Tree-Insert-Nonfull}}
+\newcommand{\BTreeSplitChild}{\textsc{B-Tree-Split-Child}}
+\newcommand{\BTreeDelete}{\textsc{B-Tree-Delete}}
 
 % =====================================================
 % METADATA
@@ -345,6 +401,7 @@ Versione: \today
 
 \input{chapters/analisi_ammortizzata}
 \input{chapters/splay_trees}
+\input{chapters/B-trees}
 
 % =====================================================
 % APPENDICI

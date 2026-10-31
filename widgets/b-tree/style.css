@@ -1,0 +1,27 @@
+.w-btree .bt-edge { stroke: var(--ink-soft); stroke-width: 1.4; }
+.w-btree .bt-edge.bt-epath { stroke: var(--fig); stroke-width: 3; stroke-linecap: round; }
+.w-btree .bt-node, .w-btree .bt-key { transition: opacity calc(0.45s / var(--speed, 1)); }
+.w-btree .bt-new, .w-btree .bt-gone { opacity: 0; }
+.w-btree .bt-gone { pointer-events: none; }
+.w-btree .bt-box {
+  fill: color-mix(in oklab, var(--accent) 8%, var(--surface)); stroke: var(--accent); stroke-width: 1.5;
+  transition: fill calc(0.3s / var(--speed, 1)), stroke calc(0.3s / var(--speed, 1));
+}
+.w-btree .bt-path .bt-box { stroke: var(--fig); }
+.w-btree .bt-hl .bt-box { fill: color-mix(in oklab, var(--fig) 22%, var(--surface)); stroke: var(--fig); stroke-width: 2.2; }
+.w-btree .bt-cell { fill: transparent; transition: fill calc(0.3s / var(--speed, 1)); }
+.w-btree .bt-khl .bt-cell { fill: color-mix(in oklab, var(--obs) 40%, var(--surface)); }
+.w-btree .bt-div { stroke: var(--accent); stroke-width: 1; }
+.w-btree .bt-first .bt-div { display: none; }
+.w-btree .bt-label { text-anchor: middle; dominant-baseline: central; font-family: var(--font-serif); font-size: 14px; fill: var(--ink); pointer-events: none; }
+.w-btree .bt-khl .bt-label { font-weight: 600; }
+.w-btree .bt-click { cursor: pointer; }
+.w-btree .bt-click:hover .bt-cell { fill: color-mix(in oklab, var(--accent) 14%, transparent); }
+.w-btree .key-in {
+  width: 5.2rem; border: 0; border-right: 1px solid var(--rule); background: transparent; color: var(--ink);
+  font: inherit; font-family: var(--font-mono); font-size: 0.88rem; padding: 0.35rem 0.6rem;
+}
+.w-btree .key-in:focus { outline: 2px solid var(--accent-soft); outline-offset: -2px; }
+.w-btree .sc { font-variant: small-caps; letter-spacing: 0.03em; }
+.w-btree .hint { font-size: 0.8rem; margin-top: 0.3rem; }
+.w-btree .eq-line { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.15rem 1.6rem; }

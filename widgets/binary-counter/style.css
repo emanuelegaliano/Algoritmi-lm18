@@ -1,0 +1,25 @@
+.w-counter .hdr { text-anchor: middle; font-family: var(--font-mono); font-size: 11px; fill: var(--ink-soft); }
+.w-counter .cellb {
+  fill: var(--surface); stroke: var(--ink-soft); stroke-opacity: 0.6; stroke-width: 1.2;
+  transition: fill calc(0.35s / var(--speed, 1)), stroke calc(0.35s / var(--speed, 1));
+}
+.w-counter .one .cellb { fill: color-mix(in oklab, var(--accent-soft) 28%, var(--surface)); }
+.w-counter .set .cellb { stroke: var(--accent); stroke-width: 3; stroke-opacity: 1; }
+.w-counter .reset .cellb { stroke: var(--hot); stroke-width: 3; stroke-opacity: 1; }
+.w-counter .digit { text-anchor: middle; dominant-baseline: central; font-family: var(--font-mono); font-size: 17px; fill: var(--ink); }
+.w-counter .value { text-anchor: end; dominant-baseline: central; font-family: var(--font-serif); font-size: 18px; fill: var(--ink); }
+.w-counter .coin { opacity: 0; transition: opacity calc(0.35s / var(--speed, 1)); }
+.w-counter .with-coin .coin { opacity: 1; }
+.w-counter .coin circle { fill: color-mix(in oklab, var(--obs) 30%, var(--surface)); stroke: var(--obs); stroke-width: 1.2; }
+.w-counter .coin text { text-anchor: middle; dominant-baseline: central; font-family: var(--font-mono); font-size: 9px; fill: var(--ink); }
+.w-counter .axis { stroke: var(--ink-soft); stroke-width: 1; }
+.w-counter .tick { font-size: 11px; fill: var(--ink-soft); dominant-baseline: central; }
+.w-counter .tick.end { text-anchor: end; }
+.w-counter .bar { fill: color-mix(in oklab, var(--accent-soft) 45%, var(--surface)); opacity: 0; transition: opacity calc(0.3s / var(--speed, 1)); }
+.w-counter .bar.shown { opacity: 1; }
+.w-counter .bar.cur { fill: var(--accent); }
+.w-counter .bound { fill: none; stroke: var(--ink-soft); stroke-width: 1.3; stroke-dasharray: 5 4; }
+.w-counter .bound-l { font-style: italic; }
+.w-counter .total { fill: none; stroke: var(--fig); stroke-width: 2.2; }
+.w-counter .total-dot { fill: var(--fig); }
+.w-counter .total-l { fill: var(--fig); font-family: var(--font-mono); }
