@@ -319,9 +319,16 @@ Nel modello di costo uniforme, l'algoritmo MTF è 4-competitivo rispetto a quals
 \]
 \end{teorema}
 
-Useremo l'analisi ammortizzata con il metodo del potenziale. Il potenziale dipenderà dalle \emph{due} liste, e misurerà quanto sono diverse tramite il numero di inversioni. L'intuizione è questa: se le due liste sono simili, MTF paga più o meno quanto FORSEE. Se invece sono molto diverse, MTF può pagare molto di più, ma allora c'è molto potenziale accumulato con cui pagare.
+\paragraph{Dimostrazione.}
+Usiamo l'analisi ammortizzata con il metodo del potenziale. Il potenziale dipenderà dalle \emph{due} liste, e misurerà quanto sono diverse tramite il numero di inversioni. L'intuizione è questa: se le due liste sono simili, MTF paga più o meno quanto FORSEE. Se invece sono molto diverse, MTF può pagare molto di più, ma allora c'è molto potenziale accumulato con cui pagare. La dimostrazione procede in quattro passi:
+\begin{enumerate}
+    \item Classifichiamo gli elementi in base alla loro posizione rispetto all'elemento richiesto, nelle due liste.
+    \item Calcoliamo di quanto varia il numero di inversioni durante un accesso.
+    \item Scegliamo il potenziale, e dimostriamo che il costo ammortizzato di ogni accesso di MTF è minore di $4c^F_i$.
+    \item Sommiamo su tutti gli accessi.
+\end{enumerate}
 
-\subsection{Gli insiemi BB, BA e AB}\label{sec:mtf-insiemi}
+\paragraph{Passo 1: gli insiemi BB, BA e AB.}
 Consideriamo l'$i$-esimo accesso, all'elemento $x$, e classifichiamo gli altri elementi in base alla loro posizione rispetto a $x$ nelle due liste immediatamente prima dell'accesso:
 \begin{align*}
 BB_{i-1} &= \{\text{elementi prima di } x \text{ sia in } L^M_{i-1} \text{ che in } L^F_{i-1}\}, \\
@@ -330,8 +337,7 @@ AB_{i-1} &= \{\text{elementi dopo } x \text{ in } L^M_{i-1} \text{ ma prima di }
 \end{align*}
 La prima lettera si riferisce alla lista di MTF e la seconda a quella di FORSEE, con B per prima (before) e A per dopo (after). Restano gli elementi che si trovano dopo $x$ in entrambe le liste, che non ci serviranno. Per semplicità di scrittura, nel seguito scriviamo $BB$, $BA$ e $AB$ al posto di $BB_{i-1}$, $BA_{i-1}$ e $AB_{i-1}$.
 
-\paragraph{Esempio.}
-Supponiamo che prima dell'$i$-esimo accesso le due liste siano
+Ad esempio, supponiamo che prima dell'$i$-esimo accesso le due liste siano
 \[
 L^M_{i-1} = (1, 2, 3, 4, 5, 6, x, 7, 8, 9, 10, 11), \qquad L^F_{i-1} = (4, 8, 5, 2, 10, x, 3, 7, 6, 1, 9, 11).
 \]
@@ -363,15 +369,14 @@ r_{L^M_{i-1}}(x) = |BB| + |BA| + 1, \qquad r_{L^F_{i-1}}(x) = |BB| + |AB| + 1.
 \end{equation}
 Nell'esempio, infatti, $x$ si trova in posizione $7 = 3 + 3 + 1$ nella lista di MTF e in posizione $6 = 3 + 2 + 1$ in quella di FORSEE. Per alleggerire la notazione, nel seguito scriviamo $r_M = r_{L^M_{i-1}}(x)$ e $r_F = r_{L^F_{i-1}}(x)$, e quindi $c^M_i = 2r_M - 1$ e $c^F_i = r_F + s^F_i$.
 
-\subsection{Come varia il numero di inversioni}\label{sec:mtf-variazione}
+\paragraph{Passo 2: come varia il numero di inversioni.}
 Vogliamo capire di quanto cambia il numero di inversioni tra le due liste durante l'$i$-esima operazione, ovvero la quantità
 \[
 I(L^M_i, L^F_i) - I(L^M_{i-1}, L^F_{i-1}),
 \]
 che sarà legata alla differenza di potenziale. Per calcolarla immaginiamo che MTF e FORSEE non agiscano insieme, ma uno dopo l'altro: prima MTF sposta $x$ in testa mentre la lista di FORSEE resta ferma, poi FORSEE fa i suoi scambi. Le liste finali sono le stesse, quindi si tratta soltanto di un modo comodo di fare i conti.
 
-\paragraph{Lo spostamento di MTF.}
-Calcoliamo prima la differenza $I(L^M_i, L^F_{i-1}) - I(L^M_{i-1}, L^F_{i-1})$. Nel passaggio da $L^M_{i-1}$ a $L^M_i$, l'elemento $x$ scavalca tutti gli elementi che lo precedono, mentre l'ordine relativo di tutte le altre coppie non cambia. Le uniche coppie che cambiano il loro status di inversione rispetto a $L^F_{i-1}$ sono quindi tutte e sole quelle della forma $\{x, y\}$, con $y \in BB \cup BA$. In particolare:
+Consideriamo prima lo \textbf{spostamento di MTF}, e calcoliamo la differenza $I(L^M_i, L^F_{i-1}) - I(L^M_{i-1}, L^F_{i-1})$. Nel passaggio da $L^M_{i-1}$ a $L^M_i$, l'elemento $x$ scavalca tutti gli elementi che lo precedono, mentre l'ordine relativo di tutte le altre coppie non cambia. Le uniche coppie che cambiano il loro status di inversione rispetto a $L^F_{i-1}$ sono quindi tutte e sole quelle della forma $\{x, y\}$, con $y \in BB \cup BA$. In particolare:
 \begin{itemize}
     \item \textbf{Per $y \in BB$}: prima $y$ precedeva $x$ in entrambe le liste, dopo $x$ precede $y$ in $L^M_i$. La coppia passa da non inversione a inversione.
     \item \textbf{Per $y \in BA$}: prima le due liste erano in disaccordo, dopo $x$ precede $y$ in entrambe. La coppia passa da inversione a non inversione.
@@ -382,8 +387,7 @@ I(L^M_i, L^F_{i-1}) - I(L^M_{i-1}, L^F_{i-1}) = |BB| - |BA|.
 \end{equation}
 Nell'esempio di figura~\ref{fig:mtf-insiemi} si ha $|BB| - |BA| = 3 - 3 = 0$, e infatti le inversioni restano $27$ anche dopo lo spostamento di $x$.
 
-\paragraph{Gli scambi di FORSEE.}
-FORSEE effettua $s^F_i$ scambi adiacenti. Per quanto visto con il lemma~\ref{lem:inversioni}, ogni scambio aumenta o diminuisce di un'unità il numero di inversioni rispetto a $L^M_i$. Nel caso peggiore li aumenta tutti, e quindi:
+Consideriamo ora gli \textbf{scambi di FORSEE}, che sono $s^F_i$. Per quanto visto con il lemma~\ref{lem:inversioni}, ogni scambio aumenta o diminuisce di un'unità il numero di inversioni rispetto a $L^M_i$. Nel caso peggiore li aumenta tutti, e quindi:
 \[
 I(L^M_i, L^F_i) - I(L^M_i, L^F_{i-1}) \le s^F_i.
 \]
@@ -393,8 +397,8 @@ Sommando le due variazioni si ottiene la maggiorazione della variazione compless
 I(L^M_i, L^F_i) - I(L^M_{i-1}, L^F_{i-1}) \le |BB| - |BA| + s^F_i.
 \end{equation}
 
-\subsection{Un primo tentativo di potenziale}\label{sec:mtf-psi}
-La scelta più naturale è usare direttamente il numero di inversioni come potenziale:
+\paragraph{Passo 3: il potenziale.}
+Si potrebbe pensare di usare direttamente il numero di inversioni come potenziale:
 \[
 \Psi_i = I(L^M_i, L^F_i).
 \]
@@ -411,7 +415,6 @@ dove la disuguaglianza viene dalla~\eqref{eq:mtf-delta} e la sostituzione di $|B
 
 Il motivo è che MTF paga $2$ per ogni elemento che precede $x$: $1$ per scavalcarlo durante la ricerca e $1$ per lo scambio che porta $x$ in testa. Ogni elemento di $BA$ elimina un'inversione, e quindi fa scendere $\Psi$ di $1$, ma in questo modo ripaga soltanto metà di quei $2$.
 
-\subsection{Il potenziale giusto}\label{sec:mtf-phi}
 Introduciamo allora un fattore $2$ nel potenziale, in modo che ogni inversione valga quanto quello che costa a MTF:
 \[
 \Phi_i = 2\, I(L^M_i, L^F_i).
@@ -431,7 +434,7 @@ Poiché MTF e FORSEE partono dalla stessa lista si ha $\Phi_0 = 2\, I(L, L) = 0$
 \]
 dove abbiamo usato di nuovo la~\eqref{eq:mtf-delta} e la~\eqref{eq:mtf-posizioni}. Questa volta il termine $2r_M$ del costo reale si cancella con il $-2r_M$ che viene dal potenziale: il fattore $2$ è esattamente quello che serve. Il penultimo passaggio aggiunge soltanto i termini che mancano per ricostruire il costo di FORSEE.
 
-\paragraph{Dimostrazione del teorema~\ref{thm:mtf}.}
+\paragraph{Passo 4: la somma su tutti gli accessi.}
 Ricordando la somma telescopica del metodo del potenziale, e poiché $\Phi_m \ge 0 = \Phi_0$, si ha:
 \[
 C_{\mathrm{MTF}}(\sigma) = \sum_{i=1}^{m} c^M_i = \sum_{i=1}^{m} \hat{c}^M_i - (\Phi_m - \Phi_0) \le \sum_{i=1}^{m} \hat{c}^M_i < 4 \sum_{i=1}^{m} c^F_i = 4\, C_{\mathrm{OPT}}(\sigma).
