@@ -52,6 +52,25 @@
   path/.style={very thick, FigColor},
   lab/.style={font=\scriptsize, color=TextGray}}}
 
+% stili comuni per le figure con liste di elementi (capitolo su Move-To-Front): ogni elemento è una cella,
+% e una lista si disegna con \pic (nome) at (x,y) {lista={a/cl, b/cl, c/hl}}, dove dopo la barra c'è lo stile
+% della cella; il nodo della cella dell'elemento a si chiama (nome-a), la distanza tra le celle è liste step
+\tikzset{liste/.style={
+  cl/.style={rectangle, draw=Accent, fill=Accent!6, minimum width=5mm, minimum height=5.5mm, inner sep=0pt, font=\small},
+  hl/.style={cl, draw=FigColor, fill=FigColor!22},
+  mv/.style={cl, draw=ObsColor, fill=ObsColor!20},
+  sn/.style={cl, draw=RuleGray, fill=white, text=TextGray},
+  bb/.style={cl, draw=Accent, fill=Accent!22},
+  ba/.style={cl, draw=FigColor, fill=FigColor!22},
+  ab/.style={cl, draw=ObsColor, fill=ObsColor!22},
+  aa/.style={cl, draw=RuleGray, fill=white, text=TextGray},
+  xx/.style={cl, draw=FigColor, fill=FigColor, text=white},
+  lab/.style={font=\small, color=TextGray}},
+  liste step/.store in=\listestep, liste step=0.55,
+  % \edef: la lista può arrivare anche da una variabile di \foreach
+  pics/lista/.style={code={\edef\listeitems{#1}%
+    \foreach \v/\s [count=\i from 0] in \listeitems {\node[\s] (-\v) at (\i*\listestep, 0) {$\v$};}}}}
+
 % figure interattive della versione web (texweb): nel PDF si stampa la figura statica
 \usepackage{texweb}
 
@@ -402,6 +421,7 @@ Versione: \today
 \input{chapters/analisi_ammortizzata}
 \input{chapters/splay_trees}
 \input{chapters/B-trees}
+\input{chapters/move_to_front}
 
 % =====================================================
 % APPENDICI

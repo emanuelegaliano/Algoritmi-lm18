@@ -1,0 +1,21 @@
+.w-inv .row-l { font-family: var(--font-sans); font-size: 13px; font-weight: 600; fill: var(--accent); dominant-baseline: central; }
+.w-inv .cell { cursor: pointer; }
+.w-inv .cell:focus { outline: none; }
+.w-inv .cell:focus-visible rect { stroke-width: 3; }
+.w-inv .cell rect { fill: var(--surface); stroke: var(--rule); stroke-width: 1.3; transition: fill calc(0.3s / var(--speed, 1)); }
+.w-inv .cell text { text-anchor: middle; dominant-baseline: central; font-family: var(--font-serif); font-size: 16px; fill: var(--ink-soft); pointer-events: none; }
+.w-inv .cell.bb rect { fill: color-mix(in oklab, var(--accent) 22%, var(--surface)); stroke: var(--accent); }
+.w-inv .cell.ba rect { fill: color-mix(in oklab, var(--fig) 22%, var(--surface)); stroke: var(--fig); }
+.w-inv .cell.ab rect { fill: color-mix(in oklab, var(--obs) 22%, var(--surface)); stroke: var(--obs); }
+.w-inv .cell.x rect { fill: var(--fig); stroke: var(--fig); }
+.w-inv .cell.x text { fill: var(--surface); font-style: italic; }
+.w-inv .cell.bb text, .w-inv .cell.ba text, .w-inv .cell.ab text { fill: var(--ink); }
+.w-inv .cell.swapped rect { stroke-width: 3; }
+.w-inv .conn { stroke: var(--rule); stroke-width: 1.2; }
+.w-inv .conn.x { stroke: var(--fig); stroke-width: 2.5; }
+.w-inv .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.9rem; font-size: 0.85rem; color: var(--ink-soft); margin-top: 0.3rem; }
+.w-inv .legend .chip { display: inline-flex; align-items: center; gap: 0.35rem; }
+.w-inv .legend i { display: inline-block; width: 0.8rem; height: 0.8rem; border: 1px solid var(--rule); border-radius: 2px; }
+.w-inv .legend .bb i { background: color-mix(in oklab, var(--accent) 22%, var(--surface)); border-color: var(--accent); }
+.w-inv .legend .ba i { background: color-mix(in oklab, var(--fig) 22%, var(--surface)); border-color: var(--fig); }
+.w-inv .legend .ab i { background: color-mix(in oklab, var(--obs) 22%, var(--surface)); border-color: var(--obs); }

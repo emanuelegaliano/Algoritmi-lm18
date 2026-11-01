@@ -1,0 +1,523 @@
+\chapter{Algoritmi online e Move-To-Front}\label{ch:mtf}
+
+Negli algoritmi visti finora l'input è disponibile per intero prima che l'algoritmo inizi a lavorare. In molte situazioni reali, invece, l'input arriva un pezzo alla volta, e a ogni nuovo pezzo bisogna prendere una decisione senza sapere cosa arriverà dopo. Gli algoritmi che lavorano in questo modo si dicono \textbf{algoritmi online}, e per valutarli si usa l'\textbf{analisi competitiva}, che confronta il loro costo con quello di un algoritmo che conosce il futuro.
+
+In questo capitolo introduciamo questi due concetti con due esempi semplici, e poi ci concentriamo sul problema \textbf{List Update}, ovvero mantenere una lista in un ordine che renda economici gli accessi futuri. Analizzeremo l'euristica Move-To-Front con il metodo del potenziale visto nel capitolo~\ref{ch:ammortizzata}, e dimostreremo che il suo costo non supera mai quattro volte quello dell'algoritmo ottimo.
+
+\section{Algoritmi online e offline}\label{sec:online-offline}
+Un algoritmo \textbf{offline} riceve l'intera sequenza di input prima di iniziare l'elaborazione. Conoscendo tutto in anticipo, può prendere decisioni ottimali sfruttando la conoscenza del futuro.
+
+Un algoritmo \textbf{online}, invece, riceve l'input un elemento alla volta e deve reagire immediatamente. Non conosce la sequenza delle richieste future, e le decisioni che prende sono irrevocabili, o comunque costose da modificare.
+
+Nella pratica un algoritmo offline si può usare di rado, proprio perché il futuro non è noto. Tuttavia è molto utile come termine di paragone (benchmark): ci dice quanto costerebbe la soluzione migliore possibile, e quindi quanto un algoritmo online se ne allontana.
+
+\subsection{Analisi competitiva}\label{sec:competitiva}
+Il problema è capire come valutare un algoritmo online. L'analisi nel caso peggiore, da sola, dice poco. Pensiamo a una lista in cui si cercano elementi: qualunque ordine si scelga, la sequenza di richieste potrebbe chiedere ogni volta l'ultimo elemento, e qualsiasi algoritmo pagherebbe il massimo. Nel caso peggiore, quindi, tutti gli algoritmi risulterebbero ugualmente pessimi.
+
+L'idea dell'analisi competitiva è confrontare il costo dell'algoritmo online con quello di un algoritmo offline ottimo, che indichiamo con OPT, \textbf{sulla stessa sequenza di richieste} $\sigma$. Se la sequenza è difficile, anche OPT pagherà molto. Se invece è facile, ci aspettiamo che anche l'algoritmo online se la cavi bene. Il \textbf{rapporto competitivo} in senso stretto, ovvero senza costanti additive, è definito come:
+\[
+R = \sup_{\sigma\,:\,C_{\mathrm{OPT}}(\sigma) > 0} \frac{C_{\mathrm{online}}(\sigma)}{C_{\mathrm{OPT}}(\sigma)},
+\]
+dove $C_{\mathrm{online}}(\sigma)$ e $C_{\mathrm{OPT}}(\sigma)$ sono i costi sostenuti sulla sequenza $\sigma$ dall'algoritmo online e dall'algoritmo offline ottimo. Il rapporto misura quindi, nel caso peggiore, quanto il costo dell'algoritmo online può superare quello ottimo. Una definizione più generale ammette anche una costante additiva.
+
+\begin{definizione}[Algoritmo $\alpha$-competitivo]\label{def:competitivo}
+Un algoritmo online è \textbf{$\alpha$-competitivo} se esiste una costante $b \ge 0$, indipendente dalla sequenza di input, tale che per ogni sequenza $\sigma$:
+\[
+C_{\mathrm{online}}(\sigma) \le \alpha \cdot C_{\mathrm{OPT}}(\sigma) + b.
+\]
+Il rapporto competitivo (con costante additiva) è l'estremo inferiore dei valori di $\alpha$ per cui esiste una tale costante $b$.
+\end{definizione}
+
+Più piccolo è il valore di $\alpha$ che si riesce a garantire, migliore è la garanzia sulle prestazioni dell'algoritmo online. La costante $b$ serve ad assorbire i costi che non crescono con la lunghezza della sequenza, ad esempio quelli dovuti alla configurazione iniziale: quello che conta è il comportamento su sequenze lunghe.\footnote{Con $b = 0$ si ritrova la definizione in senso stretto. Per Move-To-Front, come vedremo, la costante additiva non servirà.}
+
+Il pregio dell'analisi competitiva è che garantisce buone prestazioni nel caso peggiore anche senza conoscere il futuro, ed è quindi particolarmente utile per i problemi reali in cui c'è incertezza. Il suo limite è che può essere troppo pessimistica: non sempre riflette il comportamento medio, e un algoritmo con un rapporto competitivo alto potrebbe comportarsi bene sulle sequenze che si incontrano di solito.
+
+\section{Due esempi introduttivi}\label{sec:online-esempi}
+Prima di passare al problema List Update, che analizzeremo nel dettaglio, vediamo due esempi più semplici. Il primo ha una sola decisione da prendere, e introduce in modo chiaro il concetto di strategia online. Il secondo è un contesto pratico e diffuso, in cui si vede quanto sia difficile anticipare il futuro.
+
+\subsection{Ski rental}\label{sec:ski}
+Supponiamo di andare a sciare e di dover scegliere tra due opzioni: affittare gli sci a $30$ euro al giorno, oppure acquistarli una volta per tutte a $300$ euro. Se sapessimo di sciare per almeno $10$ giorni, ci converrebbe comprarli subito, altrimenti ci converrebbe affittarli. Indicando con $d$ il numero di giorni in cui scieremo, l'algoritmo offline spende quindi:
+\[
+C_{\mathrm{OPT}}(d) = \min(30d,\ 300).
+\]
+
+Il problema è che $d$ non lo conosciamo: potremmo stancarci dopo un giorno, oppure sciare per tutta la stagione. Si potrebbe pensare di comprare subito gli sci, ma se sciamo un solo giorno spendiamo $300$ euro invece di $30$, ovvero $10$ volte l'ottimo. Si potrebbe pensare allora di affittare sempre, ma in questo caso la spesa cresce senza limiti, mentre quella dell'ottimo si ferma a $300$ euro.
+
+Una strategia online ragionevole sta nel mezzo: affittiamo gli sci fino al decimo giorno e, se dopo il decimo giorno vogliamo ancora sciare, li compriamo. Distinguiamo due casi:
+\begin{itemize}
+    \item \textbf{$d \le 10$}: abbiamo sempre affittato e spendiamo $30d$, esattamente come l'ottimo.
+    \item \textbf{$d > 10$}: abbiamo speso $300$ euro in affitti e altri $300$ per l'acquisto, quindi $600$ euro, mentre l'ottimo avrebbe comprato subito spendendo $300$ euro.
+\end{itemize}
+In nessun caso spendiamo più del doppio dell'ottimo, quindi la strategia è \textbf{2-competitiva}. L'idea è continuare ad affittare finché la spesa per gli affitti non eguaglia il prezzo di acquisto. In questo modo, qualunque cosa succeda, quello che sprechiamo non supera mai quello che l'ottimo avrebbe comunque speso (figura~\ref{fig:ski}).\footnote{Comprando gli sci all'inizio del decimo giorno, invece che dell'undicesimo, il caso peggiore diventa $9 \cdot 30 + 300 = 570$ euro contro $300$, ovvero un rapporto di $1{,}9$. In generale, con un affitto giornaliero $r$ e un prezzo di acquisto $B$ multiplo di $r$, si arriva a un rapporto $2 - r/B$, e si può dimostrare che nessuna strategia deterministica fa meglio.}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[x=0.36cm, y=0.0055cm, >=Stealth]
+  % assi
+  \draw[->] (0,0) -- (22,0) node[right, font=\small] {$d$};
+  \draw[->] (0,0) -- (0,700) node[above, font=\small] {costo};
+  \foreach \d in {5,10,15,20} {\draw (\d,0) -- (\d,-12) node[below, font=\scriptsize] {$\d$};}
+  \foreach \c in {300,600} {\draw (0,\c) -- (-0.3,\c) node[left, font=\scriptsize] {$\c$};
+    \draw[RuleGray, dotted] (0,\c) -- (21,\c);}
+  % ottimo offline e strategia online
+  \draw[FigColor, very thick] (0,0) -- (10,300);
+  \draw[FigColor, very thick, dashed] (10,300) -- (11,600);
+  \draw[FigColor, very thick] (11,600) -- (21,600) node[right, font=\small] {online};
+  \draw[Accent, very thick] (10,300) -- (21,300) node[right, font=\small] {OPT};
+  \draw[<->, TextGray] (16,310) -- node[right, font=\scriptsize] {$\times 2$} (16,590);
+\end{tikzpicture}
+\caption{Il costo della strategia online per lo ski rental (affitto fino al decimo giorno, poi acquisto) e il costo dell'ottimo offline, in funzione del numero $d$ di giorni di sci. Fino al decimo giorno le due spese coincidono. Dall'undicesimo giorno in poi la strategia online spende $600$ euro e l'ottimo $300$: il rapporto non supera mai $2$.}
+\label{fig:ski}
+\end{figure}
+
+\subsection{Caching}\label{sec:caching}
+Abbiamo una cache che può contenere $k$ pagine, e arriva una sequenza di richieste a pagine. Se la pagina richiesta è in cache non si paga nulla. Se invece non è presente si ha un \textbf{page fault}: bisogna caricare la pagina e, se la cache è piena, espellerne un'altra per farle posto. L'obiettivo è minimizzare il numero di page fault, e quindi tutto si riduce a scegliere quale pagina espellere.
+
+Le strategie online più comuni sono due:
+\begin{itemize}
+    \item \textbf{FIFO} (First-In, First-Out): espelle la pagina rimasta più a lungo in cache. È semplice da implementare, ma non tiene conto del fatto che quella pagina potrebbe essere riutilizzata a breve.
+    \item \textbf{LRU} (Least Recently Used): espelle la pagina usata meno recentemente. Si basa sul principio di \textbf{località temporale}, ovvero sull'idea che una pagina usata da poco verrà probabilmente usata di nuovo. È più costosa da implementare, perché bisogna tenere traccia del momento dell'ultimo utilizzo di ogni pagina.
+\end{itemize}
+La strategia offline ottima è l'\textbf{algoritmo di Bélády} (detto anche MIN), che espelle la pagina che verrà usata più tardi nel futuro. Richiede la conoscenza completa della sequenza di richieste, e quindi serve soltanto come termine di paragone per valutare le strategie online.
+
+\begin{center}
+\small
+\begin{tabular}{llcc}
+\toprule
+Algoritmo & Tipo & Uso del futuro & Competitività \\
+\midrule
+FIFO & online deterministico & no & $k$ \\
+LRU & online deterministico & no & $k$ \\
+Bélády (MIN) & offline & sì & ottimo \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Per capire da dove viene il fattore $k$, consideriamo $k+1$ pagine richieste ciclicamente: $1, 2, \dots, k+1, 1, 2, \dots$ Con LRU, una volta piena la cache, la pagina richiesta è sempre proprio quella appena espulsa, perché è quella usata meno recentemente. Si ha quindi un page fault a ogni richiesta, e lo stesso succede con FIFO. Bélády, invece, a ogni page fault espelle la pagina che servirà più tardi, e il page fault successivo arriva solo dopo $k$ richieste. Su questa sequenza le due strategie online fanno circa $k$ volte i page fault dell'ottimo.
+
+\section{Il problema List Update}\label{sec:list-update}
+Vogliamo mantenere una lista lineare di elementi distinti, soggetti a una sequenza di richieste di accesso. Dopo ogni accesso la lista può essere ristrutturata, al fine di ridurre i costi degli accessi futuri. Si parla in questo caso di liste \textbf{auto-organizzanti} (self-adjusting lists). Il problema si presenta spesso nella pratica, ad esempio nelle tabelle hash che gestiscono le collisioni con liste concatenate, in cui ogni cella contiene una lista da scorrere.
+
+\subsection{L'euristica Move-To-Front}\label{sec:mtf}
+L'euristica che studiamo è \textbf{Move-To-Front} (MTF): dopo ogni accesso, MTF porta in testa alla lista l'elemento appena richiesto. Il modello è online, perché le decisioni sono prese senza conoscere le richieste future. MTF è inoltre molto semplice: non usa memoria storica (contatori, frequenze di accesso) e risponde localmente a ogni accesso. L'obiettivo è minimizzare il costo totale su una sequenza di accessi.
+
+Il comportamento di MTF ha alcune proprietà intuitive:
+\begin{itemize}
+    \item \textbf{Elementi frequenti}: gli elementi richiesti più spesso tendono a trovarsi vicino alla testa.
+    \item \textbf{Elementi rari}: gli elementi meno usati vengono spostati progressivamente verso la coda.
+    \item \textbf{Adattività}: MTF si adatta dinamicamente ai cambiamenti nella frequenza degli accessi, ed è particolarmente efficace in presenza di località temporale.
+\end{itemize}
+L'idea è la stessa degli splay tree del capitolo~\ref{ch:splay}: ciò a cui si è appena acceduto viene portato nella posizione più economica, scommettendo che verrà richiesto di nuovo presto.
+
+\subsection{Il modello di costo}\label{sec:mtf-costo}
+Per analizzare MTF fissiamo un modello di calcolo:
+\begin{itemize}
+    \item \textbf{Struttura}: una lista lineare $L$ di $n$ elementi distinti, rappresentata mediante un array.
+    \item \textbf{Input}: una sequenza $\sigma = (x_1, x_2, \dots, x_m)$ di richieste.
+    \item \textbf{Accesso}: a ogni richiesta $x_i$, si cerca $x_i$ scorrendo la lista da sinistra a destra.
+    \item \textbf{Ristrutturazione}: dopo l'accesso è consentito riorganizzare la lista, mediante scambi di elementi contigui.
+\end{itemize}
+
+Indichiamo con $r_L(x)$ la posizione dell'elemento $x$ nella lista $L$, contando a partire da $1$. L'accesso a $x$ ha costo $p = r_L(x)$ (full access cost), ovvero il numero di elementi esaminati per trovarlo. Ogni scambio tra elementi contigui ha costo $1$, compresi quelli necessari per spostare in testa l'elemento appena richiesto.
+
+Il costo complessivo di un'operazione è quindi:
+\[
+\text{costo} = p + s,
+\]
+dove $p$ è la posizione dell'elemento richiesto e $s$ è il numero di scambi effettuati. Questo è il \textbf{modello di costo uniforme}. Per MTF, l'elemento richiesto in posizione $p$ viene portato in testa scambiandolo con ciascuno dei $p-1$ elementi che lo precedono. Si ha quindi $s = p - 1$, e il costo di un accesso con MTF è:
+\[
+c^M = 2p - 1.
+\]
+
+\paragraph{Esempio.}
+Consideriamo la lista $(a, b, c, d, e)$ e una richiesta all'elemento $d$. Nella prima fase si cerca $d$ scorrendo la lista: $d$ è in posizione $4$, quindi l'accesso costa $4$. Nella seconda fase $d$ viene portato in testa con $3$ scambi adiacenti, prima con $c$, poi con $b$ e infine con $a$ (figura~\ref{fig:mtf-accesso}). Il costo complessivo è $4 + 3 = 7$, ovvero proprio $2 \cdot 4 - 1$.
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{mtf-access}[list={a,b,c,d,e}, x=d]
+\begin{tikzpicture}[liste, liste step=0.5, cl/.append style={minimum width=4.6mm}, >=Stealth]
+  % fase 1: ricerca
+  \node[lab, anchor=east] at (-0.5,0) {fase 1};
+  \pic at (0,0) {lista={a/sn,b/sn,c/sn,d/hl,e/cl}};
+  \draw[decorate, decoration={brace, amplitude=4pt, raise=6pt}, TextGray] (-0.23,0) -- (1.73,0)
+    node[midway, above=10pt, lab] {$4$ elementi esaminati};
+  % fase 2: scambi
+  \node[lab, anchor=east] at (-0.5,-1.6) {fase 2};
+  \pic at (0,-1.6) {lista={a/cl,b/cl,c/cl,d/hl,e/cl}};
+  \pic at (3.3,-1.6) {lista={a/cl,b/cl,d/hl,c/cl,e/cl}};
+  \pic at (6.6,-1.6) {lista={a/cl,d/hl,b/cl,c/cl,e/cl}};
+  \pic at (9.9,-1.6) {lista={d/hl,a/cl,b/cl,c/cl,e/cl}};
+  \foreach \x in {2.4,5.7,9.0} {\draw[->, thick] (\x,-1.6) -- (\x+0.52,-1.6);}
+  \node[lab] at (1,-2.25) {inizio};
+  \node[lab] at (4.3,-2.25) {scambio 1};
+  \node[lab] at (7.6,-2.25) {scambio 2};
+  \node[lab] at (10.9,-2.25) {scambio 3};
+\end{tikzpicture}
+\end{widget}
+\caption{Un accesso all'elemento $d$ con Move-To-Front. Nella prima fase si scorre la lista fino a trovare $d$ in posizione $4$ (in grigio gli elementi già esaminati). Nella seconda fase $d$ viene portato in testa con tre scambi tra elementi adiacenti. Nel modello uniforme l'operazione costa $4 + 3 = 7$.}
+\label{fig:mtf-accesso}
+\end{figure}
+
+\subsection{Due modelli di costo}\label{sec:mtf-modelli}
+Il modello uniforme non è l'unico possibile. Nel \textbf{modello standard}, proposto da Sleator e Tarjan nel 1985, dopo un accesso l'elemento richiesto può essere spostato \emph{gratuitamente} verso la testa della lista, mentre gli altri scambi tra elementi contigui costano $1$. Nell'esempio precedente il costo sarebbe stato $4$ invece di $7$, perché lo spostamento in testa di $d$ è gratuito.
+
+\begin{center}
+\small
+\begin{tabular}{lcc}
+\toprule
+ & Modello standard & Modello uniforme \\
+\midrule
+Costo di MTF (posizione $p$) & $p$ & $2p - 1$ \\
+Rapporto competitivo di MTF & $2$ & $4$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{osservazione}[Quale modello scegliere]
+Il modello standard è particolarmente naturale per le liste concatenate: una volta trovato l'elemento, lo si può staccare e riattaccare in testa con $O(1)$ operazioni sui puntatori. Il modello uniforme, invece, contabilizza esplicitamente gli scambi adiacenti, come in un'implementazione mediante array. Nel resto del capitolo adottiamo il modello uniforme.
+\end{osservazione}
+
+\section{L'algoritmo offline FORSEE}\label{sec:forsee}
+Per valutare la competitività di MTF ci serve un termine di confronto. Consideriamo un ipotetico algoritmo offline ottimo, che chiamiamo \textbf{FORSEE} (ovvero veggente). FORSEE conosce in anticipo l'intera sequenza di richieste e, dopo ogni accesso, può riorganizzare la lista mediante scambi di elementi contigui, ciascuno di costo unitario, in modo da minimizzare il costo totale della sequenza. Segue quindi lo stesso modello di costo di MTF: l'unica differenza è che conosce il futuro.
+
+Non sappiamo come si comporti FORSEE nel dettaglio, e come vedremo non ci servirà saperlo. Vediamo però un esempio, per capire che vantaggio gli dà la conoscenza del futuro.
+
+\paragraph{Esempio.}
+Partiamo dalla lista $L = (1, 2, 3, 4, 5)$ e consideriamo la sequenza di richieste $5, 3, 4, 4$.
+\begin{itemize}
+    \item \textbf{FORSEE}: l'accesso a $5$ costa $5$, e FORSEE lascia la lista com'è. L'accesso a $3$ costa $3$, ma subito dopo FORSEE porta $4$ in testa con $3$ scambi, perché sa che $4$ verrà richiesto due volte: il costo è $3 + 3 = 6$. Le due richieste a $4$ costano poi $1$ ciascuna.
+    \item \textbf{MTF}: ogni elemento richiesto viene portato in testa, con costi $9$, $7$, $9$ e $1$. MTF non può anticipare il doppio accesso a $4$, e lo porta in testa solo dopo averlo pagato in ultima posizione.
+\end{itemize}
+L'evoluzione delle due liste è in figura~\ref{fig:forsee-mtf}. I costi complessivi sono
+\[
+C_{\mathrm{FORSEE}}(\sigma) = 5 + 6 + 1 + 1 = 13, \qquad C_{\mathrm{MTF}}(\sigma) = 9 + 7 + 9 + 1 = 26,
+\]
+e quindi in questo esempio $C_{\mathrm{MTF}}(\sigma) / C_{\mathrm{FORSEE}}(\sigma) = 26/13 = 2$.
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{list-update}[list={1,2,3,4,5}, requests={5,3,4,4}]
+\begin{tikzpicture}[liste, >=Stealth]
+  % intestazioni
+  \foreach \x/\t in {0/richiesta, 2.1/lista prima, 6.6/lista dopo, 9.3/costo, 10.8/cumulativo} {\node[lab] at (\x,0.6) {\t};}
+  % FORSEE
+  \node[font=\small\bfseries, color=Accent, anchor=west] at (-0.7,1.3) {FORSEE};
+  \foreach \y/\r/\b/\s/\a/\c/\cum in {
+      0/5/{1/cl,2/cl,3/cl,4/cl,5/hl}/0/{1/cl,2/cl,3/cl,4/cl,5/cl}/5/5,
+      -0.75/3/{1/cl,2/cl,3/hl,4/cl,5/cl}/3/{4/mv,1/cl,2/cl,3/cl,5/cl}/6/11,
+      -1.5/4/{4/hl,1/cl,2/cl,3/cl,5/cl}/0/{4/cl,1/cl,2/cl,3/cl,5/cl}/1/12,
+      -2.25/4/{4/hl,1/cl,2/cl,3/cl,5/cl}/0/{4/cl,1/cl,2/cl,3/cl,5/cl}/1/13} {
+    \node[font=\small] at (0,\y) {$\r$};
+    \pic at (1,\y) {lista=\b};
+    \draw[->] (3.55,\y) -- node[above, font=\scriptsize] {$\s$ scambi} (4.95,\y);
+    \pic at (5.5,\y) {lista=\a};
+    \node[font=\small] at (9.3,\y) {$\c$};
+    \node[font=\small] at (10.8,\y) {$\cum$};}
+  % MTF
+  \node[font=\small\bfseries, color=Accent, anchor=west] at (-0.7,-3.2) {MTF};
+  \foreach \y/\r/\b/\s/\a/\c/\cum in {
+      -3.9/5/{1/cl,2/cl,3/cl,4/cl,5/hl}/4/{5/hl,1/cl,2/cl,3/cl,4/cl}/9/9,
+      -4.65/3/{5/cl,1/cl,2/cl,3/hl,4/cl}/3/{3/hl,5/cl,1/cl,2/cl,4/cl}/7/16,
+      -5.4/4/{3/cl,5/cl,1/cl,2/cl,4/hl}/4/{4/hl,3/cl,5/cl,1/cl,2/cl}/9/25,
+      -6.15/4/{4/hl,3/cl,5/cl,1/cl,2/cl}/0/{4/hl,3/cl,5/cl,1/cl,2/cl}/1/26} {
+    \node[font=\small] at (0,\y) {$\r$};
+    \pic at (1,\y) {lista=\b};
+    \draw[->] (3.55,\y) -- node[above, font=\scriptsize] {$\s$ scambi} (4.95,\y);
+    \pic at (5.5,\y) {lista=\a};
+    \node[font=\small] at (9.3,\y) {$\c$};
+    \node[font=\small] at (10.8,\y) {$\cum$};}
+\end{tikzpicture}
+\end{widget}
+\caption{FORSEE e MTF sulla sequenza $5, 3, 4, 4$ a partire da $L = (1, 2, 3, 4, 5)$. In viola l'elemento richiesto, in ocra l'elemento $4$, che FORSEE sposta in testa in anticipo, subito dopo l'accesso a $3$. Il costo di ogni richiesta è la posizione dell'elemento nella lista prima più il numero di scambi.}
+\label{fig:forsee-mtf}
+\end{figure}
+
+In questo esempio MTF paga più di FORSEE a ogni passo, ma non è detto che sia sempre così. Con la lista $(1, 2)$ e la sequenza $1, 2, 2, 2$, ad esempio, FORSEE paga $2$ già alla prima richiesta, perché dopo l'accesso a $1$ porta in testa $2$, mentre MTF paga soltanto $1$. Alla fine FORSEE spende $2 + 1 + 1 + 1 = 5$ e MTF spende $1 + 3 + 1 + 1 = 6$: quello che conta è il costo totale, e FORSEE può permettersi di investire in uno scambio che verrà ripagato dalle richieste successive.
+
+\section{Inversioni tra due liste}\label{sec:inversioni}
+Per confrontare MTF con FORSEE senza sapere cosa fa FORSEE, ci serve un modo per misurare quanto le due liste siano diverse. Lo strumento che useremo è il numero di inversioni.
+
+\begin{definizione}[Inversione]\label{def:inversione}
+Siano $L$ e $L'$ due liste contenenti gli stessi elementi, in ordine possibilmente diverso. Un'\textbf{inversione} tra $L$ e $L'$ è una coppia non ordinata $\{a, b\}$ di elementi distinti che compaiono in ordine relativo opposto nelle due liste, ovvero $a$ precede $b$ in $L$ ma $b$ precede $a$ in $L'$. Indichiamo con $I(L, L')$ il numero di inversioni tra $L$ e $L'$.
+\end{definizione}
+
+Consideriamo ad esempio $L = (a, b, c, d, e)$ e $L' = (a, e, c, b, d)$. Tra le $\binom{5}{2} = 10$ coppie di elementi, esattamente $4$ sono inversioni:
+\[
+\{b, c\}, \quad \{b, e\}, \quad \{c, e\}, \quad \{d, e\},
+\]
+e quindi $I(L, L') = 4$. Un modo comodo per contarle è disegnare le due liste una sopra l'altra e collegare con un segmento le due copie di ogni elemento: due elementi formano un'inversione se e solo se i loro segmenti si incrociano (figura~\ref{fig:inversioni}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[liste, liste step=1.1]
+  \node[lab, anchor=east] at (-0.6,0) {$L$};
+  \node[lab, anchor=east] at (-0.6,-1.6) {$L'$};
+  \pic (T) at (0,0) {lista={a/cl,b/cl,c/cl,d/cl,e/cl}};
+  \pic (B) at (0,-1.6) {lista={a/cl,e/cl,c/cl,b/cl,d/cl}};
+  \foreach \v in {a,b,c,d} {\draw[TextGray] (T-\v.south) -- (B-\v.north);}
+  \draw[FigColor, thick] (T-e.south) -- (B-e.north);
+\end{tikzpicture}
+\caption{Le liste $L = (a, b, c, d, e)$ e $L' = (a, e, c, b, d)$, con un segmento tra le due copie di ogni elemento. I segmenti si incrociano in $4$ punti, uno per ogni inversione: il segmento di $e$ incrocia quelli di $b$, $c$ e $d$, e il segmento di $b$ incrocia quello di $c$.}
+\label{fig:inversioni}
+\end{figure}
+
+Il numero di inversioni vale $0$ se e solo se le due liste sono uguali, ed è simmetrico, ovvero $I(L, L') = I(L', L)$. Il valore massimo si ha quando una lista è il rovescio dell'altra. Con $L = (a, b, c, d, e)$ e $L' = (e, d, c, b, a)$, ad esempio, tutte le $\binom{5}{2} = 10$ coppie sono inversioni, e in generale con $n$ elementi si arriva a $\binom{n}{2} = n(n-1)/2$.
+
+\subsection{Inversioni e scambi adiacenti}\label{sec:inversioni-scambi}
+Il numero di inversioni ha un significato preciso in termini di scambi. Indichiamo con $d(L, L')$ il numero minimo di scambi tra elementi adiacenti necessari per trasformare $L$ in $L'$.
+
+\begin{lemma}[Inversioni e scambi adiacenti]\label{lem:inversioni}
+Il numero di inversioni tra due liste coincide con il numero minimo di scambi adiacenti necessari per trasformare l'una nell'altra:
+\[
+d(L, L') = I(L, L').
+\]
+\end{lemma}
+
+\paragraph{Dimostrazione.}
+Dimostriamo le due disuguaglianze separatamente.
+\begin{itemize}
+    \item \textbf{Sono necessari almeno $I(L, L')$ scambi}. Uno scambio tra elementi adiacenti modifica soltanto l'ordine relativo della coppia scambiata, mentre tutte le altre coppie restano nello stesso ordine. Ogni scambio modifica quindi il numero di inversioni rispetto a $L'$ esattamente di $1$, in aumento o in diminuzione. Per passare da $I(L, L')$ inversioni a zero occorrono almeno $I(L, L')$ scambi, e quindi $d(L, L') \ge I(L, L')$.
+    \item \textbf{Sono sufficienti $I(L, L')$ scambi}. Possiamo trasformare $L$ in $L'$ con una procedura analoga al Bubble Sort: a ogni passo scambiamo due elementi adiacenti il cui ordine relativo è invertito rispetto a $L'$. Una coppia del genere esiste sempre finché $L \ne L'$: se tutte le coppie di elementi adiacenti fossero nello stesso ordine che in $L'$, per transitività lo sarebbe l'intera lista, e quindi $L = L'$. Ogni scambio elimina esattamente un'inversione, quindi dopo $I(L, L')$ scambi otteniamo $L'$, e $d(L, L') \le I(L, L')$.
+\end{itemize}
+Combinando le due disuguaglianze si ottiene $d(L, L') = I(L, L')$. \hfill $\square$
+
+\paragraph{Esempio.}
+Riprendiamo $L = (a, b, c, d, e)$ e $L' = (a, e, c, b, d)$, con $4$ inversioni. Possiamo trasformare $L$ in $L'$ con quattro scambi adiacenti, ciascuno dei quali elimina un'inversione:
+\[
+(a, b, c, d, e) \to (a, b, c, e, d) \to (a, b, e, c, d) \to (a, e, b, c, d) \to (a, e, c, b, d),
+\]
+e quindi $d(L, L') = I(L, L') = 4$.
+
+Della dimostrazione ci servirà soprattutto il primo punto: \textbf{uno scambio tra elementi adiacenti, in una qualsiasi delle due liste, fa variare il numero di inversioni esattamente di $1$}, in aumento o in diminuzione.
+
+\subsection{Calcolo del numero di inversioni}\label{sec:inversioni-calcolo}
+Sia $L = (x_1, \dots, x_n)$ e sia $r_{L'}(x)$ la posizione di $x$ nella lista $L'$. Il numero di inversioni tra $L$ e $L'$ è:
+\[
+I(L, L') = \sum_{1 \le i < j \le n} \mathbf{1}\{r_{L'}(x_i) > r_{L'}(x_j)\},
+\]
+dove $\mathbf{1}\{P\}$ vale $1$ se la proprietà $P$ è vera, e $0$ altrimenti. In altre parole, scriviamo nell'ordine di $L$ le posizioni dei suoi elementi in $L'$, e contiamo le coppie di numeri fuori ordine. Nel nostro esempio le posizioni degli elementi di $L$ in $L'$ sono $(1, 4, 3, 5, 2)$, e le coppie fuori ordine sono $(4, 3)$, $(4, 2)$, $(3, 2)$ e $(5, 2)$, ovvero di nuovo quattro inversioni.
+
+Il calcolo diretto esamina tutte le $\binom{n}{2}$ coppie, e costa quindi $O(n^2)$. Si può fare meglio con il \textbf{Merge Sort}, in tempo $O(n \log n)$. Durante la fusione di due metà già ordinate, ogni volta che un elemento della metà destra viene copiato prima di quelli rimasti nella metà sinistra, forma un'inversione con ciascuno di essi: basta sommare questi conteggi durante l'ordinamento. Per il lemma~\ref{lem:inversioni}, anche $d(L, L')$ è quindi calcolabile in tempo $O(n \log n)$.
+
+\section{MTF è 4-competitivo}\label{sec:mtf-4}
+Abbiamo ora tutti gli strumenti per dimostrare il risultato principale del capitolo. Riprendiamo il metodo del potenziale di Sleator e Tarjan, che dimostrano la 2-competitività di MTF nel modello standard, e lo adattiamo al modello uniforme, in cui il fattore diventa $4$.\footnote{Sleator e Tarjan considerano anche una misura alternativa (gross cost), che contabilizza anche gli scambi normalmente gratuiti, come nel modello uniforme.}
+
+Sia $L$ una lista di elementi distinti, e supponiamo di voler effettuare $m$ accessi $x_1, \dots, x_m$. Indichiamo con $L^M$ la lista mantenuta da MTF e con $L^F$ quella mantenuta da FORSEE, a partire dalla stessa configurazione $L$. Più precisamente:
+\begin{itemize}
+    \item $L^M_i$ è la configurazione di $L^M$ al termine dell'$i$-esimo accesso, dopo gli eventuali scambi effettuati da MTF.
+    \item $L^F_i$ è la configurazione di $L^F$ al termine dell'$i$-esimo accesso, dopo gli eventuali scambi effettuati da FORSEE.
+\end{itemize}
+Inoltre poniamo $L^M_0 = L^F_0 = L$. Indichiamo con $c^M_i$ e $c^F_i$ i costi complessivi dell'$i$-esima operazione, sostenuti rispettivamente da MTF e da FORSEE, e con $s^F_i$ il numero di scambi effettuati da FORSEE durante l'$i$-esima operazione. Non sappiamo quanti scambi fa FORSEE, ma non ci servirà saperlo. Se l'$i$-esima richiesta è all'elemento $x$, per il modello di costo uniforme si ha:
+\begin{equation}\label{eq:mtf-costi}
+c^M_i = 2\, r_{L^M_{i-1}}(x) - 1, \qquad c^F_i = r_{L^F_{i-1}}(x) + s^F_i.
+\end{equation}
+
+\begin{teorema}[Competitività di MTF]\label{thm:mtf}
+Nel modello di costo uniforme, l'algoritmo MTF è 4-competitivo rispetto a qualsiasi algoritmo offline:
+\[
+\sum_{i=1}^{m} c^M_i \le 4 \sum_{i=1}^{m} c^F_i.
+\]
+\end{teorema}
+
+Useremo l'analisi ammortizzata con il metodo del potenziale. Il potenziale dipenderà dalle \emph{due} liste, e misurerà quanto sono diverse tramite il numero di inversioni. L'intuizione è questa: se le due liste sono simili, MTF paga più o meno quanto FORSEE. Se invece sono molto diverse, MTF può pagare molto di più, ma allora c'è molto potenziale accumulato con cui pagare.
+
+\subsection{Gli insiemi BB, BA e AB}\label{sec:mtf-insiemi}
+Consideriamo l'$i$-esimo accesso, all'elemento $x$, e classifichiamo gli altri elementi in base alla loro posizione rispetto a $x$ nelle due liste immediatamente prima dell'accesso:
+\begin{align*}
+BB_{i-1} &= \{\text{elementi prima di } x \text{ sia in } L^M_{i-1} \text{ che in } L^F_{i-1}\}, \\
+BA_{i-1} &= \{\text{elementi prima di } x \text{ in } L^M_{i-1} \text{ e dopo } x \text{ in } L^F_{i-1}\}, \\
+AB_{i-1} &= \{\text{elementi dopo } x \text{ in } L^M_{i-1} \text{ ma prima di } x \text{ in } L^F_{i-1}\}.
+\end{align*}
+La prima lettera si riferisce alla lista di MTF e la seconda a quella di FORSEE, con B per prima (before) e A per dopo (after). Restano gli elementi che si trovano dopo $x$ in entrambe le liste, che non ci serviranno. Per semplicità di scrittura, nel seguito scriviamo $BB$, $BA$ e $AB$ al posto di $BB_{i-1}$, $BA_{i-1}$ e $AB_{i-1}$.
+
+\paragraph{Esempio.}
+Supponiamo che prima dell'$i$-esimo accesso le due liste siano
+\[
+L^M_{i-1} = (1, 2, 3, 4, 5, 6, x, 7, 8, 9, 10, 11), \qquad L^F_{i-1} = (4, 8, 5, 2, 10, x, 3, 7, 6, 1, 9, 11).
+\]
+Prima di $x$ in $L^M_{i-1}$ ci sono gli elementi da $1$ a $6$, e di questi $2$, $4$ e $5$ precedono $x$ anche in $L^F_{i-1}$. Si ha quindi $BB = \{2, 4, 5\}$, $BA = \{1, 3, 6\}$ e $AB = \{8, 10\}$, mentre $7$, $9$ e $11$ si trovano dopo $x$ in entrambe le liste (figura~\ref{fig:mtf-insiemi}).
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{inversions}[top={1,2,3,4,5,6,x,7,8,9,10,11}, bottom={4,8,5,2,10,x,3,7,6,1,9,11}, x=x]
+\begin{tikzpicture}[liste, liste step=0.8]
+  \node[lab, anchor=east] at (-0.6,0) {$L^M_{i-1}$};
+  \node[lab, anchor=east] at (-0.6,-2) {$L^F_{i-1}$};
+  \pic (M) at (0,0) {lista={1/ba,2/bb,3/ba,4/bb,5/bb,6/ba,x/xx,7/aa,8/ab,9/aa,10/ab,11/aa}};
+  \pic (F) at (0,-2) {lista={4/bb,8/ab,5/bb,2/bb,10/ab,x/xx,3/ba,7/aa,6/ba,1/ba,9/aa,11/aa}};
+  \foreach \v in {1,...,11} {\draw[RuleGray] (M-\v.south) -- (F-\v.north);}
+  \draw[FigColor, thick] (M-x.south) -- (F-x.north);
+  % legenda
+  \foreach \s/\t [count=\j from 0] in {bb/$BB$, ba/$BA$, ab/$AB$, aa/{dopo $x$ in entrambe}} {
+    \node[\s, minimum width=3.5mm, minimum height=3.5mm] at (\j*2.3,-3) {};
+    \node[lab, anchor=west] at (\j*2.3+0.25,-3) {\t};}
+\end{tikzpicture}
+\end{widget}
+\caption{Le liste di MTF e di FORSEE prima dell'accesso a $x$ (in viola pieno), con gli altri elementi colorati in base all'insieme a cui appartengono. Gli elementi di $BA$ e di $AB$ sono esattamente quelli il cui segmento incrocia il segmento di $x$, ovvero quelli che formano un'inversione con $x$. In tutto le due liste hanno $27$ inversioni.}
+\label{fig:mtf-insiemi}
+\end{figure}
+
+Gli elementi che precedono $x$ in $L^M_{i-1}$ sono quelli di $BB$ e quelli di $BA$, mentre gli elementi che precedono $x$ in $L^F_{i-1}$ sono quelli di $BB$ e quelli di $AB$. Le posizioni di $x$ nelle due liste sono quindi:
+\begin{equation}\label{eq:mtf-posizioni}
+r_{L^M_{i-1}}(x) = |BB| + |BA| + 1, \qquad r_{L^F_{i-1}}(x) = |BB| + |AB| + 1.
+\end{equation}
+Nell'esempio, infatti, $x$ si trova in posizione $7 = 3 + 3 + 1$ nella lista di MTF e in posizione $6 = 3 + 2 + 1$ in quella di FORSEE. Per alleggerire la notazione, nel seguito scriviamo $r_M = r_{L^M_{i-1}}(x)$ e $r_F = r_{L^F_{i-1}}(x)$, e quindi $c^M_i = 2r_M - 1$ e $c^F_i = r_F + s^F_i$.
+
+\subsection{Come varia il numero di inversioni}\label{sec:mtf-variazione}
+Vogliamo capire di quanto cambia il numero di inversioni tra le due liste durante l'$i$-esima operazione, ovvero la quantità
+\[
+I(L^M_i, L^F_i) - I(L^M_{i-1}, L^F_{i-1}),
+\]
+che sarà legata alla differenza di potenziale. Per calcolarla immaginiamo che MTF e FORSEE non agiscano insieme, ma uno dopo l'altro: prima MTF sposta $x$ in testa mentre la lista di FORSEE resta ferma, poi FORSEE fa i suoi scambi. Le liste finali sono le stesse, quindi si tratta soltanto di un modo comodo di fare i conti.
+
+\paragraph{Lo spostamento di MTF.}
+Calcoliamo prima la differenza $I(L^M_i, L^F_{i-1}) - I(L^M_{i-1}, L^F_{i-1})$. Nel passaggio da $L^M_{i-1}$ a $L^M_i$, l'elemento $x$ scavalca tutti gli elementi che lo precedono, mentre l'ordine relativo di tutte le altre coppie non cambia. Le uniche coppie che cambiano il loro status di inversione rispetto a $L^F_{i-1}$ sono quindi tutte e sole quelle della forma $\{x, y\}$, con $y \in BB \cup BA$. In particolare:
+\begin{itemize}
+    \item \textbf{Per $y \in BB$}: prima $y$ precedeva $x$ in entrambe le liste, dopo $x$ precede $y$ in $L^M_i$. La coppia passa da non inversione a inversione.
+    \item \textbf{Per $y \in BA$}: prima le due liste erano in disaccordo, dopo $x$ precede $y$ in entrambe. La coppia passa da inversione a non inversione.
+\end{itemize}
+Ogni elemento di $BB$ aggiunge quindi un'inversione e ogni elemento di $BA$ ne toglie una:
+\begin{equation}\label{eq:mtf-spostamento}
+I(L^M_i, L^F_{i-1}) - I(L^M_{i-1}, L^F_{i-1}) = |BB| - |BA|.
+\end{equation}
+Nell'esempio di figura~\ref{fig:mtf-insiemi} si ha $|BB| - |BA| = 3 - 3 = 0$, e infatti le inversioni restano $27$ anche dopo lo spostamento di $x$.
+
+\paragraph{Gli scambi di FORSEE.}
+FORSEE effettua $s^F_i$ scambi adiacenti. Per quanto visto con il lemma~\ref{lem:inversioni}, ogni scambio aumenta o diminuisce di un'unità il numero di inversioni rispetto a $L^M_i$. Nel caso peggiore li aumenta tutti, e quindi:
+\[
+I(L^M_i, L^F_i) - I(L^M_i, L^F_{i-1}) \le s^F_i.
+\]
+
+Sommando le due variazioni si ottiene la maggiorazione della variazione complessiva del numero di inversioni:
+\begin{equation}\label{eq:mtf-delta}
+I(L^M_i, L^F_i) - I(L^M_{i-1}, L^F_{i-1}) \le |BB| - |BA| + s^F_i.
+\end{equation}
+
+\subsection{Un primo tentativo di potenziale}\label{sec:mtf-psi}
+La scelta più naturale è usare direttamente il numero di inversioni come potenziale:
+\[
+\Psi_i = I(L^M_i, L^F_i).
+\]
+Il costo ammortizzato dell'$i$-esima operazione di MTF è allora:
+\[
+\begin{aligned}
+\hat{c}^M_i &= c^M_i + \Psi_i - \Psi_{i-1} \\
+&\le 2r_M - 1 + |BB| - |BA| + s^F_i && \text{variazione delle inversioni} \\
+&= 2r_M - 1 + |BB| - (r_M - |BB| - 1) + s^F_i && \text{perché } |BA| = r_M - |BB| - 1 \\
+&= r_M + 2|BB| + s^F_i,
+\end{aligned}
+\]
+dove la disuguaglianza viene dalla~\eqref{eq:mtf-delta} e la sostituzione di $|BA|$ dalla~\eqref{eq:mtf-posizioni}. La parte $2|BB| + s^F_i$ non dà problemi: è minore di $2(|BB| + |AB| + 1 + s^F_i) = 2c^F_i$. Il problema è il termine $r_M$, ovvero la posizione di $x$ nella lista di MTF, che non dipende in alcun modo dal costo di FORSEE. Se ad esempio $x$ è in testa alla lista di FORSEE e in fondo a quella di MTF, il costo ammortizzato può arrivare a $n$ mentre $c^F_i$ vale $1$, e nessuna costante $\alpha$ garantisce $\hat{c}^M_i \le \alpha\, c^F_i$.
+
+Il motivo è che MTF paga $2$ per ogni elemento che precede $x$: $1$ per scavalcarlo durante la ricerca e $1$ per lo scambio che porta $x$ in testa. Ogni elemento di $BA$ elimina un'inversione, e quindi fa scendere $\Psi$ di $1$, ma in questo modo ripaga soltanto metà di quei $2$.
+
+\subsection{Il potenziale giusto}\label{sec:mtf-phi}
+Introduciamo allora un fattore $2$ nel potenziale, in modo che ogni inversione valga quanto quello che costa a MTF:
+\[
+\Phi_i = 2\, I(L^M_i, L^F_i).
+\]
+Poiché MTF e FORSEE partono dalla stessa lista si ha $\Phi_0 = 2\, I(L, L) = 0$, e poiché il numero di inversioni non è mai negativo si ha $\Phi_i \ge 0 = \Phi_0$ per ogni $i$. Il costo ammortizzato diventa:
+\[
+\begin{aligned}
+\hat{c}^M_i &= c^M_i + \Phi_i - \Phi_{i-1} \\
+&= 2r_M - 1 + 2\big(I(L^M_i, L^F_i) - I(L^M_{i-1}, L^F_{i-1})\big) \\
+&\le 2r_M - 1 + 2\big(|BB| - |BA| + s^F_i\big) && \text{variazione delle inversioni} \\
+&= 2r_M - 1 + 2|BB| - 2(r_M - |BB| - 1) + 2s^F_i && \text{perché } |BA| = r_M - |BB| - 1 \\
+&= 4|BB| + 1 + 2s^F_i \\
+&< (4|BB| + 1 + 2s^F_i) + (4|AB| + 3 + 2s^F_i) && \text{aggiungendo una quantità positiva} \\
+&= 4\big(|BB| + |AB| + 1 + s^F_i\big) \\
+&= 4\big(r_F + s^F_i\big) = 4c^F_i && \text{perché } r_F = |BB| + |AB| + 1,
+\end{aligned}
+\]
+dove abbiamo usato di nuovo la~\eqref{eq:mtf-delta} e la~\eqref{eq:mtf-posizioni}. Questa volta il termine $2r_M$ del costo reale si cancella con il $-2r_M$ che viene dal potenziale: il fattore $2$ è esattamente quello che serve. Il penultimo passaggio aggiunge soltanto i termini che mancano per ricostruire il costo di FORSEE.
+
+\paragraph{Dimostrazione del teorema~\ref{thm:mtf}.}
+Ricordando la somma telescopica del metodo del potenziale, e poiché $\Phi_m \ge 0 = \Phi_0$, si ha:
+\[
+C_{\mathrm{MTF}}(\sigma) = \sum_{i=1}^{m} c^M_i = \sum_{i=1}^{m} \hat{c}^M_i - (\Phi_m - \Phi_0) \le \sum_{i=1}^{m} \hat{c}^M_i < 4 \sum_{i=1}^{m} c^F_i = 4\, C_{\mathrm{OPT}}(\sigma).
+\]
+Nel modello uniforme MTF è quindi 4-competitivo, con costante additiva $b = 0$. \hfill $\square$
+
+\begin{osservazione}[Non serve sapere cosa fa FORSEE]
+La dimostrazione non usa mai il fatto che FORSEE sia ottimo, né che conosca il futuro: usa soltanto il fatto che segue lo stesso modello di costo. Il teorema vale quindi rispetto a qualsiasi algoritmo, online o offline, che parta dalla stessa lista, e in particolare rispetto all'ottimo. È per questo che non ci è mai servito sapere quali scambi fa FORSEE.
+\end{osservazione}
+
+\begin{osservazione}[La garanzia è ammortizzata]
+È il costo ammortizzato a essere minore di $4c^F_i$, non il costo reale. In un singolo passo MTF può pagare molto più di $4$ volte FORSEE, ad esempio quando $x$ è in testa alla lista di FORSEE e in fondo a quella di MTF. In quel caso, però, le due liste sono molto diverse, e l'accesso consuma il potenziale accumulato nei passi precedenti.
+\end{osservazione}
+
+\subsection{Il fattore 4 non si può migliorare}\label{sec:mtf-ottimalita}
+Il teorema~\ref{thm:mtf} garantisce che MTF non paga mai più di $4$ volte l'ottimo. Ci chiediamo se l'analisi sia troppo pessimistica, ovvero se si possa dimostrare un fattore più piccolo. La risposta è no, e lo vediamo con una sequenza in cui MTF si comporta nel modo peggiore possibile.
+
+Consideriamo la lista iniziale $L = (1, 2, \dots, n)$ e la sequenza di richieste
+\[
+\sigma = (n, n-1, \dots, 1)^k,
+\]
+ovvero la sequenza $n, n-1, \dots, 1$ ripetuta $k$ volte. MTF porta $n$ in testa, ottenendo $(n, 1, \dots, n-1)$, e la richiesta successiva è a $n-1$, che si trova in ultima posizione. Proseguendo così, ogni elemento richiesto si trova sempre in ultima posizione nella lista mantenuta da MTF, e ogni accesso costa $2n - 1$. Pertanto:
+\[
+C_{\mathrm{MTF}}(\sigma) = kn(2n - 1).
+\]
+L'algoritmo che mantiene invariata la lista iniziale, senza mai fare scambi, paga invece $j$ per la richiesta all'elemento $j$, e quindi:
+\[
+C_{\mathrm{stat}}(\sigma) = k \sum_{j=1}^{n} j = k\, \frac{n(n+1)}{2}.
+\]
+Poiché l'ottimo non può costare più di questo algoritmo, ovvero $C_{\mathrm{OPT}}(\sigma) \le C_{\mathrm{stat}}(\sigma)$, otteniamo:
+\[
+4 > \frac{C_{\mathrm{MTF}}(\sigma)}{C_{\mathrm{FORSEE}}(\sigma)} \ge \frac{C_{\mathrm{MTF}}(\sigma)}{C_{\mathrm{stat}}(\sigma)} = \frac{kn(2n-1)}{kn(n+1)/2} = 4 - \frac{6}{n+1} \xrightarrow[n \to \infty]{} 4.
+\]
+Con $n = 5$ il rapporto è già almeno $3$, con $n = 11$ almeno $3{,}5$. Il rapporto competitivo di MTF nel modello uniforme è quindi \textbf{esattamente $4$}.
+
+Il ruolo di $k$ è rendere inutile la costante additiva della definizione~\ref{def:competitivo}. Fissato un qualsiasi $\alpha < 4$, scegliamo $n$ abbastanza grande da avere $4 - 6/(n+1) > \alpha$. Facendo crescere $k$, il costo dell'ottimo cresce quanto vogliamo, e nessuna costante $b$ può compensare la differenza tra $C_{\mathrm{MTF}}(\sigma)$ e $\alpha\, C_{\mathrm{OPT}}(\sigma)$.
+
+\section{Il calcolo dell'ottimo offline}\label{sec:mtf-opt}
+Abbiamo visto che MTF è 4-competitivo, ovvero $C_{\mathrm{MTF}}(\sigma) \le 4 \cdot C_{\mathrm{FORSEE}}(\sigma)$ per ogni $\sigma$. Viene naturale chiedersi se esista davvero un algoritmo ottimo offline, capace di risolvere in modo perfetto il problema di $m$ accessi a una lista di $n$ elementi, minimizzando il costo totale in termini di accessi e scambi.
+
+La risposta è ovviamente sì. Ad esempio, possiamo esaminare esaustivamente tutte le possibili sequenze di configurazioni della lista. La configurazione iniziale è fissata, e non serve effettuare scambi dopo l'ultima richiesta, quindi una ricerca esaustiva può richiedere di esaminare $(n!)^{m-1}$ sequenze di configurazioni. Questo approccio è impraticabile già per valori moderati di $n$ e $m$.
+
+\subsection{Programmazione dinamica}\label{sec:mtf-dp}
+Possiamo calcolare FORSEE in modo più furbo, con la programmazione dinamica sulle $n!$ possibili permutazioni della lista. Indichiamo con $D_i(\pi)$ il costo minimo per servire le prime $i$ richieste, terminando con la configurazione $\pi$, e con $d(\pi, \pi')$ il numero minimo di scambi adiacenti necessari per trasformare $\pi$ in $\pi'$. Nel modello uniforme vale la ricorrenza:
+\[
+D_i(\pi') = \min_{\pi} \big\{ D_{i-1}(\pi) + r_\pi(x_i) + d(\pi, \pi') \big\},
+\]
+dove $r_\pi(x_i)$ è la posizione dell'elemento $x_i$ nella lista $\pi$. In altre parole, per terminare l'$i$-esima richiesta nella configurazione $\pi'$ si parte da una configurazione $\pi$, raggiunta in modo ottimo dopo $i-1$ richieste. Si paga poi l'accesso a $x_i$ in $\pi$, e infine gli scambi per passare da $\pi$ a $\pi'$. Inizialmente $D_0(L) = 0$ e $D_0(\pi) = +\infty$ per ogni $\pi \ne L$, e il costo ottimo è:
+\[
+C_{\mathrm{OPT}}(\sigma) = \min_{\pi} D_m(\pi).
+\]
+Per il lemma~\ref{lem:inversioni}, la distanza $d(\pi, \pi')$ è proprio il numero di inversioni $I(\pi, \pi')$.
+
+\paragraph{Complessità.}
+La programmazione dinamica considera le $n!$ possibili configurazioni della lista. Per ciascuno degli $m$ accessi, ogni configurazione finale può essere raggiunta da una qualunque delle $n!$ configurazioni precedenti, e la distanza tra due permutazioni si calcola in tempo $O(n \log n)$ con il Merge Sort. Un'implementazione diretta ha quindi complessità:
+\[
+T(n, m) = O\big(m\, (n!)^2\, n \log n\big).
+\]
+
+\begin{osservazione}[Tempo di calcolo e costo della strategia]
+Questa complessità, che si riferisce a un'implementazione diretta senza precalcolo delle distanze, misura il tempo necessario per \emph{calcolare} la strategia offline ottima. Non va confusa con il costo degli accessi e degli scambi effettuati dalla strategia stessa, che è $C_{\mathrm{OPT}}(\sigma)$.
+\end{osservazione}
+
+\subsection{Algoritmi esatti e NP-hardness}\label{sec:mtf-np}
+Il calcolo esatto di FORSEE è stato studiato a lungo. Manasse, McGeoch e Sleator (1988) propongono un approccio generale di programmazione dinamica per i problemi online, applicabile anche al problema List Update. Reingold e Westbrook (1996) ottengono un algoritmo esatto per il calcolo del costo ottimo con
+\[
+T(n, m) = O\big(m\, 2^n (n-1)!\big), \qquad S(n) = O(n!),
+\]
+dove $T$ è il tempo e $S$ lo spazio. Il miglioramento deriva da una caratterizzazione delle riorganizzazioni che è sufficiente considerare nella ricerca di una strategia ottima.
+
+Ci si può chiedere se esista un algoritmo polinomiale. Ambühl (2000) ha dimostrato che il calcolo dell'ottimo offline nel modello standard è \textbf{NP-hard}. Il risultato si estende anche al nostro modello, grazie a due osservazioni:
+\begin{itemize}
+    \item \textbf{Modello P1}: Reingold e Westbrook dimostrano che il costo ottimo offline nel modello standard coincide con quello del modello uniforme P1, nel quale sono ammessi soltanto scambi a pagamento, anche prima degli accessi.
+    \item \textbf{Scambi solo dopo gli accessi}: il nostro modello consente scambi soltanto dopo gli accessi, ma basta premettere alla sequenza una richiesta all'elemento inizialmente in testa, dopo la quale si possono effettuare gli scambi desiderati.
+\end{itemize}
+Anche nel nostro modello il calcolo esatto di FORSEE è quindi NP-hard, e a meno che $\mathrm{P} = \mathrm{NP}$ non esiste un algoritmo polinomiale generale. La NP-hardness, tuttavia, non implica un limite inferiore esponenziale o fattoriale: dice soltanto che un algoritmo polinomiale risolverebbe in tempo polinomiale anche tutti i problemi in NP.
+
+Ne consegue che l'ottimo offline è difficile da calcolare anche conoscendo l'intera sequenza. MTF, invece, non conosce il futuro e decide in tempo proporzionale alla posizione dell'elemento richiesto, ma paga al più quattro volte l'ottimo.
+
+\section*{Riferimenti}
+Il materiale visto in questo capitolo comprende:
+\begin{itemize}
+    \item Materiale visto a lezione.
+    \item Capitolo 27 (\emph{Online Algorithms}, sezioni 27.1--27.3) del libro T.\,H.~Cormen, C.\,E.~Leiserson, R.\,L.~Rivest, C.~Stein, \emph{Introduction to Algorithms}, quarta edizione.
+    \item D.\,D.~Sleator, R.\,E.~Tarjan, \emph{Amortized Efficiency of List Update and Paging Rules}, Communications of the ACM, 28(2), 1985.
+    \item M.\,S.~Manasse, L.\,A.~McGeoch, D.\,D.~Sleator, \emph{Competitive Algorithms for On-Line Problems}, STOC 1988, pp.~322--333.
+    \item N.~Reingold, J.~Westbrook, \emph{Off-Line Algorithms for the List Update Problem}, Information Processing Letters, 60(2), 1996, pp.~75--80.
+    \item C.~Ambühl, \emph{Offline List Update is NP-Hard}, ESA 2000, pp.~42--51.
+\end{itemize}
