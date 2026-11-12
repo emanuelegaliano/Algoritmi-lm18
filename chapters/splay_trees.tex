@@ -1120,8 +1120,1136 @@ Ripetendo lo stesso calcolo con le sole rotazioni singole, ogni rotazione si com
 e il termine $d$ può essere $\Theta(N)$, come nella sequenza della sezione~\ref{sec:controesempio}. Nello zig-zig e nello zig-zag, invece, il $-2$ del lemma tecnico compensa le due rotazioni, e ogni passo non lascia alcuna costante additiva.
 \end{osservazione}
 
+\section{Esercizi}\label{sec:splay-esercizi}
+Gli esercizi sugli splay tree chiedono di solito di descrivere le tre operazioni elementari, e poi di eseguire una sequenza di operazioni su un albero dato, mostrando come cambia l'albero a ogni passo.
+
+\begin{esercizio}[\Search, \Insert{} e \Delete{} su un albero completo]\label{es:splay-completo}
+Si descrivano le operazioni di zig-zag, zig-zig e zig in uno splay tree di tipo bottom-up. Quindi si eseguano nell'ordine dato le seguenti operazioni su uno splay tree la cui configurazione iniziale è quella di un albero binario completo contenente le $9$ chiavi $\{3i : 1 \le i \le 9\}$:
+\begin{itemize}
+    \item $\Search(9)$, $\Search(21)$, $\Search(15)$.
+    \item $\Insert(20)$.
+    \item $\Delete(12)$.
+    \item $\Search(27)$.
+\end{itemize}
+Si ricorda che un albero binario si dice \textbf{completo} quando tutti i suoi livelli, con al più l'eccezione dell'ultimo, sono completi, e tutti i nodi dell'ultimo livello si trovano il più a sinistra possibile.
+\end{esercizio}
+
+\subsubsection*{Soluzione}
+
+\paragraph{Zig, zig-zag e zig-zig.}
+Le tre operazioni sono quelle della sezione~\ref{sec:zig}. Per ciascuna basta riportare quando si applica, le rotazioni nell'ordine in cui vengono eseguite e la figura prima e dopo il passo:
+\begin{itemize}
+    \item \textbf{Zig}: il padre $p$ di $x$ è la radice, quindi si esegue una sola rotazione tra $x$ e $p$. Si presenta al più una volta, all'ultimo passo dello Splay.
+    \item \textbf{Zig-zag}: il cammino dal nonno $g$ a $x$ cambia direzione. Si ruota $x$ prima con $p$ e poi con $g$, e alla fine $x$ prende il posto di $g$, con $p$ e $g$ come figli.
+    \item \textbf{Zig-zig}: il cammino da $g$ a $x$ procede sempre nella stessa direzione. Si ruota prima $p$ con $g$, e solo dopo $x$ con $p$, quindi la catena $g, p, x$ si ribalta in $x, p, g$.
+\end{itemize}
+Il nonno $g$ non è necessariamente la radice. Uno zig-zag o uno zig-zig fanno salire $x$ di due livelli, e lo Splay prosegue finché $x$ non diventa la radice.
+
+\paragraph{L'albero di partenza.}
+Prima di eseguire le operazioni bisogna costruire l'albero completo con le chiavi $3, 6, \dots, 27$. Non serve alcuna rotazione: l'albero si costruisce direttamente, in due passi.
+\begin{enumerate}
+    \item \textbf{La forma}: in un albero completo il livello $k$ contiene $2^k$ nodi, tranne eventualmente l'ultimo. Con $9$ nodi i primi tre livelli ne contengono $1 + 2 + 4 = 7$, e i $2$ rimanenti vanno nell'ultimo livello il più a sinistra possibile, ovvero sono i due figli del primo nodo del livello $2$.
+    \item \textbf{Le chiavi}: in un albero binario di ricerca la visita simmetrica (sinistra, radice, destra) incontra le chiavi in ordine crescente. Quindi si visitano i nodi in ordine simmetrico e si assegnano le chiavi dalla più piccola alla più grande.
+\end{enumerate}
+In figura~\ref{fig:es-splay-costruzione}(a) ogni nodo riporta la sua posizione $i$ nella visita simmetrica, e in (b) gli viene assegnata la chiave $3i$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, splaytree]
+\node[nd] (a1) at (0.00,-1.86) {1};
+\node[nd] (a2) at (0.40,-1.24) {2};
+\node[nd] (a3) at (0.80,-1.86) {3};
+\node[nd] (a4) at (1.20,-0.62) {4};
+\node[nd] (a5) at (1.60,-1.24) {5};
+\node[nd] (a6) at (2.00,0.00) {6};
+\node[nd] (a7) at (2.40,-1.24) {7};
+\node[nd] (a8) at (2.80,-0.62) {8};
+\node[nd] (a9) at (3.20,-1.24) {9};
+\draw (a6) -- (a4);
+\draw (a4) -- (a2);
+\draw (a2) -- (a1);
+\draw (a2) -- (a3);
+\draw (a4) -- (a5);
+\draw (a6) -- (a8);
+\draw (a8) -- (a7);
+\draw (a8) -- (a9);
+\node[lab] at (1.60,-2.76) {(a)};
+\node[nd] (b3) at (4.90,-1.86) {3};
+\node[nd] (b6) at (5.30,-1.24) {6};
+\node[nd] (b9) at (5.70,-1.86) {9};
+\node[nd] (b12) at (6.10,-0.62) {12};
+\node[nd] (b15) at (6.50,-1.24) {15};
+\node[nd] (b18) at (6.90,0.00) {18};
+\node[nd] (b21) at (7.30,-1.24) {21};
+\node[nd] (b24) at (7.70,-0.62) {24};
+\node[nd] (b27) at (8.10,-1.24) {27};
+\draw (b18) -- (b12);
+\draw (b12) -- (b6);
+\draw (b6) -- (b3);
+\draw (b6) -- (b9);
+\draw (b12) -- (b15);
+\draw (b18) -- (b24);
+\draw (b24) -- (b21);
+\draw (b24) -- (b27);
+\node[lab] at (6.50,-2.76) {(b)};
+\node[nd] (c3) at (9.80,-1.24) {3};
+\node[nd] (c6) at (10.20,-0.62) {6};
+\node[nd] (c9) at (10.60,-1.24) {9};
+\node[nd] (c12) at (11.00,-1.86) {12};
+\node[nd] (c15) at (11.40,0.00) {15};
+\node[nd] (c18) at (11.80,-1.24) {18};
+\node[nd] (c21) at (12.20,-0.62) {21};
+\node[nd] (c24) at (12.60,-1.24) {24};
+\node[nd] (c27) at (13.00,-1.86) {27};
+\draw (c15) -- (c6);
+\draw (c6) -- (c3);
+\draw (c6) -- (c9);
+\draw (c9) -- (c12);
+\draw (c15) -- (c21);
+\draw (c21) -- (c18);
+\draw (c21) -- (c24);
+\draw (c24) -- (c27);
+\node[lab] at (11.40,-2.76) {(c)};
+\end{tikzpicture}
+\caption{Costruzione dell'albero completo con le chiavi $\{3i : 1 \le i \le 9\}$. In (a) la forma dell'albero completo con $9$ nodi, in cui ogni nodo riporta la propria posizione $i$ nella visita simmetrica. In (b) lo stesso albero, con la chiave $3i$ al posto di $i$. In (c) l'albero che si ottiene mettendo la mediana alla radice: è bilanciato, ma non è completo, perché i nodi $12$ e $27$ dell'ultimo livello non sono il più a sinistra possibile.}
+\label{fig:es-splay-costruzione}
+\end{figure}
+
+\begin{osservazione}[Completo non vuol dire con la mediana alla radice]
+La radice è la sesta chiave, ovvero $18$, e non la mediana $15$: il sottoalbero sinistro contiene $5$ nodi e quello destro soltanto $3$. Mettere la mediana alla radice e dividere ricorsivamente le chiavi produce un albero bilanciato e della stessa altezza (figura~\ref{fig:es-splay-costruzione}(c)), ma non completo. Partendo da quell'albero cambiano le rotazioni, e con loro tutti gli alberi intermedi.
+\end{osservazione}
+
+\paragraph{$\Search(9)$.}
+La ricerca di $9$ percorre il cammino $18, 12, 6, 9$. Il nodo $9$ è figlio destro di $6$, che a sua volta è figlio sinistro di $12$: il cammino cambia direzione, quindi il primo passo è uno zig-zag, che porta $9$ al posto di $12$. A questo punto $9$ è figlio sinistro della radice $18$, e basta uno zig (figura~\ref{fig:es-splay-search9}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, splaytree]
+\node[nd] (a3) at (0.00,-1.86) {3};
+\node[nd] (a6) at (0.40,-1.24) {6};
+\node[hl] (a9) at (0.80,-1.86) {9};
+\node[nd] (a12) at (1.20,-0.62) {12};
+\node[nd] (a15) at (1.60,-1.24) {15};
+\node[nd] (a18) at (2.00,0.00) {18};
+\node[nd] (a21) at (2.40,-1.24) {21};
+\node[nd] (a24) at (2.80,-0.62) {24};
+\node[nd] (a27) at (3.20,-1.24) {27};
+\draw[path] (a18) -- (a12);
+\draw[path] (a12) -- (a6);
+\draw (a6) -- (a3);
+\draw[path] (a6) -- (a9);
+\draw (a12) -- (a15);
+\draw (a18) -- (a24);
+\draw (a24) -- (a21);
+\draw (a24) -- (a27);
+\node[lab] at (1.60,-2.76) {(a)};
+\draw[->, thick] (3.62,-1.10) -- node[above, font=\scriptsize] {zig-zag} (4.48,-1.10);
+\node[nd] (b3) at (4.90,-1.86) {3};
+\node[nd] (b6) at (5.30,-1.24) {6};
+\node[hl] (b9) at (5.70,-0.62) {9};
+\node[nd] (b12) at (6.10,-1.24) {12};
+\node[nd] (b15) at (6.50,-1.86) {15};
+\node[nd] (b18) at (6.90,0.00) {18};
+\node[nd] (b21) at (7.30,-1.24) {21};
+\node[nd] (b24) at (7.70,-0.62) {24};
+\node[nd] (b27) at (8.10,-1.24) {27};
+\draw (b18) -- (b9);
+\draw (b9) -- (b6);
+\draw (b6) -- (b3);
+\draw (b9) -- (b12);
+\draw (b12) -- (b15);
+\draw (b18) -- (b24);
+\draw (b24) -- (b21);
+\draw (b24) -- (b27);
+\node[lab] at (6.50,-2.76) {(b)};
+\draw[->, thick] (8.52,-1.10) -- node[above, font=\scriptsize] {zig} (9.38,-1.10);
+\node[nd] (c3) at (9.80,-1.24) {3};
+\node[nd] (c6) at (10.20,-0.62) {6};
+\node[hl] (c9) at (10.60,0.00) {9};
+\node[nd] (c12) at (11.00,-1.24) {12};
+\node[nd] (c15) at (11.40,-1.86) {15};
+\node[nd] (c18) at (11.80,-0.62) {18};
+\node[nd] (c21) at (12.20,-1.86) {21};
+\node[nd] (c24) at (12.60,-1.24) {24};
+\node[nd] (c27) at (13.00,-1.86) {27};
+\draw (c9) -- (c6);
+\draw (c6) -- (c3);
+\draw (c9) -- (c18);
+\draw (c18) -- (c12);
+\draw (c12) -- (c15);
+\draw (c18) -- (c24);
+\draw (c24) -- (c21);
+\draw (c24) -- (c27);
+\node[lab] at (11.40,-2.76) {(c)};
+\end{tikzpicture}
+\caption{$\Search(9)$. Nell'albero di partenza (a) è evidenziato il cammino della ricerca, $18, 12, 6, 9$. Lo zig-zag su $9$, $6$ e $12$ porta $9$ al posto di $12$ (b), e lo zig con la radice $18$ lo porta in cima (c).}
+\label{fig:es-splay-search9}
+\end{figure}
+
+\paragraph{$\Search(21)$.}
+Il cammino è $9, 18, 24, 21$. Il nodo $21$ è figlio sinistro di $24$, che è figlio destro di $18$: anche qui il primo passo è uno zig-zag, che porta $21$ al posto di $18$, seguito da uno zig con la radice $9$ (figura~\ref{fig:es-splay-search21}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, splaytree]
+\node[nd] (a3) at (0.00,-1.24) {3};
+\node[nd] (a6) at (0.40,-0.62) {6};
+\node[nd] (a9) at (0.80,0.00) {9};
+\node[nd] (a12) at (1.20,-1.24) {12};
+\node[nd] (a15) at (1.60,-1.86) {15};
+\node[nd] (a18) at (2.00,-0.62) {18};
+\node[hl] (a21) at (2.40,-1.86) {21};
+\node[nd] (a24) at (2.80,-1.24) {24};
+\node[nd] (a27) at (3.20,-1.86) {27};
+\draw (a9) -- (a6);
+\draw (a6) -- (a3);
+\draw[path] (a9) -- (a18);
+\draw (a18) -- (a12);
+\draw (a12) -- (a15);
+\draw[path] (a18) -- (a24);
+\draw[path] (a24) -- (a21);
+\draw (a24) -- (a27);
+\node[lab] at (1.60,-3.38) {(a)};
+\draw[->, thick] (3.62,-1.10) -- node[above, font=\scriptsize] {zig-zag} (4.48,-1.10);
+\node[nd] (b3) at (4.90,-1.24) {3};
+\node[nd] (b6) at (5.30,-0.62) {6};
+\node[nd] (b9) at (5.70,0.00) {9};
+\node[nd] (b12) at (6.10,-1.86) {12};
+\node[nd] (b15) at (6.50,-2.48) {15};
+\node[nd] (b18) at (6.90,-1.24) {18};
+\node[hl] (b21) at (7.30,-0.62) {21};
+\node[nd] (b24) at (7.70,-1.24) {24};
+\node[nd] (b27) at (8.10,-1.86) {27};
+\draw (b9) -- (b6);
+\draw (b6) -- (b3);
+\draw (b9) -- (b21);
+\draw (b21) -- (b18);
+\draw (b18) -- (b12);
+\draw (b12) -- (b15);
+\draw (b21) -- (b24);
+\draw (b24) -- (b27);
+\node[lab] at (6.50,-3.38) {(b)};
+\draw[->, thick] (8.52,-1.10) -- node[above, font=\scriptsize] {zig} (9.38,-1.10);
+\node[nd] (c3) at (9.80,-1.86) {3};
+\node[nd] (c6) at (10.20,-1.24) {6};
+\node[nd] (c9) at (10.60,-0.62) {9};
+\node[nd] (c12) at (11.00,-1.86) {12};
+\node[nd] (c15) at (11.40,-2.48) {15};
+\node[nd] (c18) at (11.80,-1.24) {18};
+\node[hl] (c21) at (12.20,0.00) {21};
+\node[nd] (c24) at (12.60,-0.62) {24};
+\node[nd] (c27) at (13.00,-1.24) {27};
+\draw (c21) -- (c9);
+\draw (c9) -- (c6);
+\draw (c6) -- (c3);
+\draw (c9) -- (c18);
+\draw (c18) -- (c12);
+\draw (c12) -- (c15);
+\draw (c21) -- (c24);
+\draw (c24) -- (c27);
+\node[lab] at (11.40,-3.38) {(c)};
+\end{tikzpicture}
+\caption{$\Search(21)$. Il cammino della ricerca è $9, 18, 24, 21$ (a). Lo zig-zag su $21$, $24$ e $18$ porta $21$ al posto di $18$ (b), e lo zig con la radice $9$ lo porta in cima (c).}
+\label{fig:es-splay-search21}
+\end{figure}
+
+\paragraph{$\Search(15)$.}
+Il cammino è $21, 9, 18, 12, 15$, quindi $15$ si trova a profondità $4$ e servono due passi doppi. Il primo è uno zig-zag su $15$, $12$ e $18$, perché $15$ è figlio destro di $12$ e $12$ è figlio sinistro di $18$. Dopo questo passo $15$ è figlio destro di $9$, che è figlio sinistro della radice $21$: il secondo passo è quindi un altro zig-zag, che porta $15$ alla radice (figura~\ref{fig:es-splay-search15}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, splaytree]
+\node[nd] (a3) at (0.00,-1.86) {3};
+\node[nd] (a6) at (0.40,-1.24) {6};
+\node[nd] (a9) at (0.80,-0.62) {9};
+\node[nd] (a12) at (1.20,-1.86) {12};
+\node[hl] (a15) at (1.60,-2.48) {15};
+\node[nd] (a18) at (2.00,-1.24) {18};
+\node[nd] (a21) at (2.40,0.00) {21};
+\node[nd] (a24) at (2.80,-0.62) {24};
+\node[nd] (a27) at (3.20,-1.24) {27};
+\draw[path] (a21) -- (a9);
+\draw (a9) -- (a6);
+\draw (a6) -- (a3);
+\draw[path] (a9) -- (a18);
+\draw[path] (a18) -- (a12);
+\draw[path] (a12) -- (a15);
+\draw (a21) -- (a24);
+\draw (a24) -- (a27);
+\node[lab] at (1.60,-3.38) {(a)};
+\draw[->, thick] (3.62,-1.10) -- node[above, font=\scriptsize] {zig-zag} (4.48,-1.10);
+\node[nd] (b3) at (4.90,-1.86) {3};
+\node[nd] (b6) at (5.30,-1.24) {6};
+\node[nd] (b9) at (5.70,-0.62) {9};
+\node[nd] (b12) at (6.10,-1.86) {12};
+\node[hl] (b15) at (6.50,-1.24) {15};
+\node[nd] (b18) at (6.90,-1.86) {18};
+\node[nd] (b21) at (7.30,0.00) {21};
+\node[nd] (b24) at (7.70,-0.62) {24};
+\node[nd] (b27) at (8.10,-1.24) {27};
+\draw (b21) -- (b9);
+\draw (b9) -- (b6);
+\draw (b6) -- (b3);
+\draw (b9) -- (b15);
+\draw (b15) -- (b12);
+\draw (b15) -- (b18);
+\draw (b21) -- (b24);
+\draw (b24) -- (b27);
+\node[lab] at (6.50,-3.38) {(b)};
+\draw[->, thick] (8.52,-1.10) -- node[above, font=\scriptsize] {zig-zag} (9.38,-1.10);
+\node[nd] (c3) at (9.80,-1.86) {3};
+\node[nd] (c6) at (10.20,-1.24) {6};
+\node[nd] (c9) at (10.60,-0.62) {9};
+\node[nd] (c12) at (11.00,-1.24) {12};
+\node[hl] (c15) at (11.40,0.00) {15};
+\node[nd] (c18) at (11.80,-1.24) {18};
+\node[nd] (c21) at (12.20,-0.62) {21};
+\node[nd] (c24) at (12.60,-1.24) {24};
+\node[nd] (c27) at (13.00,-1.86) {27};
+\draw (c15) -- (c9);
+\draw (c9) -- (c6);
+\draw (c6) -- (c3);
+\draw (c9) -- (c12);
+\draw (c15) -- (c21);
+\draw (c21) -- (c18);
+\draw (c21) -- (c24);
+\draw (c24) -- (c27);
+\node[lab] at (11.40,-3.38) {(c)};
+\end{tikzpicture}
+\caption{$\Search(15)$. Il cammino della ricerca è $21, 9, 18, 12, 15$ (a). Il primo zig-zag, su $15$, $12$ e $18$, porta $15$ al posto di $18$ (b). Il secondo, su $15$, $9$ e $21$, lo porta alla radice (c).}
+\label{fig:es-splay-search15}
+\end{figure}
+
+\paragraph{$\Insert(20)$.}
+La chiave $20$ non è presente, quindi lo Splay porta alla radice l'ultimo nodo visitato dalla ricerca. La ricerca di $20$ va a destra di $15$, a sinistra di $21$ e arriva a $18$, che non ha figlio destro: si ferma quindi su $18$, ovvero sul predecessore di $20$.
+
+Poiché $18$ è figlio sinistro di $21$ e $21$ è figlio destro della radice $15$, lo Splay consiste in un solo zig-zag. Siccome $20 > 18$, il nuovo nodo diventa il figlio destro di $18$, sopra il sottoalbero di radice $21$, e lo zig finale lo porta alla radice (figura~\ref{fig:es-splay-insert20}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, splaytree]
+\node[nd] (a3) at (1.40,-1.86) {3};
+\node[nd] (a6) at (1.80,-1.24) {6};
+\node[nd] (a9) at (2.20,-0.62) {9};
+\node[nd] (a12) at (2.60,-1.24) {12};
+\node[nd] (a15) at (3.00,0.00) {15};
+\node[hl] (a18) at (3.40,-1.24) {18};
+\node[nd] (a21) at (3.80,-0.62) {21};
+\node[nd] (a24) at (4.20,-1.24) {24};
+\node[nd] (a27) at (4.60,-1.86) {27};
+\draw (a15) -- (a9);
+\draw (a9) -- (a6);
+\draw (a6) -- (a3);
+\draw (a9) -- (a12);
+\draw[path] (a15) -- (a21);
+\draw[path] (a21) -- (a18);
+\draw (a21) -- (a24);
+\draw (a24) -- (a27);
+\node[lab] at (3.00,-3.38) {(a)};
+\draw[->, thick] (5.02,-1.10) -- node[above, font=\scriptsize] {zig-zag} (5.88,-1.10);
+\node[nd] (b3) at (6.30,-2.48) {3};
+\node[nd] (b6) at (6.70,-1.86) {6};
+\node[nd] (b9) at (7.10,-1.24) {9};
+\node[nd] (b12) at (7.50,-1.86) {12};
+\node[nd] (b15) at (7.90,-0.62) {15};
+\node[hl] (b18) at (8.30,0.00) {18};
+\node[nd] (b21) at (8.70,-0.62) {21};
+\node[nd] (b24) at (9.10,-1.24) {24};
+\node[nd] (b27) at (9.50,-1.86) {27};
+\draw (b18) -- (b15);
+\draw (b15) -- (b9);
+\draw (b9) -- (b6);
+\draw (b6) -- (b3);
+\draw (b9) -- (b12);
+\draw (b18) -- (b21);
+\draw (b21) -- (b24);
+\draw (b24) -- (b27);
+\node[lab] at (7.90,-3.38) {(b)};
+\draw[->, thick] (0.00,-5.33) -- node[above, font=\scriptsize] {inserisce $20$} (1.70,-5.33);
+\node[nd] (c3) at (2.00,-6.71) {3};
+\node[nd] (c6) at (2.40,-6.09) {6};
+\node[nd] (c9) at (2.80,-5.47) {9};
+\node[nd] (c12) at (3.20,-6.09) {12};
+\node[nd] (c15) at (3.60,-4.85) {15};
+\node[nd] (c18) at (4.00,-4.23) {18};
+\node[hl] (c20) at (4.40,-4.85) {20};
+\node[nd] (c21) at (4.80,-5.47) {21};
+\node[nd] (c24) at (5.20,-6.09) {24};
+\node[nd] (c27) at (5.60,-6.71) {27};
+\draw (c18) -- (c15);
+\draw (c15) -- (c9);
+\draw (c9) -- (c6);
+\draw (c6) -- (c3);
+\draw (c9) -- (c12);
+\draw (c18) -- (c20);
+\draw (c20) -- (c21);
+\draw (c21) -- (c24);
+\draw (c24) -- (c27);
+\node[lab] at (3.80,-8.23) {(c)};
+\draw[->, thick] (6.02,-5.33) -- node[above, font=\scriptsize] {zig} (6.88,-5.33);
+\node[nd] (d3) at (7.30,-7.33) {3};
+\node[nd] (d6) at (7.70,-6.71) {6};
+\node[nd] (d9) at (8.10,-6.09) {9};
+\node[nd] (d12) at (8.50,-6.71) {12};
+\node[nd] (d15) at (8.90,-5.47) {15};
+\node[nd] (d18) at (9.30,-4.85) {18};
+\node[hl] (d20) at (9.70,-4.23) {20};
+\node[nd] (d21) at (10.10,-4.85) {21};
+\node[nd] (d24) at (10.50,-5.47) {24};
+\node[nd] (d27) at (10.90,-6.09) {27};
+\draw (d20) -- (d18);
+\draw (d18) -- (d15);
+\draw (d15) -- (d9);
+\draw (d9) -- (d6);
+\draw (d6) -- (d3);
+\draw (d9) -- (d12);
+\draw (d20) -- (d21);
+\draw (d21) -- (d24);
+\draw (d24) -- (d27);
+\node[lab] at (9.10,-8.23) {(d)};
+\end{tikzpicture}
+\caption{$\Insert(20)$. La ricerca di $20$ si ferma su $18$, che non ha figlio destro (a). Lo zig-zag su $18$, $21$ e $15$ porta $18$ alla radice (b). Il nuovo nodo $20$ diventa il figlio destro di $18$, sopra il sottoalbero di radice $21$ (c), e lo zig finale lo porta alla radice (d).}
+\label{fig:es-splay-insert20}
+\end{figure}
+
+\paragraph{$\Delete(12)$.}
+La ricerca di $12$ percorre il cammino $20, 18, 15, 9, 12$. Il primo passo è uno zig-zag su $12$, $9$ e $15$, che porta $12$ al posto di $15$. Dopo questo passo $12$ è figlio sinistro di $18$, che è figlio sinistro della radice $20$: il secondo passo è uno zig-zig, in cui si ruota prima $18$ con $20$ e poi $12$ con $18$.
+
+Cancellando la radice $12$ si ottengono $T_1$, di radice $9$, e $T_2$, di radice $18$. Il massimo di $T_1$ è $9$, che è già la radice, quindi $\Splay(12, T_1)$ non esegue rotazioni e $T_2$ viene agganciato come figlio destro di $9$ (figura~\ref{fig:es-splay-delete12}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, splaytree]
+\node[nd] (a3) at (0.00,-3.10) {3};
+\node[nd] (a6) at (0.40,-2.48) {6};
+\node[nd] (a9) at (0.80,-1.86) {9};
+\node[hl] (a12) at (1.20,-2.48) {12};
+\node[nd] (a15) at (1.60,-1.24) {15};
+\node[nd] (a18) at (2.00,-0.62) {18};
+\node[nd] (a20) at (2.40,0.00) {20};
+\node[nd] (a21) at (2.80,-0.62) {21};
+\node[nd] (a24) at (3.20,-1.24) {24};
+\node[nd] (a27) at (3.60,-1.86) {27};
+\draw[path] (a20) -- (a18);
+\draw[path] (a18) -- (a15);
+\draw[path] (a15) -- (a9);
+\draw (a9) -- (a6);
+\draw (a6) -- (a3);
+\draw[path] (a9) -- (a12);
+\draw (a20) -- (a21);
+\draw (a21) -- (a24);
+\draw (a24) -- (a27);
+\node[lab] at (1.80,-4.00) {(a)};
+\draw[->, thick] (4.02,-1.10) -- node[above, font=\scriptsize] {zig-zag} (4.88,-1.10);
+\node[nd] (b3) at (5.30,-3.10) {3};
+\node[nd] (b6) at (5.70,-2.48) {6};
+\node[nd] (b9) at (6.10,-1.86) {9};
+\node[hl] (b12) at (6.50,-1.24) {12};
+\node[nd] (b15) at (6.90,-1.86) {15};
+\node[nd] (b18) at (7.30,-0.62) {18};
+\node[nd] (b20) at (7.70,0.00) {20};
+\node[nd] (b21) at (8.10,-0.62) {21};
+\node[nd] (b24) at (8.50,-1.24) {24};
+\node[nd] (b27) at (8.90,-1.86) {27};
+\draw (b20) -- (b18);
+\draw (b18) -- (b12);
+\draw (b12) -- (b9);
+\draw (b9) -- (b6);
+\draw (b6) -- (b3);
+\draw (b12) -- (b15);
+\draw (b20) -- (b21);
+\draw (b21) -- (b24);
+\draw (b24) -- (b27);
+\node[lab] at (7.10,-4.00) {(b)};
+\draw[->, thick] (9.32,-1.10) -- node[above, font=\scriptsize] {zig-zig} (10.18,-1.10);
+\node[nd] (c3) at (10.60,-1.86) {3};
+\node[nd] (c6) at (11.00,-1.24) {6};
+\node[nd] (c9) at (11.40,-0.62) {9};
+\node[hl] (c12) at (11.80,0.00) {12};
+\node[nd] (c15) at (12.20,-1.24) {15};
+\node[nd] (c18) at (12.60,-0.62) {18};
+\node[nd] (c20) at (13.00,-1.24) {20};
+\node[nd] (c21) at (13.40,-1.86) {21};
+\node[nd] (c24) at (13.80,-2.48) {24};
+\node[nd] (c27) at (14.20,-3.10) {27};
+\draw (c12) -- (c9);
+\draw (c9) -- (c6);
+\draw (c6) -- (c3);
+\draw (c12) -- (c18);
+\draw (c18) -- (c15);
+\draw (c18) -- (c20);
+\draw (c20) -- (c21);
+\draw (c21) -- (c24);
+\draw (c24) -- (c27);
+\node[lab] at (12.40,-4.00) {(c)};
+\draw[->, thick] (1.80,-5.95) -- node[above, font=\scriptsize] {rimuove $12$} (3.50,-5.95);
+\node[nd] (d3) at (3.80,-6.09) {3};
+\node[nd] (d6) at (4.20,-5.47) {6};
+\node[hl] (d9) at (4.60,-4.85) {9};
+\draw (d9) -- (d6);
+\draw (d6) -- (d3);
+\node[font=\small] at (4.20,-6.59) {$T_1$};
+\node[nd] (d15) at (5.50,-5.47) {15};
+\node[nd] (d18) at (5.90,-4.85) {18};
+\node[nd] (d20) at (6.30,-5.47) {20};
+\node[nd] (d21) at (6.70,-6.09) {21};
+\node[nd] (d24) at (7.10,-6.71) {24};
+\node[nd] (d27) at (7.50,-7.33) {27};
+\draw (d18) -- (d15);
+\draw (d18) -- (d20);
+\draw (d20) -- (d21);
+\draw (d21) -- (d24);
+\draw (d24) -- (d27);
+\node[font=\small] at (6.50,-7.83) {$T_2$};
+\node[lab] at (5.65,-8.85) {(d)};
+\draw[->, thick] (7.92,-5.95) -- node[above, font=\scriptsize] {aggancio} (8.78,-5.95);
+\node[nd] (e3) at (9.20,-6.09) {3};
+\node[nd] (e6) at (9.60,-5.47) {6};
+\node[hl] (e9) at (10.00,-4.85) {9};
+\node[nd] (e15) at (10.40,-6.09) {15};
+\node[nd] (e18) at (10.80,-5.47) {18};
+\node[nd] (e20) at (11.20,-6.09) {20};
+\node[nd] (e21) at (11.60,-6.71) {21};
+\node[nd] (e24) at (12.00,-7.33) {24};
+\node[nd] (e27) at (12.40,-7.95) {27};
+\draw (e9) -- (e6);
+\draw (e6) -- (e3);
+\draw (e9) -- (e18);
+\draw (e18) -- (e15);
+\draw (e18) -- (e20);
+\draw (e20) -- (e21);
+\draw (e21) -- (e24);
+\draw (e24) -- (e27);
+\node[lab] at (10.80,-8.85) {(e)};
+\end{tikzpicture}
+\caption{$\Delete(12)$. Nell'albero di partenza (a) è evidenziato il cammino della ricerca di $12$. Lo zig-zag su $12$, $9$ e $15$ (b) e lo zig-zig su $12$, $18$ e $20$ portano $12$ alla radice (c). Cancellando $12$ si ottengono $T_1$ e $T_2$ (d): il massimo di $T_1$ è $9$, che è già la radice, quindi il secondo Splay non esegue rotazioni e $T_2$ viene agganciato come sottoalbero destro di $9$ (e).}
+\label{fig:es-splay-delete12}
+\end{figure}
+
+\paragraph{$\Search(27)$.}
+Il cammino è $9, 18, 20, 21, 24, 27$, quindi $27$ si trova a profondità $5$. Il nodo $27$ è figlio destro di $24$, che è figlio destro di $21$, quindi il primo passo è uno zig-zig, e lo stesso vale per il secondo, su $27$, $20$ e $18$. Dopo i due zig-zig $27$ è figlio destro della radice $9$, e uno zig lo porta in cima (figura~\ref{fig:es-splay-search27}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, splaytree]
+\node[nd] (a3) at (0.00,-1.24) {3};
+\node[nd] (a6) at (0.40,-0.62) {6};
+\node[nd] (a9) at (0.80,0.00) {9};
+\node[nd] (a15) at (1.20,-1.24) {15};
+\node[nd] (a18) at (1.60,-0.62) {18};
+\node[nd] (a20) at (2.00,-1.24) {20};
+\node[nd] (a21) at (2.40,-1.86) {21};
+\node[nd] (a24) at (2.80,-2.48) {24};
+\node[hl] (a27) at (3.20,-3.10) {27};
+\draw (a9) -- (a6);
+\draw (a6) -- (a3);
+\draw[path] (a9) -- (a18);
+\draw (a18) -- (a15);
+\draw[path] (a18) -- (a20);
+\draw[path] (a20) -- (a21);
+\draw[path] (a21) -- (a24);
+\draw[path] (a24) -- (a27);
+\node[lab] at (1.60,-4.00) {(a)};
+\draw[->, thick] (3.62,-1.10) -- node[above, font=\scriptsize] {zig-zig} (4.48,-1.10);
+\node[nd] (b3) at (4.90,-1.24) {3};
+\node[nd] (b6) at (5.30,-0.62) {6};
+\node[nd] (b9) at (5.70,0.00) {9};
+\node[nd] (b15) at (6.10,-1.24) {15};
+\node[nd] (b18) at (6.50,-0.62) {18};
+\node[nd] (b20) at (6.90,-1.24) {20};
+\node[nd] (b21) at (7.30,-3.10) {21};
+\node[nd] (b24) at (7.70,-2.48) {24};
+\node[hl] (b27) at (8.10,-1.86) {27};
+\draw (b9) -- (b6);
+\draw (b6) -- (b3);
+\draw (b9) -- (b18);
+\draw (b18) -- (b15);
+\draw (b18) -- (b20);
+\draw (b20) -- (b27);
+\draw (b27) -- (b24);
+\draw (b24) -- (b21);
+\node[lab] at (6.50,-4.00) {(b)};
+\draw[->, thick] (8.52,-1.10) -- node[above, font=\scriptsize] {zig-zig} (9.38,-1.10);
+\node[nd] (c3) at (9.80,-1.24) {3};
+\node[nd] (c6) at (10.20,-0.62) {6};
+\node[nd] (c9) at (10.60,0.00) {9};
+\node[nd] (c15) at (11.00,-2.48) {15};
+\node[nd] (c18) at (11.40,-1.86) {18};
+\node[nd] (c20) at (11.80,-1.24) {20};
+\node[nd] (c21) at (12.20,-2.48) {21};
+\node[nd] (c24) at (12.60,-1.86) {24};
+\node[hl] (c27) at (13.00,-0.62) {27};
+\draw (c9) -- (c6);
+\draw (c6) -- (c3);
+\draw (c9) -- (c27);
+\draw (c27) -- (c20);
+\draw (c20) -- (c18);
+\draw (c18) -- (c15);
+\draw (c20) -- (c24);
+\draw (c24) -- (c21);
+\node[lab] at (11.40,-4.00) {(c)};
+\draw[->, thick] (3.90,-5.95) -- node[above, font=\scriptsize] {zig} (5.60,-5.95);
+\node[nd] (d3) at (5.90,-6.71) {3};
+\node[nd] (d6) at (6.30,-6.09) {6};
+\node[nd] (d9) at (6.70,-5.47) {9};
+\node[nd] (d15) at (7.10,-7.33) {15};
+\node[nd] (d18) at (7.50,-6.71) {18};
+\node[nd] (d20) at (7.90,-6.09) {20};
+\node[nd] (d21) at (8.30,-7.33) {21};
+\node[nd] (d24) at (8.70,-6.71) {24};
+\node[hl] (d27) at (9.10,-4.85) {27};
+\draw (d27) -- (d9);
+\draw (d9) -- (d6);
+\draw (d6) -- (d3);
+\draw (d9) -- (d20);
+\draw (d20) -- (d18);
+\draw (d18) -- (d15);
+\draw (d20) -- (d24);
+\draw (d24) -- (d21);
+\node[lab] at (7.50,-8.23) {(d)};
+\end{tikzpicture}
+\caption{$\Search(27)$. Il cammino della ricerca è $9, 18, 20, 21, 24, 27$ (a). Il primo zig-zig, su $27$, $24$ e $21$, porta $27$ al posto di $21$ (b). Il secondo, su $27$, $20$ e $18$, lo porta al posto di $18$ (c), e lo zig finale lo porta alla radice (d).}
+\label{fig:es-splay-search27}
+\end{figure}
+
+\begin{osservazione}[Il massimo alla radice]
+Nell'albero finale il nodo $27$ non ha figlio destro. Non si tratta di un errore: $27$ è la chiave più grande, e quando lo Splay porta alla radice il massimo, tutte le altre chiavi finiscono nel sottoalbero sinistro. È lo stesso fatto che si sfrutta nella cancellazione, quando lo Splay del massimo di $T_1$ libera il posto in cui agganciare $T_2$.
+\end{osservazione}
+
+\begin{esercizio}[Albero completo con $12$ chiavi]\label{es:splay-completo-12}
+Si descrivano le operazioni di zig-zag, zig-zig e zig in uno splay tree di tipo bottom-up. Quindi si eseguano nell'ordine dato le seguenti operazioni sullo splay tree la cui configurazione iniziale è quella di un albero binario completo contenente le $12$ chiavi $\{3i : 1 \le i \le 12\}$:
+\begin{itemize}
+    \item $\Search(9)$.
+    \item $\Search(27)$.
+    \item $\Insert(11)$.
+    \item $\Delete(27)$.
+\end{itemize}
+\end{esercizio}
+
+\subsubsection*{Soluzione}
+La parte teorica è la stessa dell'esercizio~\ref{es:splay-completo}. Rispetto a quell'esercizio cambiano la forma dell'albero di partenza e due dettagli delle operazioni: in $\Insert(11)$ la ricerca si ferma sul successore della chiave da inserire, e in $\Delete(27)$ il massimo di $T_1$ non si trova alla radice.
+
+\paragraph{L'albero di partenza.}
+Si procede come nell'esercizio precedente. Con $12$ nodi i primi tre livelli ne contengono $1 + 2 + 4 = 7$, e i $5$ rimanenti riempiono l'ultimo livello da sinistra: sono i due figli del primo e del secondo nodo del livello $2$, più il figlio sinistro del terzo. Il sottoalbero sinistro della radice contiene quindi $7$ nodi, e la radice è l'ottava chiave, ovvero $24$ (figura~\ref{fig:es-splay12-costruzione}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, splaytree]
+\node[nd] (a1) at (0.00,-1.86) {1};
+\node[nd] (a2) at (0.40,-1.24) {2};
+\node[nd] (a3) at (0.80,-1.86) {3};
+\node[nd] (a4) at (1.20,-0.62) {4};
+\node[nd] (a5) at (1.60,-1.86) {5};
+\node[nd] (a6) at (2.00,-1.24) {6};
+\node[nd] (a7) at (2.40,-1.86) {7};
+\node[nd] (a8) at (2.80,0.00) {8};
+\node[nd] (a9) at (3.20,-1.86) {9};
+\node[nd] (a10) at (3.60,-1.24) {10};
+\node[nd] (a11) at (4.00,-0.62) {11};
+\node[nd] (a12) at (4.40,-1.24) {12};
+\draw (a8) -- (a4);
+\draw (a4) -- (a2);
+\draw (a2) -- (a1);
+\draw (a2) -- (a3);
+\draw (a4) -- (a6);
+\draw (a6) -- (a5);
+\draw (a6) -- (a7);
+\draw (a8) -- (a11);
+\draw (a11) -- (a10);
+\draw (a10) -- (a9);
+\draw (a11) -- (a12);
+\node[lab] at (2.20,-2.76) {(a)};
+\node[nd] (b3) at (6.10,-1.86) {3};
+\node[nd] (b6) at (6.50,-1.24) {6};
+\node[nd] (b9) at (6.90,-1.86) {9};
+\node[nd] (b12) at (7.30,-0.62) {12};
+\node[nd] (b15) at (7.70,-1.86) {15};
+\node[nd] (b18) at (8.10,-1.24) {18};
+\node[nd] (b21) at (8.50,-1.86) {21};
+\node[nd] (b24) at (8.90,0.00) {24};
+\node[nd] (b27) at (9.30,-1.86) {27};
+\node[nd] (b30) at (9.70,-1.24) {30};
+\node[nd] (b33) at (10.10,-0.62) {33};
+\node[nd] (b36) at (10.50,-1.24) {36};
+\draw (b24) -- (b12);
+\draw (b12) -- (b6);
+\draw (b6) -- (b3);
+\draw (b6) -- (b9);
+\draw (b12) -- (b18);
+\draw (b18) -- (b15);
+\draw (b18) -- (b21);
+\draw (b24) -- (b33);
+\draw (b33) -- (b30);
+\draw (b30) -- (b27);
+\draw (b33) -- (b36);
+\node[lab] at (8.30,-2.76) {(b)};
+\end{tikzpicture}
+\caption{Costruzione dell'albero completo con le chiavi $\{3i : 1 \le i \le 12\}$. In (a) la forma dell'albero completo con $12$ nodi, in cui ogni nodo riporta la propria posizione $i$ nella visita simmetrica. In (b) lo stesso albero, con la chiave $3i$ al posto di $i$.}
+\label{fig:es-splay12-costruzione}
+\end{figure}
+
+\paragraph{$\Search(9)$.}
+Il cammino è $24, 12, 6, 9$. Il nodo $9$ è figlio destro di $6$, che è figlio sinistro di $12$, quindi il primo passo è uno zig-zag. Lo zig-zag porta $9$ al posto di $12$, con $6$ come figlio sinistro e $12$ come figlio destro. Dopo questo passo $9$ è figlio sinistro della radice $24$, e uno zig lo porta in cima (figura~\ref{fig:es-splay12-search9}).
+
+Il nodo $12$ finisce nel sottoalbero destro di $9$, come figlio sinistro di $24$. Non può stare sotto $6$, perché tutte le chiavi a sinistra di $9$ devono essere minori di $9$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, splaytree]
+\node[nd] (a3) at (0.00,-1.86) {3};
+\node[nd] (a6) at (0.40,-1.24) {6};
+\node[hl] (a9) at (0.80,-1.86) {9};
+\node[nd] (a12) at (1.20,-0.62) {12};
+\node[nd] (a15) at (1.60,-1.86) {15};
+\node[nd] (a18) at (2.00,-1.24) {18};
+\node[nd] (a21) at (2.40,-1.86) {21};
+\node[nd] (a24) at (2.80,0.00) {24};
+\node[nd] (a27) at (3.20,-1.86) {27};
+\node[nd] (a30) at (3.60,-1.24) {30};
+\node[nd] (a33) at (4.00,-0.62) {33};
+\node[nd] (a36) at (4.40,-1.24) {36};
+\draw[path] (a24) -- (a12);
+\draw[path] (a12) -- (a6);
+\draw (a6) -- (a3);
+\draw[path] (a6) -- (a9);
+\draw (a12) -- (a18);
+\draw (a18) -- (a15);
+\draw (a18) -- (a21);
+\draw (a24) -- (a33);
+\draw (a33) -- (a30);
+\draw (a30) -- (a27);
+\draw (a33) -- (a36);
+\node[lab] at (2.20,-3.38) {(a)};
+\draw[->, thick] (4.82,-1.10) -- node[above, font=\scriptsize] {zig-zag} (5.68,-1.10);
+\node[nd] (b3) at (6.10,-1.86) {3};
+\node[nd] (b6) at (6.50,-1.24) {6};
+\node[hl] (b9) at (6.90,-0.62) {9};
+\node[nd] (b12) at (7.30,-1.24) {12};
+\node[nd] (b15) at (7.70,-2.48) {15};
+\node[nd] (b18) at (8.10,-1.86) {18};
+\node[nd] (b21) at (8.50,-2.48) {21};
+\node[nd] (b24) at (8.90,0.00) {24};
+\node[nd] (b27) at (9.30,-1.86) {27};
+\node[nd] (b30) at (9.70,-1.24) {30};
+\node[nd] (b33) at (10.10,-0.62) {33};
+\node[nd] (b36) at (10.50,-1.24) {36};
+\draw (b24) -- (b9);
+\draw (b9) -- (b6);
+\draw (b6) -- (b3);
+\draw (b9) -- (b12);
+\draw (b12) -- (b18);
+\draw (b18) -- (b15);
+\draw (b18) -- (b21);
+\draw (b24) -- (b33);
+\draw (b33) -- (b30);
+\draw (b30) -- (b27);
+\draw (b33) -- (b36);
+\node[lab] at (8.30,-3.38) {(b)};
+\draw[->, thick] (2.05,-5.33) -- node[above, font=\scriptsize] {zig} (3.75,-5.33);
+\node[nd] (c3) at (4.05,-5.47) {3};
+\node[nd] (c6) at (4.45,-4.85) {6};
+\node[hl] (c9) at (4.85,-4.23) {9};
+\node[nd] (c12) at (5.25,-5.47) {12};
+\node[nd] (c15) at (5.65,-6.71) {15};
+\node[nd] (c18) at (6.05,-6.09) {18};
+\node[nd] (c21) at (6.45,-6.71) {21};
+\node[nd] (c24) at (6.85,-4.85) {24};
+\node[nd] (c27) at (7.25,-6.71) {27};
+\node[nd] (c30) at (7.65,-6.09) {30};
+\node[nd] (c33) at (8.05,-5.47) {33};
+\node[nd] (c36) at (8.45,-6.09) {36};
+\draw (c9) -- (c6);
+\draw (c6) -- (c3);
+\draw (c9) -- (c24);
+\draw (c24) -- (c12);
+\draw (c12) -- (c18);
+\draw (c18) -- (c15);
+\draw (c18) -- (c21);
+\draw (c24) -- (c33);
+\draw (c33) -- (c30);
+\draw (c30) -- (c27);
+\draw (c33) -- (c36);
+\node[lab] at (6.25,-7.61) {(c)};
+\end{tikzpicture}
+\caption{$\Search(9)$. Il cammino della ricerca è $24, 12, 6, 9$ (a). Lo zig-zag su $9$, $6$ e $12$ porta $9$ al posto di $12$ (b), e lo zig con la radice $24$ lo porta in cima (c).}
+\label{fig:es-splay12-search9}
+\end{figure}
+
+\paragraph{$\Search(27)$.}
+Il cammino è $9, 24, 33, 30, 27$. Il nodo $27$ è figlio sinistro di $30$, che è figlio sinistro di $33$, quindi il primo passo è uno zig-zig, che porta $27$ al posto di $33$. A questo punto $27$ è figlio destro di $24$, che è figlio destro della radice $9$: il secondo passo è un altro zig-zig, che porta $27$ alla radice (figura~\ref{fig:es-splay12-search27}).
+
+In ogni rotazione cambia padre un solo sottoalbero, quello ``in mezzo'', che contiene le chiavi comprese tra i due nodi ruotati. Nella prima rotazione del secondo zig-zig, quella tra $9$ e $24$, si tratta del sottoalbero di radice $12$: passa da figlio sinistro di $24$ a figlio destro di $9$, e si porta dietro $18$, $15$ e $21$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, splaytree]
+\node[nd] (a3) at (0.00,-1.24) {3};
+\node[nd] (a6) at (0.40,-0.62) {6};
+\node[nd] (a9) at (0.80,0.00) {9};
+\node[nd] (a12) at (1.20,-1.24) {12};
+\node[nd] (a15) at (1.60,-2.48) {15};
+\node[nd] (a18) at (2.00,-1.86) {18};
+\node[nd] (a21) at (2.40,-2.48) {21};
+\node[nd] (a24) at (2.80,-0.62) {24};
+\node[hl] (a27) at (3.20,-2.48) {27};
+\node[nd] (a30) at (3.60,-1.86) {30};
+\node[nd] (a33) at (4.00,-1.24) {33};
+\node[nd] (a36) at (4.40,-1.86) {36};
+\draw (a9) -- (a6);
+\draw (a6) -- (a3);
+\draw[path] (a9) -- (a24);
+\draw (a24) -- (a12);
+\draw (a12) -- (a18);
+\draw (a18) -- (a15);
+\draw (a18) -- (a21);
+\draw[path] (a24) -- (a33);
+\draw[path] (a33) -- (a30);
+\draw[path] (a30) -- (a27);
+\draw (a33) -- (a36);
+\node[lab] at (2.20,-4.00) {(a)};
+\draw[->, thick] (4.82,-1.10) -- node[above, font=\scriptsize] {zig-zig} (5.68,-1.10);
+\node[nd] (b3) at (6.10,-1.24) {3};
+\node[nd] (b6) at (6.50,-0.62) {6};
+\node[nd] (b9) at (6.90,0.00) {9};
+\node[nd] (b12) at (7.30,-1.24) {12};
+\node[nd] (b15) at (7.70,-2.48) {15};
+\node[nd] (b18) at (8.10,-1.86) {18};
+\node[nd] (b21) at (8.50,-2.48) {21};
+\node[nd] (b24) at (8.90,-0.62) {24};
+\node[hl] (b27) at (9.30,-1.24) {27};
+\node[nd] (b30) at (9.70,-1.86) {30};
+\node[nd] (b33) at (10.10,-2.48) {33};
+\node[nd] (b36) at (10.50,-3.10) {36};
+\draw (b9) -- (b6);
+\draw (b6) -- (b3);
+\draw (b9) -- (b24);
+\draw (b24) -- (b12);
+\draw (b12) -- (b18);
+\draw (b18) -- (b15);
+\draw (b18) -- (b21);
+\draw (b24) -- (b27);
+\draw (b27) -- (b30);
+\draw (b30) -- (b33);
+\draw (b33) -- (b36);
+\node[lab] at (8.30,-4.00) {(b)};
+\draw[->, thick] (2.05,-5.95) -- node[above, font=\scriptsize] {zig-zig} (3.75,-5.95);
+\node[nd] (c3) at (4.05,-7.33) {3};
+\node[nd] (c6) at (4.45,-6.71) {6};
+\node[nd] (c9) at (4.85,-6.09) {9};
+\node[nd] (c12) at (5.25,-6.71) {12};
+\node[nd] (c15) at (5.65,-7.95) {15};
+\node[nd] (c18) at (6.05,-7.33) {18};
+\node[nd] (c21) at (6.45,-7.95) {21};
+\node[nd] (c24) at (6.85,-5.47) {24};
+\node[hl] (c27) at (7.25,-4.85) {27};
+\node[nd] (c30) at (7.65,-5.47) {30};
+\node[nd] (c33) at (8.05,-6.09) {33};
+\node[nd] (c36) at (8.45,-6.71) {36};
+\draw (c27) -- (c24);
+\draw (c24) -- (c9);
+\draw (c9) -- (c6);
+\draw (c6) -- (c3);
+\draw (c9) -- (c12);
+\draw (c12) -- (c18);
+\draw (c18) -- (c15);
+\draw (c18) -- (c21);
+\draw (c27) -- (c30);
+\draw (c30) -- (c33);
+\draw (c33) -- (c36);
+\node[lab] at (6.25,-8.85) {(c)};
+\end{tikzpicture}
+\caption{$\Search(27)$. Il cammino della ricerca è $9, 24, 33, 30, 27$ (a). Il primo zig-zig, su $27$, $30$ e $33$, porta $27$ al posto di $33$ (b), e il secondo, su $27$, $24$ e $9$, lo porta alla radice (c). Nel secondo zig-zig il sottoalbero di radice $12$ passa da $24$ a $9$.}
+\label{fig:es-splay12-search27}
+\end{figure}
+
+\paragraph{$\Insert(11)$.}
+La ricerca di $11$ percorre il cammino $27, 24, 9, 12$ e si ferma su $12$, che non ha figlio sinistro. In questo caso il nodo su cui si ferma la ricerca è il successore di $11$, e non il predecessore come nell'esercizio precedente. Lo Splay di $12$ consiste in uno zig-zag su $12$, $9$ e $24$, seguito da uno zig con la radice $27$.
+
+Poiché $11 < 12$, si applica il caso simmetrico della sezione~\ref{sec:ins-del}: il nuovo nodo diventa il figlio sinistro di $12$, sopra il suo vecchio sottoalbero sinistro, quello di radice $9$. Lo zig finale porta $11$ alla radice, con il sottoalbero di radice $9$ a sinistra e $12$ a destra (figura~\ref{fig:es-splay12-insert11}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, splaytree]
+\node[nd] (a3) at (1.20,-2.48) {3};
+\node[nd] (a6) at (1.60,-1.86) {6};
+\node[nd] (a9) at (2.00,-1.24) {9};
+\node[hl] (a12) at (2.40,-1.86) {12};
+\node[nd] (a15) at (2.80,-3.10) {15};
+\node[nd] (a18) at (3.20,-2.48) {18};
+\node[nd] (a21) at (3.60,-3.10) {21};
+\node[nd] (a24) at (4.00,-0.62) {24};
+\node[nd] (a27) at (4.40,0.00) {27};
+\node[nd] (a30) at (4.80,-0.62) {30};
+\node[nd] (a33) at (5.20,-1.24) {33};
+\node[nd] (a36) at (5.60,-1.86) {36};
+\draw[path] (a27) -- (a24);
+\draw[path] (a24) -- (a9);
+\draw (a9) -- (a6);
+\draw (a6) -- (a3);
+\draw[path] (a9) -- (a12);
+\draw (a12) -- (a18);
+\draw (a18) -- (a15);
+\draw (a18) -- (a21);
+\draw (a27) -- (a30);
+\draw (a30) -- (a33);
+\draw (a33) -- (a36);
+\node[lab] at (3.40,-4.00) {(a)};
+\draw[->, thick] (6.02,-1.10) -- node[above, font=\scriptsize] {zig-zag} (6.88,-1.10);
+\node[nd] (b3) at (7.30,-2.48) {3};
+\node[nd] (b6) at (7.70,-1.86) {6};
+\node[nd] (b9) at (8.10,-1.24) {9};
+\node[hl] (b12) at (8.50,-0.62) {12};
+\node[nd] (b15) at (8.90,-2.48) {15};
+\node[nd] (b18) at (9.30,-1.86) {18};
+\node[nd] (b21) at (9.70,-2.48) {21};
+\node[nd] (b24) at (10.10,-1.24) {24};
+\node[nd] (b27) at (10.50,0.00) {27};
+\node[nd] (b30) at (10.90,-0.62) {30};
+\node[nd] (b33) at (11.30,-1.24) {33};
+\node[nd] (b36) at (11.70,-1.86) {36};
+\draw (b27) -- (b12);
+\draw (b12) -- (b9);
+\draw (b9) -- (b6);
+\draw (b6) -- (b3);
+\draw (b12) -- (b24);
+\draw (b24) -- (b18);
+\draw (b18) -- (b15);
+\draw (b18) -- (b21);
+\draw (b27) -- (b30);
+\draw (b30) -- (b33);
+\draw (b33) -- (b36);
+\node[lab] at (9.50,-4.00) {(b)};
+\draw[->, thick] (0.00,-5.95) -- node[above, font=\scriptsize] {zig} (1.70,-5.95);
+\node[nd] (c3) at (2.00,-6.71) {3};
+\node[nd] (c6) at (2.40,-6.09) {6};
+\node[nd] (c9) at (2.80,-5.47) {9};
+\node[hl] (c12) at (3.20,-4.85) {12};
+\node[nd] (c15) at (3.60,-7.33) {15};
+\node[nd] (c18) at (4.00,-6.71) {18};
+\node[nd] (c21) at (4.40,-7.33) {21};
+\node[nd] (c24) at (4.80,-6.09) {24};
+\node[nd] (c27) at (5.20,-5.47) {27};
+\node[nd] (c30) at (5.60,-6.09) {30};
+\node[nd] (c33) at (6.00,-6.71) {33};
+\node[nd] (c36) at (6.40,-7.33) {36};
+\draw (c12) -- (c9);
+\draw (c9) -- (c6);
+\draw (c6) -- (c3);
+\draw (c12) -- (c27);
+\draw (c27) -- (c24);
+\draw (c24) -- (c18);
+\draw (c18) -- (c15);
+\draw (c18) -- (c21);
+\draw (c27) -- (c30);
+\draw (c30) -- (c33);
+\draw (c33) -- (c36);
+\node[lab] at (4.20,-8.23) {(c)};
+\draw[->, thick] (6.82,-5.95) -- node[above, font=\scriptsize] {inserisce $11$} (7.68,-5.95);
+\node[nd] (d3) at (8.10,-7.33) {3};
+\node[nd] (d6) at (8.50,-6.71) {6};
+\node[nd] (d9) at (8.90,-6.09) {9};
+\node[hl] (d11) at (9.30,-5.47) {11};
+\node[nd] (d12) at (9.70,-4.85) {12};
+\node[nd] (d15) at (10.10,-7.33) {15};
+\node[nd] (d18) at (10.50,-6.71) {18};
+\node[nd] (d21) at (10.90,-7.33) {21};
+\node[nd] (d24) at (11.30,-6.09) {24};
+\node[nd] (d27) at (11.70,-5.47) {27};
+\node[nd] (d30) at (12.10,-6.09) {30};
+\node[nd] (d33) at (12.50,-6.71) {33};
+\node[nd] (d36) at (12.90,-7.33) {36};
+\draw (d12) -- (d11);
+\draw (d11) -- (d9);
+\draw (d9) -- (d6);
+\draw (d6) -- (d3);
+\draw (d12) -- (d27);
+\draw (d27) -- (d24);
+\draw (d24) -- (d18);
+\draw (d18) -- (d15);
+\draw (d18) -- (d21);
+\draw (d27) -- (d30);
+\draw (d30) -- (d33);
+\draw (d33) -- (d36);
+\node[lab] at (10.50,-8.23) {(d)};
+\draw[->, thick] (3.05,-10.18) -- node[above, font=\scriptsize] {zig} (4.75,-10.18);
+\node[nd] (e3) at (5.05,-10.94) {3};
+\node[nd] (e6) at (5.45,-10.32) {6};
+\node[nd] (e9) at (5.85,-9.70) {9};
+\node[hl] (e11) at (6.25,-9.08) {11};
+\node[nd] (e12) at (6.65,-9.70) {12};
+\node[nd] (e15) at (7.05,-12.18) {15};
+\node[nd] (e18) at (7.45,-11.56) {18};
+\node[nd] (e21) at (7.85,-12.18) {21};
+\node[nd] (e24) at (8.25,-10.94) {24};
+\node[nd] (e27) at (8.65,-10.32) {27};
+\node[nd] (e30) at (9.05,-10.94) {30};
+\node[nd] (e33) at (9.45,-11.56) {33};
+\node[nd] (e36) at (9.85,-12.18) {36};
+\draw (e11) -- (e9);
+\draw (e9) -- (e6);
+\draw (e6) -- (e3);
+\draw (e11) -- (e12);
+\draw (e12) -- (e27);
+\draw (e27) -- (e24);
+\draw (e24) -- (e18);
+\draw (e18) -- (e15);
+\draw (e18) -- (e21);
+\draw (e27) -- (e30);
+\draw (e30) -- (e33);
+\draw (e33) -- (e36);
+\node[lab] at (7.45,-13.08) {(e)};
+\end{tikzpicture}
+\caption{$\Insert(11)$. La ricerca di $11$ si ferma su $12$, che non ha figlio sinistro (a). Lo zig-zag su $12$, $9$ e $24$ (b) e lo zig con la radice $27$ portano $12$ alla radice (c). Il nuovo nodo $11$ diventa il figlio sinistro di $12$, sopra il sottoalbero di radice $9$ (d), e lo zig finale lo porta alla radice (e).}
+\label{fig:es-splay12-insert11}
+\end{figure}
+
+\paragraph{$\Delete(27)$.}
+Il cammino è $11, 12, 27$: il nodo $27$ è figlio destro di $12$, che è figlio destro della radice $11$, quindi basta uno zig-zig per portare $27$ alla radice. Cancellando $27$ si ottengono $T_1$, di radice $12$, e $T_2$, di radice $30$.
+
+Qui il figlio sinistro di $27$, ovvero la radice $12$ di $T_1$, non è il predecessore di $27$, perché ha un figlio destro. Lo Splay di $27$ in $T_1$ scende sempre a destra, percorre il cammino $12, 24$ e si ferma su $24$, che è il massimo di $T_1$. Uno zig porta $24$ alla radice di $T_1$, e al suo figlio destro, rimasto vuoto, si aggancia $T_2$ (figura~\ref{fig:es-splay12-delete27}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[>=Stealth, splaytree]
+\node[nd] (a3) at (1.10,-1.86) {3};
+\node[nd] (a6) at (1.50,-1.24) {6};
+\node[nd] (a9) at (1.90,-0.62) {9};
+\node[nd] (a11) at (2.30,0.00) {11};
+\node[nd] (a12) at (2.70,-0.62) {12};
+\node[nd] (a15) at (3.10,-3.10) {15};
+\node[nd] (a18) at (3.50,-2.48) {18};
+\node[nd] (a21) at (3.90,-3.10) {21};
+\node[nd] (a24) at (4.30,-1.86) {24};
+\node[hl] (a27) at (4.70,-1.24) {27};
+\node[nd] (a30) at (5.10,-1.86) {30};
+\node[nd] (a33) at (5.50,-2.48) {33};
+\node[nd] (a36) at (5.90,-3.10) {36};
+\draw (a11) -- (a9);
+\draw (a9) -- (a6);
+\draw (a6) -- (a3);
+\draw[path] (a11) -- (a12);
+\draw[path] (a12) -- (a27);
+\draw (a27) -- (a24);
+\draw (a24) -- (a18);
+\draw (a18) -- (a15);
+\draw (a18) -- (a21);
+\draw (a27) -- (a30);
+\draw (a30) -- (a33);
+\draw (a33) -- (a36);
+\node[lab] at (3.50,-4.00) {(a)};
+\draw[->, thick] (6.32,-1.10) -- node[above, font=\scriptsize] {zig-zig} (7.18,-1.10);
+\node[nd] (b3) at (7.60,-3.10) {3};
+\node[nd] (b6) at (8.00,-2.48) {6};
+\node[nd] (b9) at (8.40,-1.86) {9};
+\node[nd] (b11) at (8.80,-1.24) {11};
+\node[nd] (b12) at (9.20,-0.62) {12};
+\node[nd] (b15) at (9.60,-2.48) {15};
+\node[nd] (b18) at (10.00,-1.86) {18};
+\node[nd] (b21) at (10.40,-2.48) {21};
+\node[nd] (b24) at (10.80,-1.24) {24};
+\node[hl] (b27) at (11.20,0.00) {27};
+\node[nd] (b30) at (11.60,-0.62) {30};
+\node[nd] (b33) at (12.00,-1.24) {33};
+\node[nd] (b36) at (12.40,-1.86) {36};
+\draw (b27) -- (b12);
+\draw (b12) -- (b11);
+\draw (b11) -- (b9);
+\draw (b9) -- (b6);
+\draw (b6) -- (b3);
+\draw (b12) -- (b24);
+\draw (b24) -- (b18);
+\draw (b18) -- (b15);
+\draw (b18) -- (b21);
+\draw (b27) -- (b30);
+\draw (b30) -- (b33);
+\draw (b33) -- (b36);
+\node[lab] at (10.00,-4.00) {(b)};
+\draw[->, thick] (0.00,-5.95) -- node[above, font=\scriptsize] {rimuove $27$} (1.70,-5.95);
+\node[nd] (c3) at (2.00,-7.33) {3};
+\node[nd] (c6) at (2.40,-6.71) {6};
+\node[nd] (c9) at (2.80,-6.09) {9};
+\node[nd] (c11) at (3.20,-5.47) {11};
+\node[nd] (c12) at (3.60,-4.85) {12};
+\node[nd] (c15) at (4.00,-6.71) {15};
+\node[nd] (c18) at (4.40,-6.09) {18};
+\node[nd] (c21) at (4.80,-6.71) {21};
+\node[hl] (c24) at (5.20,-5.47) {24};
+\draw (c12) -- (c11);
+\draw (c11) -- (c9);
+\draw (c9) -- (c6);
+\draw (c6) -- (c3);
+\draw[path] (c12) -- (c24);
+\draw (c24) -- (c18);
+\draw (c18) -- (c15);
+\draw (c18) -- (c21);
+\node[font=\small] at (3.60,-7.83) {$T_1$};
+\node[nd] (c30) at (6.10,-4.85) {30};
+\node[nd] (c33) at (6.50,-5.47) {33};
+\node[nd] (c36) at (6.90,-6.09) {36};
+\draw (c30) -- (c33);
+\draw (c33) -- (c36);
+\node[font=\small] at (6.50,-6.59) {$T_2$};
+\node[lab] at (4.45,-8.85) {(c)};
+\draw[->, thick] (7.32,-5.95) -- node[above, font=\scriptsize] {zig} (8.18,-5.95);
+\node[nd] (d3) at (8.60,-7.95) {3};
+\node[nd] (d6) at (9.00,-7.33) {6};
+\node[nd] (d9) at (9.40,-6.71) {9};
+\node[nd] (d11) at (9.80,-6.09) {11};
+\node[nd] (d12) at (10.20,-5.47) {12};
+\node[nd] (d15) at (10.60,-6.71) {15};
+\node[nd] (d18) at (11.00,-6.09) {18};
+\node[nd] (d21) at (11.40,-6.71) {21};
+\node[hl] (d24) at (11.80,-4.85) {24};
+\draw (d24) -- (d12);
+\draw (d12) -- (d11);
+\draw (d11) -- (d9);
+\draw (d9) -- (d6);
+\draw (d6) -- (d3);
+\draw (d12) -- (d18);
+\draw (d18) -- (d15);
+\draw (d18) -- (d21);
+\node[font=\small] at (10.20,-8.45) {$T_1$};
+\node[nd] (d30) at (12.70,-4.85) {30};
+\node[nd] (d33) at (13.10,-5.47) {33};
+\node[nd] (d36) at (13.50,-6.09) {36};
+\draw (d30) -- (d33);
+\draw (d33) -- (d36);
+\node[font=\small] at (13.10,-6.59) {$T_2$};
+\node[lab] at (11.05,-8.85) {(d)};
+\draw[->, thick] (3.55,-10.80) -- node[above, font=\scriptsize] {aggancio} (5.25,-10.80);
+\node[nd] (e3) at (5.55,-12.80) {3};
+\node[nd] (e6) at (5.95,-12.18) {6};
+\node[nd] (e9) at (6.35,-11.56) {9};
+\node[nd] (e11) at (6.75,-10.94) {11};
+\node[nd] (e12) at (7.15,-10.32) {12};
+\node[nd] (e15) at (7.55,-11.56) {15};
+\node[nd] (e18) at (7.95,-10.94) {18};
+\node[nd] (e21) at (8.35,-11.56) {21};
+\node[hl] (e24) at (8.75,-9.70) {24};
+\node[nd] (e30) at (9.15,-10.32) {30};
+\node[nd] (e33) at (9.55,-10.94) {33};
+\node[nd] (e36) at (9.95,-11.56) {36};
+\draw (e24) -- (e12);
+\draw (e12) -- (e11);
+\draw (e11) -- (e9);
+\draw (e9) -- (e6);
+\draw (e6) -- (e3);
+\draw (e12) -- (e18);
+\draw (e18) -- (e15);
+\draw (e18) -- (e21);
+\draw (e24) -- (e30);
+\draw (e30) -- (e33);
+\draw (e33) -- (e36);
+\node[lab] at (7.75,-13.70) {(e)};
+\end{tikzpicture}
+\caption{$\Delete(27)$. Nell'albero di partenza (a) è evidenziato il cammino della ricerca di $27$. Lo zig-zig su $27$, $12$ e $11$ porta $27$ alla radice (b). Cancellando $27$ si ottengono $T_1$ e $T_2$ (c): il massimo di $T_1$ è $24$, che non si trova alla radice, e lo zig con $12$ lo porta in cima (d). Infine $T_2$ viene agganciato come sottoalbero destro di $24$ (e).}
+\label{fig:es-splay12-delete27}
+\end{figure}
+
 \section*{Riferimenti}
 Il materiale visto in questo capitolo comprende:
 \begin{itemize}
     \item Materiale visto a lezione.
+    \item Esercizio~\ref{es:splay-completo}: prima prova in itinere dell'11 dicembre 2019.
+    \item Esercizio~\ref{es:splay-completo-12}: appello del 27 febbraio 2025.
 \end{itemize}
