@@ -1144,10 +1144,381 @@ Una ricerca visita un solo nodo per livello, quindi legge $O(h)$ pagine. Per il 
 
 Il lavoro all'interno di un nodo, invece, cresce con $t$: per ogni nodo visitato servono $O(t)$ confronti. Questi confronti avvengono però in RAM, e costano molto meno di un accesso alla memoria secondaria. Nella pratica si utilizza spesso la variante B$^+$-tree (sezione~\ref{sec:btree-perche}), che tiene i record nelle foglie e rende il fattore di ramificazione dei nodi interni il più grande possibile.
 
+\begin{esercizio}[Grado minimo, cancellazioni e inserimenti]\label{es:btree-2018}
+\begin{itemize}
+    \item[(a)] Si definisca la struttura dati dei B-tree.
+    \item[(b)] Dopo aver determinato il grado minimo del B-tree $T$ seguente, si illustri l'esecuzione su $T$ delle operazioni $\Delete(\mathrm{E})$, $\Delete(\mathrm{H})$, $\Delete(\mathrm{F})$, $\Delete(\mathrm{G})$, $\Insert(\mathrm{U})$, $\Insert(\mathrm{B})$, $\Insert(\mathrm{D})$ e $\Delete(\mathrm{D})$, nell'ordine dato.
+    \item[(c)] Si fornisca (con dimostrazione) un limite superiore per l'altezza di un B-tree di grado minimo $t$ con $n$ chiavi.
+\end{itemize}
+\begin{center}
+\begin{tikzpicture}[btree]
+  \node[bn, rectangle split parts=5] (tr) at (0,0.00) {D \nodepart{two} G \nodepart{three} K \nodepart{four} N \nodepart{five} V};
+  \node[bn, rectangle split parts=2] (t0) at (-4.12,-1.30) {A \nodepart{two} C};
+  \node[bn, rectangle split parts=2] (t1) at (-2.77,-1.30) {E \nodepart{two} F};
+  \node[bn, rectangle split parts=2] (t2) at (-1.42,-1.30) {H \nodepart{two} I};
+  \node[bn, rectangle split parts=2] (t3) at (-0.07,-1.30) {L \nodepart{two} M};
+  \node[bn, rectangle split parts=5] (t4) at (2.03,-1.30) {O \nodepart{two} P \nodepart{three} R \nodepart{four} S \nodepart{five} T};
+  \node[bn, rectangle split parts=2] (t5) at (4.12,-1.30) {W \nodepart{two} X};
+  \draw (tr.south west) -- (t0.north);
+  \draw (tr.one split south) -- (t1.north);
+  \draw (tr.two split south) -- (t2.north);
+  \draw (tr.three split south) -- (t3.north);
+  \draw (tr.four split south) -- (t4.north);
+  \draw (tr.south east) -- (t5.north);
+\end{tikzpicture}
+\end{center}
+\end{esercizio}
+
+\subsubsection*{Soluzione}
+
+\paragraph{La definizione.}
+La definizione è quella data nella soluzione dell'esercizio~\ref{es:btree-definizione}.
+
+\paragraph{Il grado minimo.}
+Il grado minimo si ricava dai due vincoli sul numero di chiavi della proprietà P4 (definizione~\ref{def:btree}). Il nodo con più chiavi fissa un limite inferiore a $t$, mentre quello con meno chiavi ne fissa uno superiore:
+\begin{itemize}
+    \item Ogni nodo contiene al più $2t-1$ chiavi, e la radice e la foglia [O, P, R, S, T] ne contengono $5$. Quindi $5 \le 2t-1$, ovvero $t \ge 3$.
+    \item Ogni nodo diverso dalla radice contiene almeno $t-1$ chiavi, e la foglia [A, C] ne contiene $2$. Quindi $t-1 \le 2$, ovvero $t \le 3$.
+\end{itemize}
+
+Ne segue $t = 3$. La radice si esclude dal secondo vincolo, perché le basta una sola chiave. Ogni nodo diverso dalla radice contiene quindi da $2$ a $5$ chiavi: con $5$ chiavi è pieno, mentre con $t-1 = 2$ chiavi lo diciamo \textbf{magro}.
+
+\paragraph{$\Delete(\mathrm{E})$.}
+Le cancellazioni seguono l'algoritmo top-down della sezione~\ref{sec:btree-delete}: si parte dalla radice e, prima di scendere in un figlio, ci si assicura che contenga almeno $t$ chiavi. E non è nella radice, e vale D $<$ E $<$ G, quindi E si trova nel secondo figlio, [E, F]. Questo figlio è magro, e va rinforzato prima di scendere (caso 3). I suoi fratelli immediati, [A, C] e [H, I], sono anch'essi magri e non possono prestare una chiave.
+
+Si esegue quindi una fusione (caso 3b) con il fratello destro: G scende dalla radice, e insieme a [E, F] e [H, I] forma il nodo [E, F, G, H, I], con $(t-1)+1+(t-1) = 5$ chiavi. La radice perde G e diventa [D, K, N, V], quindi non resta vuota e l'altezza non cambia. Infine si scende nel nodo fuso, che è una foglia con $5 \ge t$ chiavi, e si elimina E (caso 1).
+
+L'esecuzione è in figura~\ref{fig:es-btree18-E}. Come nell'esempio del caso 3b della sezione~\ref{sec:btree-delete}, la fusione avviene con il fratello destro: fondendo con il sinistro sarebbe scesa D al posto di G, e si otterrebbe un albero diverso.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree]
+  \node[bn, rectangle split parts=5] (ar) at (0,-0.00) {D \nodepart{two} G \nodepart{three} K \nodepart{four} N \nodepart{five} V};
+  \node[bn, rectangle split parts=2] (a0) at (-4.12,-1.30) {A \nodepart{two} C};
+  \node[hl, rectangle split parts=2] (a1) at (-2.77,-1.30) {E \nodepart{two} F};
+  \node[bn, rectangle split parts=2] (a2) at (-1.42,-1.30) {H \nodepart{two} I};
+  \node[bn, rectangle split parts=2] (a3) at (-0.07,-1.30) {L \nodepart{two} M};
+  \node[bn, rectangle split parts=5] (a4) at (2.03,-1.30) {O \nodepart{two} P \nodepart{three} R \nodepart{four} S \nodepart{five} T};
+  \node[bn, rectangle split parts=2] (a5) at (4.12,-1.30) {W \nodepart{two} X};
+  \draw (ar.south west) -- (a0.north);
+  \draw[path] (ar.one split south) -- (a1.north);
+  \draw (ar.two split south) -- (a2.north);
+  \draw (ar.three split south) -- (a3.north);
+  \draw (ar.four split south) -- (a4.north);
+  \draw (ar.south east) -- (a5.north);
+  \node[lab] at (0,-1.95) {(a)};
+  \node[hl, rectangle split parts=4] (br) at (0,-2.55) {D \nodepart{two} K \nodepart{three} N \nodepart{four} V};
+  \node[bn, rectangle split parts=2] (b0) at (-4.20,-3.85) {A \nodepart{two} C};
+  \node[hl, rectangle split parts=5] (b1) at (-2.10,-3.85) {E \nodepart{two} F \nodepart{three} G \nodepart{four} H \nodepart{five} I};
+  \node[bn, rectangle split parts=2] (b2) at (0.00,-3.85) {L \nodepart{two} M};
+  \node[bn, rectangle split parts=5] (b3) at (2.10,-3.85) {O \nodepart{two} P \nodepart{three} R \nodepart{four} S \nodepart{five} T};
+  \node[bn, rectangle split parts=2] (b4) at (4.20,-3.85) {W \nodepart{two} X};
+  \draw (br.south west) -- (b0.north);
+  \draw[path] (br.one split south) -- (b1.north);
+  \draw (br.two split south) -- (b2.north);
+  \draw (br.three split south) -- (b3.north);
+  \draw (br.south east) -- (b4.north);
+  \node[lab] at (0,-4.50) {(b)};
+  \node[bn, rectangle split parts=4] (cr) at (0,-5.10) {D \nodepart{two} K \nodepart{three} N \nodepart{four} V};
+  \node[bn, rectangle split parts=2] (c0) at (-3.95,-6.40) {A \nodepart{two} C};
+  \node[hl, rectangle split parts=4] (c1) at (-2.10,-6.40) {F \nodepart{two} G \nodepart{three} H \nodepart{four} I};
+  \node[bn, rectangle split parts=2] (c2) at (-0.25,-6.40) {L \nodepart{two} M};
+  \node[bn, rectangle split parts=5] (c3) at (1.85,-6.40) {O \nodepart{two} P \nodepart{three} R \nodepart{four} S \nodepart{five} T};
+  \node[bn, rectangle split parts=2] (c4) at (3.95,-6.40) {W \nodepart{two} X};
+  \draw (cr.south west) -- (c0.north);
+  \draw (cr.one split south) -- (c1.north);
+  \draw (cr.two split south) -- (c2.north);
+  \draw (cr.three split south) -- (c3.north);
+  \draw (cr.south east) -- (c4.north);
+  \node[lab] at (0,-7.05) {(c)};
+\end{tikzpicture}
+\caption{$\Delete(\mathrm{E})$. Il cammino scende verso il figlio [E, F], che ha $t-1 = 2$ chiavi, così come i fratelli [A, C] e [H, I] (a). Caso 3b: [E, F] si fonde con il fratello destro e con la chiave G della radice, che diventa [D, K, N, V] (b). Nel nodo fuso, che è una foglia, si elimina E (c).}
+\label{fig:es-btree18-E}
+\end{figure}
+
+\paragraph{$\Delete(\mathrm{H})$.}
+Vale D $<$ H $<$ K, quindi si scende di nuovo nel secondo figlio, [F, G, H, I]. Questo figlio ha $4 \ge t$ chiavi, quindi non serve alcuna riparazione. Nella foglia si elimina H (caso 1), e restano $3$ chiavi (figura~\ref{fig:es-btree18-H}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree]
+  \node[bn, rectangle split parts=4] (ar) at (0,-0.00) {D \nodepart{two} K \nodepart{three} N \nodepart{four} V};
+  \node[bn, rectangle split parts=2] (a0) at (-3.95,-1.30) {A \nodepart{two} C};
+  \node[hl, rectangle split parts=4] (a1) at (-2.10,-1.30) {F \nodepart{two} G \nodepart{three} H \nodepart{four} I};
+  \node[bn, rectangle split parts=2] (a2) at (-0.25,-1.30) {L \nodepart{two} M};
+  \node[bn, rectangle split parts=5] (a3) at (1.85,-1.30) {O \nodepart{two} P \nodepart{three} R \nodepart{four} S \nodepart{five} T};
+  \node[bn, rectangle split parts=2] (a4) at (3.95,-1.30) {W \nodepart{two} X};
+  \draw (ar.south west) -- (a0.north);
+  \draw[path] (ar.one split south) -- (a1.north);
+  \draw (ar.two split south) -- (a2.north);
+  \draw (ar.three split south) -- (a3.north);
+  \draw (ar.south east) -- (a4.north);
+  \node[lab] at (0,-1.95) {(a)};
+  \node[bn, rectangle split parts=4] (br) at (0,-2.55) {D \nodepart{two} K \nodepart{three} N \nodepart{four} V};
+  \node[bn, rectangle split parts=2] (b0) at (-3.70,-3.85) {A \nodepart{two} C};
+  \node[hl, rectangle split parts=3] (b1) at (-2.10,-3.85) {F \nodepart{two} G \nodepart{three} I};
+  \node[bn, rectangle split parts=2] (b2) at (-0.50,-3.85) {L \nodepart{two} M};
+  \node[bn, rectangle split parts=5] (b3) at (1.60,-3.85) {O \nodepart{two} P \nodepart{three} R \nodepart{four} S \nodepart{five} T};
+  \node[bn, rectangle split parts=2] (b4) at (3.70,-3.85) {W \nodepart{two} X};
+  \draw (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw (br.two split south) -- (b2.north);
+  \draw (br.three split south) -- (b3.north);
+  \draw (br.south east) -- (b4.north);
+  \node[lab] at (0,-4.50) {(b)};
+\end{tikzpicture}
+\caption{$\Delete(\mathrm{H})$. Il figlio [F, G, H, I] ha $4 \ge t$ chiavi, quindi si scende senza riparazioni (a). Nella foglia si elimina H (b).}
+\label{fig:es-btree18-H}
+\end{figure}
+
+\paragraph{$\Delete(\mathrm{F})$.}
+Il cammino è lo stesso, ma questa volta il figlio [F, G, I] ha esattamente $t = 3$ chiavi. Non è magro, quindi si scende senza riparazioni, e nella foglia si elimina F (figura~\ref{fig:es-btree18-F}). La foglia resta con $t-1 = 2$ chiavi, quindi la prossima cancellazione che passa da lì dovrà rinforzarla.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree]
+  \node[bn, rectangle split parts=4] (ar) at (0,-0.00) {D \nodepart{two} K \nodepart{three} N \nodepart{four} V};
+  \node[bn, rectangle split parts=2] (a0) at (-3.70,-1.30) {A \nodepart{two} C};
+  \node[hl, rectangle split parts=3] (a1) at (-2.10,-1.30) {F \nodepart{two} G \nodepart{three} I};
+  \node[bn, rectangle split parts=2] (a2) at (-0.50,-1.30) {L \nodepart{two} M};
+  \node[bn, rectangle split parts=5] (a3) at (1.60,-1.30) {O \nodepart{two} P \nodepart{three} R \nodepart{four} S \nodepart{five} T};
+  \node[bn, rectangle split parts=2] (a4) at (3.70,-1.30) {W \nodepart{two} X};
+  \draw (ar.south west) -- (a0.north);
+  \draw[path] (ar.one split south) -- (a1.north);
+  \draw (ar.two split south) -- (a2.north);
+  \draw (ar.three split south) -- (a3.north);
+  \draw (ar.south east) -- (a4.north);
+  \node[lab] at (0,-1.95) {(a)};
+  \node[bn, rectangle split parts=4] (br) at (0,-2.55) {D \nodepart{two} K \nodepart{three} N \nodepart{four} V};
+  \node[bn, rectangle split parts=2] (b0) at (-3.45,-3.85) {A \nodepart{two} C};
+  \node[hl, rectangle split parts=2] (b1) at (-2.10,-3.85) {G \nodepart{two} I};
+  \node[bn, rectangle split parts=2] (b2) at (-0.75,-3.85) {L \nodepart{two} M};
+  \node[bn, rectangle split parts=5] (b3) at (1.35,-3.85) {O \nodepart{two} P \nodepart{three} R \nodepart{four} S \nodepart{five} T};
+  \node[bn, rectangle split parts=2] (b4) at (3.45,-3.85) {W \nodepart{two} X};
+  \draw (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw (br.two split south) -- (b2.north);
+  \draw (br.three split south) -- (b3.north);
+  \draw (br.south east) -- (b4.north);
+  \node[lab] at (0,-4.50) {(b)};
+\end{tikzpicture}
+\caption{$\Delete(\mathrm{F})$. Il figlio [F, G, I] ha esattamente $t = 3$ chiavi, quindi non è magro e si scende direttamente (a). Nella foglia si elimina F (b).}
+\label{fig:es-btree18-F}
+\end{figure}
+
+\paragraph{$\Delete(\mathrm{G})$.}
+Il figlio in cui scendere è [G, I], che ora è magro. Anche i fratelli immediati, [A, C] e [L, M], sono magri, quindi si esegue di nuovo una fusione (caso 3b) con il fratello destro. Questa volta scende K, e si ottengono il nodo [G, I, K, L, M] e la radice [D, N, V]. Nella foglia fusa si elimina G (figura~\ref{fig:es-btree18-G}).
+
+Se uno dei due fratelli avesse avuto almeno $t$ chiavi, la fusione avrebbe prodotto un nodo con $2 + 1 + 3 = 6 > 2t-1$ chiavi. In quel caso si esegue invece un prestito (caso 3a): la chiave della radice che separa i due fratelli scende nel figlio magro, e la chiave del fratello più vicina al figlio sale nella radice al suo posto.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree]
+  \node[bn, rectangle split parts=4] (ar) at (0,-0.00) {D \nodepart{two} K \nodepart{three} N \nodepart{four} V};
+  \node[bn, rectangle split parts=2] (a0) at (-3.45,-1.30) {A \nodepart{two} C};
+  \node[hl, rectangle split parts=2] (a1) at (-2.10,-1.30) {G \nodepart{two} I};
+  \node[bn, rectangle split parts=2] (a2) at (-0.75,-1.30) {L \nodepart{two} M};
+  \node[bn, rectangle split parts=5] (a3) at (1.35,-1.30) {O \nodepart{two} P \nodepart{three} R \nodepart{four} S \nodepart{five} T};
+  \node[bn, rectangle split parts=2] (a4) at (3.45,-1.30) {W \nodepart{two} X};
+  \draw (ar.south west) -- (a0.north);
+  \draw[path] (ar.one split south) -- (a1.north);
+  \draw (ar.two split south) -- (a2.north);
+  \draw (ar.three split south) -- (a3.north);
+  \draw (ar.south east) -- (a4.north);
+  \node[lab] at (0,-1.95) {(a)};
+  \node[hl, rectangle split parts=3] (br) at (0,-2.55) {D \nodepart{two} N \nodepart{three} V};
+  \node[bn, rectangle split parts=2] (b0) at (-3.53,-3.85) {A \nodepart{two} C};
+  \node[hl, rectangle split parts=5] (b1) at (-1.43,-3.85) {G \nodepart{two} I \nodepart{three} K \nodepart{four} L \nodepart{five} M};
+  \node[bn, rectangle split parts=5] (b2) at (1.42,-3.85) {O \nodepart{two} P \nodepart{three} R \nodepart{four} S \nodepart{five} T};
+  \node[bn, rectangle split parts=2] (b3) at (3.52,-3.85) {W \nodepart{two} X};
+  \draw (br.south west) -- (b0.north);
+  \draw[path] (br.one split south) -- (b1.north);
+  \draw (br.two split south) -- (b2.north);
+  \draw (br.south east) -- (b3.north);
+  \node[lab] at (0,-4.50) {(b)};
+  \node[bn, rectangle split parts=3] (cr) at (0,-5.10) {D \nodepart{two} N \nodepart{three} V};
+  \node[bn, rectangle split parts=2] (c0) at (-3.27,-6.40) {A \nodepart{two} C};
+  \node[hl, rectangle split parts=4] (c1) at (-1.42,-6.40) {I \nodepart{two} K \nodepart{three} L \nodepart{four} M};
+  \node[bn, rectangle split parts=5] (c2) at (1.18,-6.40) {O \nodepart{two} P \nodepart{three} R \nodepart{four} S \nodepart{five} T};
+  \node[bn, rectangle split parts=2] (c3) at (3.28,-6.40) {W \nodepart{two} X};
+  \draw (cr.south west) -- (c0.north);
+  \draw (cr.one split south) -- (c1.north);
+  \draw (cr.two split south) -- (c2.north);
+  \draw (cr.south east) -- (c3.north);
+  \node[lab] at (0,-7.05) {(c)};
+\end{tikzpicture}
+\caption{$\Delete(\mathrm{G})$. Il figlio [G, I] ha $t-1$ chiavi, come i fratelli [A, C] e [L, M] (a). Caso 3b: [G, I] si fonde con il fratello destro e con la chiave K della radice, che diventa [D, N, V] (b). Nella foglia si elimina G (c).}
+\label{fig:es-btree18-G}
+\end{figure}
+
+\paragraph{$\Insert(\mathrm{U})$.}
+Gli inserimenti seguono la strategia top-down della sezione~\ref{sec:btree-insert}, che divide ogni nodo pieno incontrato durante la discesa. Per prima cosa si controlla la radice: [D, N, V] ha $3 < 2t-1$ chiavi, quindi non è piena e non va divisa. Vale N $<$ U $<$ V, quindi U deve finire nel terzo figlio, [O, P, R, S, T], che invece è pieno.
+
+Prima di scendere lo si divide con \BTreeSplitChild{} (algoritmo~\ref{alg:split-child}) attorno alla mediana, ovvero la $t$-esima chiave R. R sale nella radice, che diventa [D, N, R, V], mentre il figlio si divide in [O, P] e [S, T], con $t-1$ chiavi ciascuno. Poiché U $>$ R, si scende in [S, T], che è una foglia non piena, e si inserisce U (figura~\ref{fig:es-btree18-U}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree]
+  \node[bn, rectangle split parts=3] (ar) at (0,-0.00) {D \nodepart{two} N \nodepart{three} V};
+  \node[bn, rectangle split parts=2] (a0) at (-3.27,-1.30) {A \nodepart{two} C};
+  \node[bn, rectangle split parts=4] (a1) at (-1.42,-1.30) {I \nodepart{two} K \nodepart{three} L \nodepart{four} M};
+  \node[hl, rectangle split parts=5] (a2) at (1.18,-1.30) {O \nodepart{two} P \nodepart{three} R \nodepart{four} S \nodepart{five} T};
+  \node[bn, rectangle split parts=2] (a3) at (3.28,-1.30) {W \nodepart{two} X};
+  \draw (ar.south west) -- (a0.north);
+  \draw (ar.one split south) -- (a1.north);
+  \draw[path] (ar.two split south) -- (a2.north);
+  \draw (ar.south east) -- (a3.north);
+  \node[lab] at (0,-1.95) {(a)};
+  \node[hl, rectangle split parts=4] (br) at (0,-2.55) {D \nodepart{two} N \nodepart{three} R \nodepart{four} V};
+  \node[bn, rectangle split parts=2] (b0) at (-3.20,-3.85) {A \nodepart{two} C};
+  \node[bn, rectangle split parts=4] (b1) at (-1.35,-3.85) {I \nodepart{two} K \nodepart{three} L \nodepart{four} M};
+  \node[hl, rectangle split parts=2] (b2) at (0.50,-3.85) {O \nodepart{two} P};
+  \node[hl, rectangle split parts=2] (b3) at (1.85,-3.85) {S \nodepart{two} T};
+  \node[bn, rectangle split parts=2] (b4) at (3.20,-3.85) {W \nodepart{two} X};
+  \draw (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw (br.two split south) -- (b2.north);
+  \draw[path] (br.three split south) -- (b3.north);
+  \draw (br.south east) -- (b4.north);
+  \node[lab] at (0,-4.50) {(b)};
+  \node[bn, rectangle split parts=4] (cr) at (0,-5.10) {D \nodepart{two} N \nodepart{three} R \nodepart{four} V};
+  \node[bn, rectangle split parts=2] (c0) at (-3.45,-6.40) {A \nodepart{two} C};
+  \node[bn, rectangle split parts=4] (c1) at (-1.60,-6.40) {I \nodepart{two} K \nodepart{three} L \nodepart{four} M};
+  \node[bn, rectangle split parts=2] (c2) at (0.25,-6.40) {O \nodepart{two} P};
+  \node[hl, rectangle split parts=3] (c3) at (1.85,-6.40) {S \nodepart{two} T \nodepart{three} U};
+  \node[bn, rectangle split parts=2] (c4) at (3.45,-6.40) {W \nodepart{two} X};
+  \draw (cr.south west) -- (c0.north);
+  \draw (cr.one split south) -- (c1.north);
+  \draw (cr.two split south) -- (c2.north);
+  \draw (cr.three split south) -- (c3.north);
+  \draw (cr.south east) -- (c4.north);
+  \node[lab] at (0,-7.05) {(c)};
+\end{tikzpicture}
+\caption{$\Insert(\mathrm{U})$. La radice non è piena, ma il figlio [O, P, R, S, T] in cui deve scendere U ha $2t-1 = 5$ chiavi (a). Lo split porta la mediana R nella radice e divide il figlio in [O, P] e [S, T]. Poiché U $>$ R, si scende in [S, T] (b). Nella foglia si inserisce U (c).}
+\label{fig:es-btree18-U}
+\end{figure}
+
+\paragraph{$\Insert(\mathrm{B})$.}
+La radice [D, N, R, V] ha $4$ chiavi, quindi non è piena. Vale B $<$ D, quindi si scende nel primo figlio, [A, C], che non è pieno. Si tratta di una foglia, e B si inserisce nella posizione ordinata (figura~\ref{fig:es-btree18-B}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree]
+  \node[bn, rectangle split parts=4] (ar) at (0,-0.00) {D \nodepart{two} N \nodepart{three} R \nodepart{four} V};
+  \node[hl, rectangle split parts=2] (a0) at (-3.45,-1.30) {A \nodepart{two} C};
+  \node[bn, rectangle split parts=4] (a1) at (-1.60,-1.30) {I \nodepart{two} K \nodepart{three} L \nodepart{four} M};
+  \node[bn, rectangle split parts=2] (a2) at (0.25,-1.30) {O \nodepart{two} P};
+  \node[bn, rectangle split parts=3] (a3) at (1.85,-1.30) {S \nodepart{two} T \nodepart{three} U};
+  \node[bn, rectangle split parts=2] (a4) at (3.45,-1.30) {W \nodepart{two} X};
+  \draw[path] (ar.south west) -- (a0.north);
+  \draw (ar.one split south) -- (a1.north);
+  \draw (ar.two split south) -- (a2.north);
+  \draw (ar.three split south) -- (a3.north);
+  \draw (ar.south east) -- (a4.north);
+  \node[lab] at (0,-1.95) {(a)};
+  \node[bn, rectangle split parts=4] (br) at (0,-2.55) {D \nodepart{two} N \nodepart{three} R \nodepart{four} V};
+  \node[hl, rectangle split parts=3] (b0) at (-3.45,-3.85) {A \nodepart{two} B \nodepart{three} C};
+  \node[bn, rectangle split parts=4] (b1) at (-1.35,-3.85) {I \nodepart{two} K \nodepart{three} L \nodepart{four} M};
+  \node[bn, rectangle split parts=2] (b2) at (0.50,-3.85) {O \nodepart{two} P};
+  \node[bn, rectangle split parts=3] (b3) at (2.10,-3.85) {S \nodepart{two} T \nodepart{three} U};
+  \node[bn, rectangle split parts=2] (b4) at (3.70,-3.85) {W \nodepart{two} X};
+  \draw (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw (br.two split south) -- (b2.north);
+  \draw (br.three split south) -- (b3.north);
+  \draw (br.south east) -- (b4.north);
+  \node[lab] at (0,-4.50) {(b)};
+\end{tikzpicture}
+\caption{$\Insert(\mathrm{B})$. Né la radice né il figlio [A, C] sono pieni (a), quindi B si inserisce direttamente nella foglia (b).}
+\label{fig:es-btree18-B}
+\end{figure}
+
+\paragraph{$\Insert(\mathrm{D})$.}
+La chiave D è già presente nella radice. La definizione~\ref{def:btree}, tuttavia, ammette chiavi uguali, in quanto per la proprietà P1 le chiavi di un nodo sono in ordine non decrescente, e \BTreeInsert{} non controlla se la chiave è già presente. Applicando la procedura si inserisce quindi una seconda copia di D.\footnote{Se invece si assume che le chiavi siano distinte, $\Insert(\mathrm{D})$ lascia l'albero invariato. Nell'operazione successiva cambia soltanto la foglia [I, K, L, M], che resta tale.}
+
+La radice non è piena. Per scegliere il figlio, \BTreeInsertNonfull{} (algoritmo~\ref{alg:insert-nonfull}) si sposta verso sinistra finché $k < \mathit{key}_i[x]$: D è minore di V, R e N, ma non della prima chiave D. Si scende quindi nel figlio subito a destra di D, [I, K, L, M], che non è pieno, e si ottiene la foglia [D, I, K, L, M] (figura~\ref{fig:es-btree18-Dins}). La proprietà di ricerca resta valida, perché le chiavi di quel figlio devono stare tra D e N, e D $\le$ D.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree]
+  \node[bn, rectangle split parts=4] (ar) at (0,-0.00) {D \nodepart{two} N \nodepart{three} R \nodepart{four} V};
+  \node[bn, rectangle split parts=3] (a0) at (-3.45,-1.30) {A \nodepart{two} B \nodepart{three} C};
+  \node[hl, rectangle split parts=4] (a1) at (-1.35,-1.30) {I \nodepart{two} K \nodepart{three} L \nodepart{four} M};
+  \node[bn, rectangle split parts=2] (a2) at (0.50,-1.30) {O \nodepart{two} P};
+  \node[bn, rectangle split parts=3] (a3) at (2.10,-1.30) {S \nodepart{two} T \nodepart{three} U};
+  \node[bn, rectangle split parts=2] (a4) at (3.70,-1.30) {W \nodepart{two} X};
+  \draw (ar.south west) -- (a0.north);
+  \draw[path] (ar.one split south) -- (a1.north);
+  \draw (ar.two split south) -- (a2.north);
+  \draw (ar.three split south) -- (a3.north);
+  \draw (ar.south east) -- (a4.north);
+  \node[lab] at (0,-1.95) {(a)};
+  \node[bn, rectangle split parts=4] (br) at (0,-2.55) {D \nodepart{two} N \nodepart{three} R \nodepart{four} V};
+  \node[bn, rectangle split parts=3] (b0) at (-3.70,-3.85) {A \nodepart{two} B \nodepart{three} C};
+  \node[hl, rectangle split parts=5] (b1) at (-1.35,-3.85) {D \nodepart{two} I \nodepart{three} K \nodepart{four} L \nodepart{five} M};
+  \node[bn, rectangle split parts=2] (b2) at (0.75,-3.85) {O \nodepart{two} P};
+  \node[bn, rectangle split parts=3] (b3) at (2.35,-3.85) {S \nodepart{two} T \nodepart{three} U};
+  \node[bn, rectangle split parts=2] (b4) at (3.95,-3.85) {W \nodepart{two} X};
+  \draw (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw (br.two split south) -- (b2.north);
+  \draw (br.three split south) -- (b3.north);
+  \draw (br.south east) -- (b4.north);
+  \node[lab] at (0,-4.50) {(b)};
+\end{tikzpicture}
+\caption{$\Insert(\mathrm{D})$, con la chiave D già presente nella radice. D non è minore della prima chiave della radice, quindi si scende nel figlio subito a destra di D, [I, K, L, M], che non è pieno (a). Nella foglia si inserisce la seconda copia di D (b).}
+\label{fig:es-btree18-Dins}
+\end{figure}
+
+\paragraph{$\Delete(\mathrm{D})$.}
+La cancellazione, come la ricerca, si ferma alla prima D che incontra scendendo, ovvero quella nella radice. Si tratta di un nodo interno, quindi siamo nel caso 2.
+
+Il figlio che precede D è [A, B, C], con $3 \ge t$ chiavi, quindi si applica il caso 2a: D viene sostituita dal suo predecessore, la chiave più grande di quel sottoalbero, ovvero C. Poi si cancella C dalla foglia [A, B, C] (caso 1). Anche il figlio che segue D ha almeno $t$ chiavi, ma il caso 2a si controlla prima del 2b, quindi si sceglie il predecessore (figura~\ref{fig:es-btree18-Ddel}). La seconda copia di D resta nella foglia [D, I, K, L, M].
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree]
+  \node[hl, rectangle split parts=4] (ar) at (0,-0.00) {D \nodepart{two} N \nodepart{three} R \nodepart{four} V};
+  \node[hl, rectangle split parts=3] (a0) at (-3.70,-1.30) {A \nodepart{two} B \nodepart{three} C};
+  \node[bn, rectangle split parts=5] (a1) at (-1.35,-1.30) {D \nodepart{two} I \nodepart{three} K \nodepart{four} L \nodepart{five} M};
+  \node[bn, rectangle split parts=2] (a2) at (0.75,-1.30) {O \nodepart{two} P};
+  \node[bn, rectangle split parts=3] (a3) at (2.35,-1.30) {S \nodepart{two} T \nodepart{three} U};
+  \node[bn, rectangle split parts=2] (a4) at (3.95,-1.30) {W \nodepart{two} X};
+  \draw[path] (ar.south west) -- (a0.north);
+  \draw (ar.one split south) -- (a1.north);
+  \draw (ar.two split south) -- (a2.north);
+  \draw (ar.three split south) -- (a3.north);
+  \draw (ar.south east) -- (a4.north);
+  \node[lab] at (0,-1.95) {(a)};
+  \node[hl, rectangle split parts=4] (br) at (0,-2.55) {C \nodepart{two} N \nodepart{three} R \nodepart{four} V};
+  \node[hl, rectangle split parts=2] (b0) at (-3.70,-3.85) {A \nodepart{two} B};
+  \node[bn, rectangle split parts=5] (b1) at (-1.60,-3.85) {D \nodepart{two} I \nodepart{three} K \nodepart{four} L \nodepart{five} M};
+  \node[bn, rectangle split parts=2] (b2) at (0.50,-3.85) {O \nodepart{two} P};
+  \node[bn, rectangle split parts=3] (b3) at (2.10,-3.85) {S \nodepart{two} T \nodepart{three} U};
+  \node[bn, rectangle split parts=2] (b4) at (3.70,-3.85) {W \nodepart{two} X};
+  \draw (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw (br.two split south) -- (b2.north);
+  \draw (br.three split south) -- (b3.north);
+  \draw (br.south east) -- (b4.north);
+  \node[lab] at (0,-4.50) {(b)};
+\end{tikzpicture}
+\caption{$\Delete(\mathrm{D})$. La prima D si trova nella radice, e il figlio alla sua sinistra, [A, B, C], ha $3 \ge t$ chiavi (a). Caso 2a: D viene sostituita dal predecessore C, che si elimina dalla foglia (b).}
+\label{fig:es-btree18-Ddel}
+\end{figure}
+
+\paragraph{Il limite superiore all'altezza.}
+Il limite è quello del teorema~\ref{thm:btree-altezza}: per ogni B-tree con $n \ge 1$ chiavi, altezza $h$ e grado minimo $t \ge 2$ vale
+\[
+h \le \log_t \frac{n+1}{2}.
+\]
+La dimostrazione è quella della sezione~\ref{sec:btree-altezza}, che conta le chiavi del B-tree di altezza $h$ con il minor numero possibile di chiavi.
+
 \section*{Riferimenti}
 Il materiale visto in questo capitolo comprende:
 \begin{itemize}
     \item Materiale visto a lezione.
     \item Capitolo 18 (\emph{B-Trees}, sezioni 18.1--18.3) del libro T.\,H.~Cormen, C.\,E.~Leiserson, R.\,L.~Rivest, C.~Stein, \emph{Introduction to Algorithms}.
     \item Esercizio~\ref{es:btree-definizione}: appello del 23 settembre 2021.
+    \item Esercizio~\ref{es:btree-2018}: prima prova in itinere del 12 dicembre 2018.
 \end{itemize}
