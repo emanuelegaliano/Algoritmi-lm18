@@ -1056,9 +1056,109 @@ Operazione & I/O logici & Tempo CPU \\
 
 I B-tree sono quindi alberi bilanciati con un grande fattore di ramificazione, e mantengono tutte le operazioni logaritmiche. Il numero di pagine lette o scritte cresce come $\log_t n$, e non come $\log_2 n$: è questo il motivo per cui i B-tree sono ancora oggi la struttura di riferimento per organizzare i dati in pagine, sia su HDD sia su SSD.
 
+\section{Esercizi}\label{sec:btree-esercizi}
+Gli esercizi sui B-tree hanno quasi sempre la stessa struttura. Si chiede la definizione della struttura dati, poi di ricavare il grado minimo di un albero dato e di eseguire su di esso una sequenza di inserimenti e cancellazioni. Spesso si chiede anche un limite all'altezza o al numero di chiavi. La definizione compare praticamente sempre, quindi conviene saperla scrivere in modo preciso.
+
+\begin{esercizio}[Definizione di B-tree]\label{es:btree-definizione}
+Si definisca in maniera precisa la struttura dati B-tree e se ne illustri sinteticamente un'applicazione.
+\end{esercizio}
+
+\subsubsection*{Soluzione}
+
+\paragraph{La definizione.}
+Un \textbf{B-tree} $T$ è un albero di ricerca con radice $\mathit{root}[T]$ che gode delle seguenti proprietà:
+\begin{enumerate}
+    \item Ogni nodo $x$ ha i seguenti campi:
+    \begin{itemize}
+        \item $n[x]$: il numero di chiavi contenute in $x$.
+        \item Le $n[x]$ chiavi, in ordine non decrescente: $\mathit{key}_1[x] \le \mathit{key}_2[x] \le \cdots \le \mathit{key}_{n[x]}[x]$.
+        \item $\mathit{leaf}[x]$: un campo booleano che vale vero se $x$ è una foglia e falso se $x$ è un nodo interno.
+    \end{itemize}
+    \item Ogni nodo interno $x$ contiene $n[x]+1$ puntatori ai figli, $c_1[x], \ldots, c_{n[x]+1}[x]$. Nelle foglie questi puntatori non sono definiti.
+    \item Se $k_i$ è una chiave qualsiasi del sottoalbero di radice $c_i[x]$, per $i = 1, \ldots, n[x]+1$, allora:
+    \[
+    k_1 \le \mathit{key}_1[x] \le k_2 \le \mathit{key}_2[x] \le \cdots \le \mathit{key}_{n[x]}[x] \le k_{n[x]+1}.
+    \]
+    \item Tutte le foglie hanno la stessa profondità $h$, detta \textbf{altezza} di $T$.
+    \item $T$ ha un \textbf{grado minimo} $t \ge 2$, memorizzato in $\mathit{degree}[T]$, tale che:
+    \begin{itemize}
+        \item Ogni nodo diverso dalla radice contiene almeno $t-1$ chiavi.
+        \item Se $T$ non è vuoto, la radice contiene almeno una chiave.
+        \item Ogni nodo contiene al più $2t-1$ chiavi. Un nodo con $2t-1$ chiavi si dice \textbf{pieno}.
+    \end{itemize}
+\end{enumerate}
+
+La proprietà 3 è quella che rende il B-tree un albero di ricerca: le chiavi di un nodo interno separano le chiavi dei suoi sottoalberi, e il confronto con esse indica in quale figlio proseguire la ricerca. Dalle proprietà 2 e 5 segue inoltre che un nodo interno diverso dalla radice ha da $t$ a $2t$ figli, mentre una radice interna ne ha almeno $2$.
+
+\begin{osservazione}[I dettagli che cambiano la definizione]
+Nella definizione è facile dimenticare alcuni dettagli, e ognuno di essi ne cambia il significato:
+\begin{itemize}
+    \item \textbf{L'``almeno'' del limite inferiore}: scrivere che ogni nodo diverso dalla radice contiene $t-1$ chiavi vuol dire che ne contiene esattamente $t-1$.
+    \item \textbf{La proprietà di ricerca}: senza la proprietà 3 le chiavi di un nodo non dicono nulla su quelle dei figli. Nella catena le $k_i$ e le $\mathit{key}_i[x]$ si alternano, e la catena comincia e finisce con una $k_i$.
+    \item \textbf{Il campo $\mathit{leaf}[x]$}: fa parte dei campi di ogni nodo, insieme a $n[x]$ e alle chiavi.
+    \item \textbf{I figli}: solo i nodi interni hanno $n[x]+1$ figli. Si tratta di una proprietà della definizione, e non di una conseguenza dell'ordinamento delle chiavi.
+\end{itemize}
+\end{osservazione}
+
+\paragraph{Gli alberi 2-3-4.}
+Il caso più semplice si ha con $t = 2$, il valore più piccolo ammesso dalla definizione.\footnote{Con $t = 1$ un nodo diverso dalla radice potrebbe non contenere alcuna chiave, e quindi avere un solo figlio. È questo il motivo per cui la definizione richiede $t \ge 2$.} In questo caso un nodo diverso dalla radice contiene da $t-1 = 1$ a $2t-1 = 3$ chiavi, quindi un nodo interno ha $2$, $3$ oppure $4$ figli.
+
+Lo stesso vale per una radice interna, che contiene almeno una chiave e quindi ha almeno $2$ figli. Per questo motivo un B-tree con $t = 2$ si dice \textbf{albero 2-3-4}: i numeri del nome sono i possibili numeri di figli di un nodo interno.
+
+Con $t = 2$ un nodo è già pieno quando contiene $3$ chiavi, e durante un inserimento va diviso prima di scendere al suo interno. In un albero 2-3-4, quindi, le divisioni preventive sono molto frequenti. La figura~\ref{fig:es-234} mostra un albero 2-3-4 di altezza $2$ in cui compaiono tutti e tre i tipi di nodo interno.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree]
+  % livello 0
+  \node[bn, rectangle split parts=2] (r) at (-0.6,0) {20 \nodepart{two} 40};
+  % livello 1
+  \node[bn, rectangle split parts=1] (a) at (-5.31,-1.3) {10};
+  \node[hl, rectangle split parts=3] (b) at (-1.4,-1.3) {25 \nodepart{two} 30 \nodepart{three} 35};
+  \node[bn, rectangle split parts=2] (c) at (4.125,-1.3) {50 \nodepart{two} 60};
+  \draw (r.south west) -- (a.north);
+  \draw (r.one split south) -- (b.north);
+  \draw (r.south east) -- (c.north);
+  % livello 2
+  \node[bn, rectangle split parts=2] (l1) at (-5.95,-2.6) {3 \nodepart{two} 5};
+  \node[bn, rectangle split parts=1] (l2) at (-4.675,-2.6) {12};
+  \node[bn, rectangle split parts=1] (l3) at (-3.475,-2.6) {22};
+  \node[bn, rectangle split parts=2] (l4) at (-2.2,-2.6) {27 \nodepart{two} 28};
+  \node[bn, rectangle split parts=1] (l5) at (-0.925,-2.6) {32};
+  \node[hl, rectangle split parts=3] (l6) at (0.675,-2.6) {37 \nodepart{two} 38 \nodepart{three} 39};
+  \node[bn, rectangle split parts=1] (l7) at (2.525,-2.6) {45};
+  \node[bn, rectangle split parts=2] (l8) at (3.8,-2.6) {55 \nodepart{two} 57};
+  \node[hl, rectangle split parts=3] (l9) at (5.725,-2.6) {65 \nodepart{two} 70 \nodepart{three} 75};
+  \draw (a.south west) -- (l1.north);
+  \draw (a.south east) -- (l2.north);
+  \draw (b.south west) -- (l3.north);
+  \draw (b.one split south) -- (l4.north);
+  \draw (b.two split south) -- (l5.north);
+  \draw (b.south east) -- (l6.north);
+  \draw (c.south west) -- (l7.north);
+  \draw (c.one split south) -- (l8.north);
+  \draw (c.south east) -- (l9.north);
+  % numero di figli dei nodi interni
+  \node[lab, anchor=west] at ([xshift=2pt]r.east) {$3$ figli};
+  \node[lab, anchor=east] at ([xshift=-2pt]a.west) {$2$ figli};
+  \node[lab, anchor=west] at ([xshift=2pt]b.east) {$4$ figli};
+  \node[lab, anchor=west] at ([xshift=2pt]c.east) {$3$ figli};
+\end{tikzpicture}
+\caption{Un albero 2-3-4, ovvero un B-tree con grado minimo $t = 2$, di altezza $2$. Accanto a ogni nodo interno è indicato il numero dei suoi figli: la radice e il nodo [50, 60] hanno $3$ figli, il nodo [10] ne ha $2$ e il nodo [25, 30, 35] ne ha $4$. In evidenza i nodi pieni, che con $t = 2$ contengono $3$ chiavi.}
+\label{fig:es-234}
+\end{figure}
+
+\paragraph{Un'applicazione.}
+I B-tree servono a gestire grandi quantità di dati in memoria secondaria, ad esempio negli indici dei DBMS e nei file system. Un accesso alla memoria secondaria è molto più lento di uno alla memoria principale, e avviene per pagine intere. Per questo motivo ogni nodo occupa una pagina, e il costo di un'operazione si misura soprattutto con il numero di pagine lette o scritte (sezione~\ref{sec:btree-costo}).
+
+Una ricerca visita un solo nodo per livello, quindi legge $O(h)$ pagine. Per il teorema~\ref{thm:btree-altezza} vale $h \le \log_t \frac{n+1}{2}$, quindi le pagine lette sono $O(\log_t n)$. Il vantaggio rispetto a un albero binario bilanciato sta nella base del logaritmo: con un grado minimo grande l'albero resta molto basso. Ad esempio, con nodi da $1000$ chiavi e $1001$ figli un B-tree di altezza $2$ contiene oltre un miliardo di chiavi (figura~\ref{fig:btree-1001}), e una ricerca legge al più tre nodi. Se la radice resta sempre in memoria principale, le letture di pagina scendono a due.
+
+Il lavoro all'interno di un nodo, invece, cresce con $t$: per ogni nodo visitato servono $O(t)$ confronti. Questi confronti avvengono però in RAM, e costano molto meno di un accesso alla memoria secondaria. Nella pratica si utilizza spesso la variante B$^+$-tree (sezione~\ref{sec:btree-perche}), che tiene i record nelle foglie e rende il fattore di ramificazione dei nodi interni il più grande possibile.
+
 \section*{Riferimenti}
 Il materiale visto in questo capitolo comprende:
 \begin{itemize}
     \item Materiale visto a lezione.
     \item Capitolo 18 (\emph{B-Trees}, sezioni 18.1--18.3) del libro T.\,H.~Cormen, C.\,E.~Leiserson, R.\,L.~Rivest, C.~Stein, \emph{Introduction to Algorithms}.
+    \item Esercizio~\ref{es:btree-definizione}: appello del 23 settembre 2021.
 \end{itemize}
