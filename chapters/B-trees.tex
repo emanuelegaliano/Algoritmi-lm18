@@ -319,7 +319,20 @@ Il B-tree più semplice si ottiene con $t = 2$. In questo caso un nodo interno d
 \label{fig:234}
 \end{figure}
 
-L'albero di figura~\ref{fig:btree-esempio} è un albero 2-3-4: ogni nodo diverso dalla radice contiene $2$ o $3$ chiavi. Osserviamo però che lo stesso albero rispetta anche i vincoli per $t = 3$, in quanto ogni nodo diverso dalla radice contiene almeno $t - 1 = 2$ chiavi e al più $2t - 1 = 5$. Il grado minimo, infatti, è un parametro della struttura e non si ricava dalla forma dell'albero.
+L'albero di figura~\ref{fig:btree-esempio} è un albero 2-3-4: ogni nodo diverso dalla radice contiene $2$ o $3$ chiavi. Osserviamo però che lo stesso albero rispetta anche i vincoli per $t = 3$, in quanto ogni nodo diverso dalla radice contiene almeno $t - 1 = 2$ chiavi e al più $2t - 1 = 5$. Lo stesso albero, quindi, può essere un B-tree per più valori del grado minimo.
+
+\paragraph{Il grado minimo di un albero dato.}\label{par:btree-grado-forma}
+Il grado minimo è un parametro della struttura, fissato quando l'albero viene creato. Se però conosciamo soltanto la forma dell'albero, i vincoli della proprietà P4 restringono i valori possibili di $t$ a un intervallo. Indichiamo con $M$ il massimo numero di chiavi in un nodo, radice compresa, e con $m$ il minimo numero di chiavi in un nodo diverso dalla radice.
+
+Ogni nodo contiene al più $2t-1$ chiavi, quindi $M \le 2t-1$. Ogni nodo diverso dalla radice ne contiene almeno $t-1$, quindi $t-1 \le m$. Mettendo insieme i due vincoli si ottiene:
+\[
+\max\left(2, \left\lceil \frac{M+1}{2} \right\rceil\right) \le t \le m+1,
+\]
+dove il $2$ viene dal vincolo $t \ge 2$ della definizione.
+
+La radice conta per $M$, ma non per $m$: le basta una sola chiave, e quindi non fissa alcun limite superiore a $t$. Se l'albero è formato dalla sola radice, infatti, il limite superiore non c'è.
+
+Torniamo all'albero di figura~\ref{fig:btree-esempio}. I nodi più pieni, come [Q, T, X], contengono $M = 3$ chiavi, mentre i nodi diversi dalla radice ne contengono almeno $m = 2$ (ad esempio [B, C]). Ne segue $2 \le t \le 3$, in accordo con quanto osservato sopra. Negli esercizi l'intervallo contiene spesso un solo valore, e in quel caso il grado minimo è determinato dalla forma dell'albero.
 
 \begin{osservazione}[I nodi non devono essere pieni]
 Il B-tree classico non richiede che i nodi interni siano pieni: garantisce soltanto un'occupazione minima, tranne che per la radice.
@@ -1175,7 +1188,7 @@ Il lavoro all'interno di un nodo, invece, cresce con $t$: per ogni nodo visitato
 La definizione è quella data nella soluzione dell'esercizio~\ref{es:btree-definizione}.
 
 \paragraph{Il grado minimo.}
-Il grado minimo si ricava dai due vincoli sul numero di chiavi della proprietà P4 (definizione~\ref{def:btree}). Il nodo con più chiavi fissa un limite inferiore a $t$, mentre quello con meno chiavi ne fissa uno superiore:
+Il grado minimo si ricava con l'intervallo della sezione~\ref{par:btree-grado-forma}, ovvero dai due vincoli sul numero di chiavi della proprietà P4. Il nodo con più chiavi fissa un limite inferiore a $t$, mentre quello con meno chiavi ne fissa uno superiore:
 \begin{itemize}
     \item Ogni nodo contiene al più $2t-1$ chiavi, e la radice e la foglia [O, P, R, S, T] ne contengono $5$. Quindi $5 \le 2t-1$, ovvero $t \ge 3$.
     \item Ogni nodo diverso dalla radice contiene almeno $t-1$ chiavi, e la foglia [A, C] ne contiene $2$. Quindi $t-1 \le 2$, ovvero $t \le 3$.
@@ -1551,7 +1564,7 @@ La dimostrazione è quella della sezione~\ref{sec:btree-altezza}, che conta le c
 La definizione è quella data nella soluzione dell'esercizio~\ref{es:btree-definizione}.
 
 \paragraph{Il grado minimo.}
-Come nell'esercizio~\ref{es:btree-2018}, il grado minimo si ricava dai vincoli della proprietà P4:
+Come nell'esercizio~\ref{es:btree-2018}, il grado minimo si ricava con l'intervallo della sezione~\ref{par:btree-grado-forma}:
 \begin{itemize}
     \item La foglia [25, 26, 27, 28] contiene $4$ chiavi, quindi $4 \le 2t-1$, ovvero $t \ge \frac{5}{2}$. Poiché $t$ è intero, ne segue $t \ge 3$.
     \item Il nodo [4, 8], diverso dalla radice, contiene $2$ chiavi, quindi $t-1 \le 2$, ovvero $t \le 3$.
@@ -1997,7 +2010,7 @@ L'altezza $7$ si può effettivamente raggiungere. Il B-tree di altezza $7$ con i
 La definizione è quella data nella soluzione dell'esercizio~\ref{es:btree-definizione}.
 
 \paragraph{Il grado minimo.}
-Come nell'esercizio~\ref{es:btree-2018}, il grado minimo si ricava dai vincoli della proprietà P4:
+Come nell'esercizio~\ref{es:btree-2018}, il grado minimo si ricava con l'intervallo della sezione~\ref{par:btree-grado-forma}:
 \begin{itemize}
     \item La foglia [3, 6, 9, 12, 15] contiene $5$ chiavi, quindi $5 \le 2t-1$, ovvero $t \ge 3$.
     \item Le foglie [21, 24] e [45, 48] contengono $2$ chiavi, quindi $t-1 \le 2$, ovvero $t \le 3$.
