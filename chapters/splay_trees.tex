@@ -417,6 +417,15 @@ dopo $\Splay(k_1,T)$ & $0$ & $1$ & $2$ & $1$ & $2$ \\
 \noindent
 Con lo Splay nessun nodo del cammino supera la profondità $2$, mentre con le rotazioni singole $k_3$ arrivava a profondità $3$. Di conseguenza anche i sottoalberi $C$ e $D$ si trovano un livello più in alto.
 
+L'albero di partenza era una catena di cinque nodi, mentre quello finale è pressoché perfetto: i sottoalberi $A, \dots, F$ pendono tutti a profondità $2$ o $3$. È bastato un solo Splay, ovvero è stato uno zing al primo sguardo (figura~\ref{fig:zing}).\footnote{Il fotogramma della figura~\ref{fig:zing} è escluso dalla licenza CC BY-SA 4.0 di questo documento.}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.45\textwidth]{images/zing.png}
+\caption{Il nodo $k_1$ davanti all'albero ottenuto con un solo Splay. Fotogramma tratto da \emph{Hotel Transylvania} (Sony Pictures Animation, 2012).}
+\label{fig:zing}
+\end{figure}
+
 \paragraph{Esempio.}
 L'effetto dello zig-zig si vede meglio su una catena. Consideriamo la catena di sette nodi da cui partiva la sequenza della sezione~\ref{sec:controesempio}, ed eseguiamo $\Splay(1,T)$. Il nodo $1$ si trova a profondità $6$, e lo Splay lo porta alla radice con tre zig-zig (figura~\ref{fig:splay-catena}). L'albero finale ha altezza $4$ anziché $6$: ogni zig-zig ha ripiegato una parte del cammino, e i nodi non sono più in fila. Con le rotazioni singole avevamo ottenuto, invece, un'altra catena di altezza $6$ (albero (b) della figura~\ref{fig:catena}).
 
@@ -2252,4 +2261,5 @@ Il materiale visto in questo capitolo comprende:
     \item Materiale visto a lezione.
     \item Esercizio~\ref{es:splay-completo}: prima prova in itinere dell'11 dicembre 2019.
     \item Esercizio~\ref{es:splay-completo-12}: appello del 27 febbraio 2025.
+    \item Figura~\ref{fig:zing}: fotogramma tratto da \emph{Hotel Transylvania} (Sony Pictures Animation, 2012), escluso dalla licenza di questo documento.
 \end{itemize}
