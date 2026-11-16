@@ -25,3 +25,15 @@
 .w-btree .sc { font-variant: small-caps; letter-spacing: 0.03em; }
 .w-btree .hint { font-size: 0.8rem; margin-top: 0.3rem; }
 .w-btree .eq-line { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.15rem 1.6rem; }
+
+/* nei riquadri dei casi (testo a sinistra, widget a destra) le due colonne sono larghe uguali:
+   minmax(0, 1fr) impedisce ai controlli del widget di allargare la propria colonna.
+   Sotto i 640px resta la colonna singola del sito. */
+@media (min-width: 641px) {
+  .tw-box-split:has(.tw-widget[data-widget="b-tree"]) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+/* nella colonna stretta le chiavi restano leggibili quanto il testo accanto */
+.tw-box-split .w-btree .bt-label { font-size: 16px; }
+/* e i comandi vanno a capo invece di uscire dal riquadro */
+.tw-box-split .w-btree .player { flex-wrap: wrap; row-gap: 0.4rem; }
+.tw-box-split .w-btree .player > * { flex-shrink: 0; }

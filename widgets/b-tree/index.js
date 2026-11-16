@@ -48,9 +48,11 @@ export default defineWidget({
     // le operazioni che il lettore può eseguire
     actions: { type: 'list', default: ['search', 'insert', 'delete'] },
     interval: { type: 'number', default: 1900, min: 300 },
+    // la figura occupa questa frazione della larghezza disponibile (ad esempio 0.85 nei riquadri dei casi)
+    scale: { type: 'number', default: 1, min: 0.3 },
   },
 
-  mount(el, { tree, t, ops: ops0, actions: actions0, interval }) {
+  mount(el, { tree, t, ops: ops0, actions: actions0, interval, scale }) {
     el.classList.add('w-btree');
     const initialOps = ops0.map(String).filter(parseOp);
     let ops = initialOps;
@@ -63,6 +65,11 @@ export default defineWidget({
     const svg = svgRoot(400, 200, { 'aria-label': 'B-tree: i passi di ogni operazione, uno alla volta' });
     const edgesG = s('g'), boxesG = s('g'), keysG = s('g');
     svg.append(edgesG, boxesG, keysG);
+    // con scale < 1 la figura è più stretta della colonna e resta centrata
+    if (scale !== 1) {
+      svg.style.width = `${Math.round(scale * 100)}%`;
+      svg.style.marginInline = 'auto';
+    }
     const eq = h('div', { class: 'eq-line', 'aria-live': 'polite' });
     const note = h('p', { class: 'widget-note' });
 
@@ -73,7 +80,7 @@ export default defineWidget({
       let W = 0, Hh = 0;
       for (const f of frames) { const L = layout(f.tree); W = Math.max(W, L.width); Hh = Math.max(Hh, L.height); }
       svg.setAttribute('viewBox', `0 0 ${W} ${Hh}`);
-      svg.style.maxWidth = `${Math.round(W * 1.4)}px`;
+      svg.style.maxWidth = `${Math.round(W * 1.4 * scale)}px`;
     }
 
     // ---------- disegno, con animazione tra un fotogramma e il successivo ----------

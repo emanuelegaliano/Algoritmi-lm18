@@ -816,141 +816,138 @@ La soluzione è simmetrica a quella dell'inserimento. Quando scendiamo da un nod
 
 La procedura \BTreeDelete$(x,k)$ cancella la chiave $k$ dal sottoalbero radicato in $x$, e distingue tre casi.
 
-\paragraph{Caso 1: $k$ si trova in una foglia $x$.}
-Si elimina $k$ da $x$. Per l'invariante, $x$ ha almeno $t$ chiavi (oppure è la radice), quindi dopo la rimozione ne restano almeno $t-1$ e la foglia è ancora valida.
+\begin{description}
+  \item[Caso 1: $\mathbf{k}$ si trova in una foglia $\mathbf{x}$ non magra.] Si elimina $k$ da $x$ e si termina. In questo caso vale l'invariante, perché $x$ ha almeno $t$ chiavi (oppure è la radice), quindi dopo la rimozione ne restano almeno $t-1$ e la foglia è ancora valida. 
+  \item[Caso 2: $\mathbf{k}$ si trova in un nodo interno (non foglia) $\mathbf{x}$.] Sia $k = \mathit{key}_i[x]$, e siano $y = c_i[x]$ e $z = c_{i+1}[x]$ i figli immediatamente a sinistra e a destra di $k$. Non possiamo semplicemente togliere $k$, perché $x$ perderebbe una chiave ma non un figlio, e si distinguono tre sottocasi.
+  
+  \begin{casofig}[2a]
+    Se il figlio $y$ contiene almeno $t$ chiavi, sostituiamo $k$ con il suo \textbf{predecessore} $k'$, ovvero la chiave massima del sottoalbero radicato in $y$. Il predecessore si trova seguendo i figli più a destra fino a raggiungere una foglia. Poi si cancella ricorsivamente $k'$ dal sottoalbero di $y$, e la ricerca e la cancellazione di $k'$ si eseguono con una sola discesa. Nell'esempio, con $t = 3$, il figlio [J, K, L] ha $t$ chiavi: M viene sostituita da L, e la foglia diventa [J, K].
+    \tcblower
+    \begin{widget}{b-tree}[tree={(C G M (A B) (D E) (J K L) (N O))}, t=3, ops={delete M}, actions={}]
+    \begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+      \node[bn, rectangle split parts=3] (p0) at (2.775,0.000) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{G} \nodepart{three} \makebox[0.75em]{M}};
+      \node[bn, rectangle split parts=2] (p1) at (0.500,-1.000) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+      \draw (p0.south west) -- (p1.north);
+      \node[bn, rectangle split parts=2] (p2) at (1.850,-1.000) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E}};
+      \draw (p0.one split south) -- (p2.north);
+      \node[bn, rectangle split parts=3] (p3) at (3.450,-1.000) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K} \nodepart{three} \makebox[0.75em]{L}};
+      \draw (p0.two split south) -- (p3.north);
+      \node[bn, rectangle split parts=2] (p4) at (5.050,-1.000) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+      \draw (p0.south east) -- (p4.north);
+      \node[hl, rectangle split parts=3] (q0) at (2.775,-2.550) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{G} \nodepart{three} \makebox[0.75em]{L}};
+      \node[bn, rectangle split parts=2] (q1) at (0.750,-3.550) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+      \draw (q0.south west) -- (q1.north);
+      \node[bn, rectangle split parts=2] (q2) at (2.100,-3.550) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E}};
+      \draw (q0.one split south) -- (q2.north);
+      \node[hl, rectangle split parts=2] (q3) at (3.450,-3.550) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K}};
+      \draw (q0.two split south) -- (q3.north);
+      \node[bn, rectangle split parts=2] (q4) at (4.800,-3.550) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+      \draw (q0.south east) -- (q4.north);
+      \draw[->, thick] (2.77,-1.45) -- node[lab, right] {cancellazione di M} (2.77,-2.09);
+    \end{tikzpicture}
+    \end{widget}
+  \end{casofig}
 
-\paragraph{Caso 2: $k$ si trova in un nodo interno $x$.}
-Sia $k = \mathit{key}_i[x]$, e siano $y = c_i[x]$ e $z = c_{i+1}[x]$ i figli immediatamente a sinistra e a destra di $k$. Non possiamo semplicemente togliere $k$, perché $x$ perderebbe una chiave ma non un figlio, e si distinguono tre sottocasi.
+  \begin{casofig}[2b]
+    Se $y$ ha solo $t-1$ chiavi ma il figlio $z$ ne contiene almeno $t$, si procede in modo simmetrico. Sostituiamo $k$ con il suo \textbf{successore} $k''$, ovvero la chiave minima del sottoalbero radicato in $z$, che si trova seguendo i figli più a sinistra. Poi si cancella ricorsivamente $k''$ dal sottoalbero di $z$. Nell'esempio, [A, B] ha solo $2$ chiavi mentre [N, O, P] ne ha $3$: M viene sostituita da N, e la foglia diventa [O, P].
+    \tcblower
+    \begin{widget}{b-tree}[tree={(M T (A B) (N O P) (U V W))}, t=3, ops={delete M}, actions={}]
+    \begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+      \node[bn, rectangle split parts=2] (p0) at (2.350,0.000) {\makebox[0.75em]{M} \nodepart{two} \makebox[0.75em]{T}};
+      \node[bn, rectangle split parts=2] (p1) at (0.500,-1.000) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+      \draw (p0.south west) -- (p1.north);
+      \node[bn, rectangle split parts=3] (p2) at (2.100,-1.000) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O} \nodepart{three} \makebox[0.75em]{P}};
+      \draw (p0.one split south) -- (p2.north);
+      \node[bn, rectangle split parts=3] (p3) at (3.950,-1.000) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V} \nodepart{three} \makebox[0.75em]{W}};
+      \draw (p0.south east) -- (p3.north);
+      \node[hl, rectangle split parts=2] (q0) at (2.350,-2.550) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{T}};
+      \node[bn, rectangle split parts=2] (q1) at (0.750,-3.550) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+      \draw (q0.south west) -- (q1.north);
+      \node[hl, rectangle split parts=2] (q2) at (2.100,-3.550) {\makebox[0.75em]{O} \nodepart{two} \makebox[0.75em]{P}};
+      \draw (q0.one split south) -- (q2.north);
+      \node[bn, rectangle split parts=3] (q3) at (3.700,-3.550) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V} \nodepart{three} \makebox[0.75em]{W}};
+      \draw (q0.south east) -- (q3.north);
+      \draw[->, thick] (2.35,-1.45) -- node[lab, right] {cancellazione di M} (2.35,-2.09);
+    \end{tikzpicture}
+    \end{widget}
+  \end{casofig}
 
-\begin{casofig}[2a]
-Se il figlio $y$ contiene almeno $t$ chiavi, sostituiamo $k$ con il suo \textbf{predecessore} $k'$, ovvero la chiave massima del sottoalbero radicato in $y$. Il predecessore si trova seguendo i figli più a destra fino a raggiungere una foglia. Poi si cancella ricorsivamente $k'$ dal sottoalbero di $y$, e la ricerca e la cancellazione di $k'$ si eseguono con una sola discesa. Nell'esempio, con $t = 3$, il figlio [J, K, L] ha $t$ chiavi: M viene sostituita da L, e la foglia diventa [J, K].
-\tcblower
-\begin{widget}{b-tree}[tree={(C G M (A B) (D E) (J K L) (N O))}, t=3, ops={delete M}, actions={}]
-\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
-  \node[bn, rectangle split parts=3] (p0) at (2.775,0.000) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{G} \nodepart{three} \makebox[0.75em]{M}};
-  \node[bn, rectangle split parts=2] (p1) at (0.500,-1.000) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
-  \draw (p0.south west) -- (p1.north);
-  \node[bn, rectangle split parts=2] (p2) at (1.850,-1.000) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E}};
-  \draw (p0.one split south) -- (p2.north);
-  \node[bn, rectangle split parts=3] (p3) at (3.450,-1.000) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K} \nodepart{three} \makebox[0.75em]{L}};
-  \draw (p0.two split south) -- (p3.north);
-  \node[bn, rectangle split parts=2] (p4) at (5.050,-1.000) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
-  \draw (p0.south east) -- (p4.north);
-  \node[hl, rectangle split parts=3] (q0) at (2.775,-2.550) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{G} \nodepart{three} \makebox[0.75em]{L}};
-  \node[bn, rectangle split parts=2] (q1) at (0.750,-3.550) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
-  \draw (q0.south west) -- (q1.north);
-  \node[bn, rectangle split parts=2] (q2) at (2.100,-3.550) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E}};
-  \draw (q0.one split south) -- (q2.north);
-  \node[hl, rectangle split parts=2] (q3) at (3.450,-3.550) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K}};
-  \draw (q0.two split south) -- (q3.north);
-  \node[bn, rectangle split parts=2] (q4) at (4.800,-3.550) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
-  \draw (q0.south east) -- (q4.north);
-  \draw[->, thick] (2.77,-1.45) -- node[lab, right] {cancellazione di M} (2.77,-2.09);
-\end{tikzpicture}
-\end{widget}
-\end{casofig}
+   \begin{casofig}[2c]
+    Se entrambi i figli $y$ e $z$ hanno esattamente $t-1$ chiavi, li \textbf{fondiamo} insieme a $k$: in $y$ finiscono $k$ e tutto il contenuto di $z$, e $x$ perde sia $k$ sia il puntatore a $z$. Il nodo fuso ha
+    \[
+    (t-1) + 1 + (t-1) = 2t-1
+    \]
+    chiavi. Il nodo $z$ si libera, e si cancella ricorsivamente $k$ dal nodo fuso. Nell'esempio, la fusione produce [D, E, G, J, K] e, rimossa G, resta [D, E, J, K].
+    \tcblower
+    \begin{widget}{b-tree}[tree={(C G L (A B) (D E) (J K) (N O))}, t=3, ops={delete G}, actions={}]
+    \begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+      \node[bn, rectangle split parts=3] (p0) at (2.525,0.000) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{G} \nodepart{three} \makebox[0.75em]{L}};
+      \node[bn, rectangle split parts=2] (p1) at (0.500,-1.000) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+      \draw (p0.south west) -- (p1.north);
+      \node[bn, rectangle split parts=2] (p2) at (1.850,-1.000) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E}};
+      \draw (p0.one split south) -- (p2.north);
+      \node[bn, rectangle split parts=2] (p3) at (3.200,-1.000) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K}};
+      \draw (p0.two split south) -- (p3.north);
+      \node[bn, rectangle split parts=2] (p4) at (4.550,-1.000) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+      \draw (p0.south east) -- (p4.north);
+      \node[hl, rectangle split parts=2] (q0) at (2.525,-2.550) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{L}};
+      \node[bn, rectangle split parts=2] (q1) at (0.675,-3.550) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
+      \draw (q0.south west) -- (q1.north);
+      \node[hl, rectangle split parts=4] (q2) at (2.525,-3.550) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E} \nodepart{three} \makebox[0.75em]{J} \nodepart{four} \makebox[0.75em]{K}};
+      \draw (q0.one split south) -- (q2.north);
+      \node[bn, rectangle split parts=2] (q3) at (4.375,-3.550) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
+      \draw (q0.south east) -- (q3.north);
+      \draw[->, thick] (2.52,-1.45) -- node[lab, right] {cancellazione di G} (2.52,-2.09);
+    \end{tikzpicture}
+    \end{widget}
+  \end{casofig}
+  
+  \item[Caso 3: $\mathbf{k}$ non si trova nel nodo interno $\mathbf{x}$.] Si determina il figlio $c_i[x]$ il cui sottoalbero deve contenere $k$, se $k$ è presente nell'albero. Se $c_i[x]$ ha almeno $t$ chiavi si scende direttamente. Se invece ne ha solo $t-1$, prima di scendere bisogna dargli una chiave in più, e si distinguono due sottocasi.
 
-\begin{casofig}[2b]
-Se $y$ ha solo $t-1$ chiavi ma il figlio $z$ ne contiene almeno $t$, si procede in modo simmetrico. Sostituiamo $k$ con il suo \textbf{successore} $k''$, ovvero la chiave minima del sottoalbero radicato in $z$, che si trova seguendo i figli più a sinistra. Poi si cancella ricorsivamente $k''$ dal sottoalbero di $z$. Nell'esempio, [A, B] ha solo $2$ chiavi mentre [N, O, P] ne ha $3$: M viene sostituita da N, e la foglia diventa [O, P].
-\tcblower
-\begin{widget}{b-tree}[tree={(M T (A B) (N O P) (U V W))}, t=3, ops={delete M}, actions={}]
-\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
-  \node[bn, rectangle split parts=2] (p0) at (2.350,0.000) {\makebox[0.75em]{M} \nodepart{two} \makebox[0.75em]{T}};
-  \node[bn, rectangle split parts=2] (p1) at (0.500,-1.000) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
-  \draw (p0.south west) -- (p1.north);
-  \node[bn, rectangle split parts=3] (p2) at (2.100,-1.000) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O} \nodepart{three} \makebox[0.75em]{P}};
-  \draw (p0.one split south) -- (p2.north);
-  \node[bn, rectangle split parts=3] (p3) at (3.950,-1.000) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V} \nodepart{three} \makebox[0.75em]{W}};
-  \draw (p0.south east) -- (p3.north);
-  \node[hl, rectangle split parts=2] (q0) at (2.350,-2.550) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{T}};
-  \node[bn, rectangle split parts=2] (q1) at (0.750,-3.550) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
-  \draw (q0.south west) -- (q1.north);
-  \node[hl, rectangle split parts=2] (q2) at (2.100,-3.550) {\makebox[0.75em]{O} \nodepart{two} \makebox[0.75em]{P}};
-  \draw (q0.one split south) -- (q2.north);
-  \node[bn, rectangle split parts=3] (q3) at (3.700,-3.550) {\makebox[0.75em]{U} \nodepart{two} \makebox[0.75em]{V} \nodepart{three} \makebox[0.75em]{W}};
-  \draw (q0.south east) -- (q3.north);
-  \draw[->, thick] (2.35,-1.45) -- node[lab, right] {cancellazione di M} (2.35,-2.09);
-\end{tikzpicture}
-\end{widget}
-\end{casofig}
+  \begin{casofig}[3a]
+  Se $c_i[x]$ ha un fratello immediato con almeno $t$ chiavi, si esegue un \textbf{prestito}. La chiave di $x$ che separa i due fratelli scende in $c_i[x]$, e la chiave del fratello più vicina a $c_i[x]$ sale in $x$ al suo posto. Se i figli sono nodi interni, insieme alla chiave passa da un fratello all'altro anche il puntatore al sottoalbero corrispondente. Nell'esempio, 30 scende nel figlio $[10, 20]$ e 40, il minimo del fratello destro, sale nel padre. Il figlio ha ora $t$ chiavi e la discesa può proseguire.
+  \tcblower
+  \begin{widget}{b-tree}[tree={(30 (10 20) (40 50 60))}, t=3, ops={delete 10}, actions={}]
+  \begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+    \node[bn, rectangle split parts=1] (p0) at (1.675,0.000) {\makebox[1.1em]{30}};
+    \node[bn, rectangle split parts=2] (p1) at (0.600,-1.000) {\makebox[1.1em]{10} \nodepart{two} \makebox[1.1em]{20}};
+    \draw (p0.south west) -- (p1.north);
+    \node[bn, rectangle split parts=3] (p2) at (2.450,-1.000) {\makebox[1.1em]{40} \nodepart{two} \makebox[1.1em]{50} \nodepart{three} \makebox[1.1em]{60}};
+    \draw (p0.south east) -- (p2.north);
+    \node[hl, rectangle split parts=1] (q0) at (1.675,-2.550) {\makebox[1.1em]{40}};
+    \node[hl, rectangle split parts=2] (q1) at (0.900,-3.550) {\makebox[1.1em]{20} \nodepart{two} \makebox[1.1em]{30}};
+    \draw (q0.south west) -- (q1.north);
+    \node[hl, rectangle split parts=2] (q2) at (2.450,-3.550) {\makebox[1.1em]{50} \nodepart{two} \makebox[1.1em]{60}};
+    \draw (q0.south east) -- (q2.north);
+    \draw[->, thick] (1.68,-1.45) -- node[lab, right] {cancellazione di 10} (1.68,-2.09);
+  \end{tikzpicture}
+  \end{widget}
+  \end{casofig}
 
-\begin{casofig}[2c]
-Se entrambi i figli $y$ e $z$ hanno esattamente $t-1$ chiavi, li \textbf{fondiamo} insieme a $k$: in $y$ finiscono $k$ e tutto il contenuto di $z$, e $x$ perde sia $k$ sia il puntatore a $z$. Il nodo fuso ha
-\[
-(t-1) + 1 + (t-1) = 2t-1
-\]
-chiavi. Il nodo $z$ si libera, e si cancella ricorsivamente $k$ dal nodo fuso. Nell'esempio, la fusione produce [D, E, G, J, K] e, rimossa G, resta [D, E, J, K].
-\tcblower
-\begin{widget}{b-tree}[tree={(C G L (A B) (D E) (J K) (N O))}, t=3, ops={delete G}, actions={}]
-\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
-  \node[bn, rectangle split parts=3] (p0) at (2.525,0.000) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{G} \nodepart{three} \makebox[0.75em]{L}};
-  \node[bn, rectangle split parts=2] (p1) at (0.500,-1.000) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
-  \draw (p0.south west) -- (p1.north);
-  \node[bn, rectangle split parts=2] (p2) at (1.850,-1.000) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E}};
-  \draw (p0.one split south) -- (p2.north);
-  \node[bn, rectangle split parts=2] (p3) at (3.200,-1.000) {\makebox[0.75em]{J} \nodepart{two} \makebox[0.75em]{K}};
-  \draw (p0.two split south) -- (p3.north);
-  \node[bn, rectangle split parts=2] (p4) at (4.550,-1.000) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
-  \draw (p0.south east) -- (p4.north);
-  \node[hl, rectangle split parts=2] (q0) at (2.525,-2.550) {\makebox[0.75em]{C} \nodepart{two} \makebox[0.75em]{L}};
-  \node[bn, rectangle split parts=2] (q1) at (0.675,-3.550) {\makebox[0.75em]{A} \nodepart{two} \makebox[0.75em]{B}};
-  \draw (q0.south west) -- (q1.north);
-  \node[hl, rectangle split parts=4] (q2) at (2.525,-3.550) {\makebox[0.75em]{D} \nodepart{two} \makebox[0.75em]{E} \nodepart{three} \makebox[0.75em]{J} \nodepart{four} \makebox[0.75em]{K}};
-  \draw (q0.one split south) -- (q2.north);
-  \node[bn, rectangle split parts=2] (q3) at (4.375,-3.550) {\makebox[0.75em]{N} \nodepart{two} \makebox[0.75em]{O}};
-  \draw (q0.south east) -- (q3.north);
-  \draw[->, thick] (2.52,-1.45) -- node[lab, right] {cancellazione di G} (2.52,-2.09);
-\end{tikzpicture}
-\end{widget}
-\end{casofig}
+  \begin{casofig}[3b]
+  Se $c_i[x]$ e i suoi fratelli immediati hanno tutti $t-1$ chiavi, nessuno può prestarne una. Si esegue allora una \textbf{fusione}: $c_i[x]$ si fonde con un fratello e con la chiave di $x$ che li separa, che diventa la mediana del nodo fuso. Il padre perde una chiave e un puntatore, e il nodo fuso ha $2t-1$ chiavi. Nell'esempio, $[15, 20]$ si fonde con $[35, 40]$ e con 30, e la cancellazione di 20 prosegue nel nodo fuso.
+  \tcblower
+  \begin{widget}{b-tree}[tree={(10 30 (1 5) (15 20) (35 40))}, t=3, ops={delete 20}, actions={}]
+  \begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
+    \node[bn, rectangle split parts=2] (p0) at (2.150,0.000) {\makebox[1.1em]{10} \nodepart{two} \makebox[1.1em]{30}};
+    \node[bn, rectangle split parts=2] (p1) at (0.600,-1.000) {\makebox[1.1em]{1} \nodepart{two} \makebox[1.1em]{5}};
+    \draw (p0.south west) -- (p1.north);
+    \node[bn, rectangle split parts=2] (p2) at (2.150,-1.000) {\makebox[1.1em]{15} \nodepart{two} \makebox[1.1em]{20}};
+    \draw (p0.one split south) -- (p2.north);
+    \node[bn, rectangle split parts=2] (p3) at (3.700,-1.000) {\makebox[1.1em]{35} \nodepart{two} \makebox[1.1em]{40}};
+    \draw (p0.south east) -- (p3.north);
+    \node[hl, rectangle split parts=1] (q0) at (2.150,-2.550) {\makebox[1.1em]{10}};
+    \node[bn, rectangle split parts=2] (q1) at (0.775,-3.550) {\makebox[1.1em]{1} \nodepart{two} \makebox[1.1em]{5}};
+    \draw (q0.south west) -- (q1.north);
+    \node[hl, rectangle split parts=4] (q2) at (2.925,-3.550) {\makebox[1.1em]{15} \nodepart{two} \makebox[1.1em]{30} \nodepart{three} \makebox[1.1em]{35} \nodepart{four} \makebox[1.1em]{40}};
+    \draw (q0.south east) -- (q2.north);
+    \draw[->, thick] (2.15,-1.45) -- node[lab, right] {cancellazione di 20} (2.15,-2.09);
+  \end{tikzpicture}
+  \end{widget}
+  \end{casofig}
 
-\paragraph{Caso 3: $k$ non si trova nel nodo interno $x$.}
-Si determina il figlio $c_i[x]$ il cui sottoalbero deve contenere $k$, se $k$ è presente nell'albero. Se $c_i[x]$ ha almeno $t$ chiavi si scende direttamente. Se invece ne ha solo $t-1$, prima di scendere bisogna dargli una chiave in più, e si distinguono due sottocasi.
-
-\begin{casofig}[3a]
-Se $c_i[x]$ ha un fratello immediato con almeno $t$ chiavi, si esegue un \textbf{prestito}. La chiave di $x$ che separa i due fratelli scende in $c_i[x]$, e la chiave del fratello più vicina a $c_i[x]$ sale in $x$ al suo posto. Se i figli sono nodi interni, insieme alla chiave passa da un fratello all'altro anche il puntatore al sottoalbero corrispondente. Nell'esempio, 30 scende nel figlio $[10, 20]$ e 40, il minimo del fratello destro, sale nel padre. Il figlio ha ora $t$ chiavi e la discesa può proseguire.
-\tcblower
-\begin{widget}{b-tree}[tree={(30 (10 20) (40 50 60))}, t=3, ops={delete 10}, actions={}]
-\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
-  \node[bn, rectangle split parts=1] (p0) at (1.675,0.000) {\makebox[1.1em]{30}};
-  \node[bn, rectangle split parts=2] (p1) at (0.600,-1.000) {\makebox[1.1em]{10} \nodepart{two} \makebox[1.1em]{20}};
-  \draw (p0.south west) -- (p1.north);
-  \node[bn, rectangle split parts=3] (p2) at (2.450,-1.000) {\makebox[1.1em]{40} \nodepart{two} \makebox[1.1em]{50} \nodepart{three} \makebox[1.1em]{60}};
-  \draw (p0.south east) -- (p2.north);
-  \node[hl, rectangle split parts=1] (q0) at (1.675,-2.550) {\makebox[1.1em]{40}};
-  \node[hl, rectangle split parts=2] (q1) at (0.900,-3.550) {\makebox[1.1em]{20} \nodepart{two} \makebox[1.1em]{30}};
-  \draw (q0.south west) -- (q1.north);
-  \node[hl, rectangle split parts=2] (q2) at (2.450,-3.550) {\makebox[1.1em]{50} \nodepart{two} \makebox[1.1em]{60}};
-  \draw (q0.south east) -- (q2.north);
-  \draw[->, thick] (1.68,-1.45) -- node[lab, right] {cancellazione di 10} (1.68,-2.09);
-\end{tikzpicture}
-\end{widget}
-\end{casofig}
-
-\begin{casofig}[3b]
-Se $c_i[x]$ e i suoi fratelli immediati hanno tutti $t-1$ chiavi, nessuno può prestarne una. Si esegue allora una \textbf{fusione}: $c_i[x]$ si fonde con un fratello e con la chiave di $x$ che li separa, che diventa la mediana del nodo fuso. Il padre perde una chiave e un puntatore, e il nodo fuso ha $2t-1$ chiavi. Nell'esempio, $[15, 20]$ si fonde con $[35, 40]$ e con 30, e la cancellazione di 20 prosegue nel nodo fuso.
-\tcblower
-\begin{widget}{b-tree}[tree={(10 30 (1 5) (15 20) (35 40))}, t=3, ops={delete 20}, actions={}]
-\begin{tikzpicture}[btree, >=Stealth, bn/.append style={font=\footnotesize}]
-  \node[bn, rectangle split parts=2] (p0) at (2.150,0.000) {\makebox[1.1em]{10} \nodepart{two} \makebox[1.1em]{30}};
-  \node[bn, rectangle split parts=2] (p1) at (0.600,-1.000) {\makebox[1.1em]{1} \nodepart{two} \makebox[1.1em]{5}};
-  \draw (p0.south west) -- (p1.north);
-  \node[bn, rectangle split parts=2] (p2) at (2.150,-1.000) {\makebox[1.1em]{15} \nodepart{two} \makebox[1.1em]{20}};
-  \draw (p0.one split south) -- (p2.north);
-  \node[bn, rectangle split parts=2] (p3) at (3.700,-1.000) {\makebox[1.1em]{35} \nodepart{two} \makebox[1.1em]{40}};
-  \draw (p0.south east) -- (p3.north);
-  \node[hl, rectangle split parts=1] (q0) at (2.150,-2.550) {\makebox[1.1em]{10}};
-  \node[bn, rectangle split parts=2] (q1) at (0.775,-3.550) {\makebox[1.1em]{1} \nodepart{two} \makebox[1.1em]{5}};
-  \draw (q0.south west) -- (q1.north);
-  \node[hl, rectangle split parts=4] (q2) at (2.925,-3.550) {\makebox[1.1em]{15} \nodepart{two} \makebox[1.1em]{30} \nodepart{three} \makebox[1.1em]{35} \nodepart{four} \makebox[1.1em]{40}};
-  \draw (q0.south east) -- (q2.north);
-  \draw[->, thick] (2.15,-1.45) -- node[lab, right] {cancellazione di 20} (2.15,-2.09);
-\end{tikzpicture}
-\end{widget}
-\end{casofig}
-
-\noindent
-Dopo l'eventuale prestito o fusione, si cancella ricorsivamente $k$ dal sottoalbero del figlio appropriato.
+  Dopo l'eventuale prestito o fusione, si cancella ricorsivamente $k$ dal sottoalbero del figlio appropriato.
+\end{description}
 
 \paragraph{La radice che diventa vuota.}
 Nei casi 2c e 3b la fusione toglie una chiave al padre. Se il padre è la radice e aveva una sola chiave, la radice resta senza chiavi e con un unico figlio: in questo caso si elimina la vecchia radice, e il figlio diventa la nuova radice. L'altezza dell'albero diminuisce di uno, e la radice torna ad avere almeno una chiave. Simmetricamente all'inserimento, questo è l'unico modo in cui l'altezza di un B-tree può diminuire.
