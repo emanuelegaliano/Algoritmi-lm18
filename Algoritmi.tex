@@ -71,6 +71,20 @@
   pics/lista/.style={code={\edef\listeitems{#1}%
     \foreach \v/\s [count=\i from 0] in \listeitems {\node[\s] (-\v) at (\i*\listestep, 0) {$\v$};}}}}
 
+% stili comuni per le figure degli heap binomiali: hn è un nodo con la sua chiave e hl un nodo in evidenza,
+% vn un nodo senza chiave (alberi binomiali), ptr un puntatore delle procedure (x, next-x, ...), head il
+% puntatore alla lista delle radici e rec un campo di un nodo; le coordinate delle figure con le chiavi
+% vengono dallo stesso modello dei widget binomial-heap e binomial-tree
+\tikzset{binheap/.style={
+  hn/.style={circle, draw=Accent, fill=Accent!6, minimum size=4.6mm, inner sep=0pt, font=\scriptsize},
+  hl/.style={hn, draw=FigColor, fill=FigColor!20},
+  vn/.style={circle, draw=Accent, fill=Accent!12, minimum size=2.4mm, inner sep=0pt},
+  ptr/.style={font=\scriptsize, color=FigColor, inner sep=1pt},
+  head/.style={font=\small, inner sep=1pt},
+  rec/.style={font=\scriptsize, inner sep=0pt},
+  ptrc/.style={FigColor}, ptrp/.style={TextGray}, ptrs/.style={Accent},
+  lab/.style={font=\small, color=TextGray}}}
+
 % figure interattive della versione web (texweb): nel PDF si stampa la figura statica
 \usepackage{texweb}
 
@@ -193,6 +207,16 @@
   borderline west={2.5pt}{0pt}{LemmaColor},
   attach title to upper={\tcblabelfix\ },
   title={Teorema~\thetcbcounter\ifblank{#1}{}{\ (#1)}.},
+}
+
+% \begin{corollario}[Titolo opzionale] ... \end{corollario}
+%   come il lemma, con numerazione propria per capitolo
+\newtcolorbox[auto counter, number within=chapter]{corollario}[1][]{
+  boxbase,
+  colback=LemmaColor!7, coltitle=LemmaColor,
+  borderline west={2.5pt}{0pt}{LemmaColor},
+  attach title to upper={\tcblabelfix\ },
+  title={Corollario~\thetcbcounter\ifblank{#1}{}{\ (#1)}.},
 }
 
 % \begin{esercizio}[Titolo opzionale] testo \end{esercizio}
@@ -324,6 +348,24 @@
 \newcommand{\BTreeInsertNonfull}{\textsc{B-Tree-Insert-Nonfull}}
 \newcommand{\BTreeSplitChild}{\textsc{B-Tree-Split-Child}}
 \newcommand{\BTreeDelete}{\textsc{B-Tree-Delete}}
+% heap binomiali
+\newcommand{\Nil}{\textsc{nil}}
+\newcommand{\prevx}{\mathit{prev}\text{-}x}
+\newcommand{\nextx}{\mathit{next}\text{-}x}
+\newcommand{\MakeHeap}{\textsc{Make-Heap}}
+\newcommand{\Minimum}{\textsc{Minimum}}
+\newcommand{\ExtractMin}{\textsc{Extract-Min}}
+\newcommand{\Union}{\textsc{Union}}
+\newcommand{\DecreaseKey}{\textsc{Decrease-Key}}
+\newcommand{\MakeBinomialHeap}{\textsc{Make-Binomial-Heap}}
+\newcommand{\BinomialHeapMinimum}{\textsc{Binomial-Heap-Minimum}}
+\newcommand{\BinomialLink}{\textsc{Binomial-Link}}
+\newcommand{\BinomialHeapMerge}{\textsc{Binomial-Heap-Merge}}
+\newcommand{\BinomialHeapUnion}{\textsc{Binomial-Heap-Union}}
+\newcommand{\BinomialHeapInsert}{\textsc{Binomial-Heap-Insert}}
+\newcommand{\BinomialHeapExtractMin}{\textsc{Binomial-Heap-Extract-Min}}
+\newcommand{\BinomialHeapDecreaseKey}{\textsc{Binomial-Heap-Decrease-Key}}
+\newcommand{\BinomialHeapDelete}{\textsc{Binomial-Heap-Delete}}
 
 % =====================================================
 % METADATA
@@ -422,6 +464,7 @@ Versione: \today
 \input{chapters/splay_trees}
 \input{chapters/B-trees}
 \input{chapters/move_to_front}
+\input{chapters/heap_binomiali}
 
 % =====================================================
 % BIBLIOGRAPHY

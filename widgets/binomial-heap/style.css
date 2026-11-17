@@ -1,0 +1,20 @@
+.w-binheap .bh-head { font-family: var(--font-serif); font-style: italic; font-size: 13px; fill: var(--ink); }
+.w-binheap .bh-ptr { font-family: var(--font-serif); font-style: italic; font-size: 13px; fill: var(--fig); font-weight: 600; }
+.w-binheap .key-in {
+  width: 6.2rem; border: 0; border-right: 1px solid var(--rule); background: transparent; color: var(--ink);
+  font: inherit; font-family: var(--font-mono); font-size: 0.88rem; padding: 0.35rem 0.6rem;
+}
+.w-binheap .key-in:focus { outline: 2px solid var(--accent-soft); outline-offset: -2px; }
+.w-binheap .sc { font-variant: small-caps; letter-spacing: 0.03em; }
+.w-binheap .hint { font-size: 0.8rem; margin-top: 0.3rem; }
+.w-binheap .eq-line { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.15rem 1.6rem; }
+
+/* numero di alberi di ogni grado: le celle con due o tre alberi sono i riporti dell'unione */
+.w-binheap .bh-degrees { display: flex; justify-content: center; margin-top: 0.6rem; overflow-x: auto; }
+.w-binheap .bh-degrees table { border-collapse: collapse; font-family: var(--font-mono); font-size: 0.85rem; }
+.w-binheap .bh-degrees th, .w-binheap .bh-degrees td { padding: 0.12rem 0.55rem; text-align: center; }
+.w-binheap .bh-degrees th { font-weight: normal; color: var(--ink-soft); font-size: 0.8rem; }
+.w-binheap .bh-degrees td { color: var(--ink-soft); border-top: 1px solid var(--rule); transition: background calc(0.3s / var(--speed, 1)); }
+.w-binheap .bh-degrees td.bh-one { color: var(--ink); background: color-mix(in oklab, var(--accent-soft) 16%, transparent); }
+.w-binheap .bh-degrees td.bh-carry { color: var(--ink); font-weight: 600; background: color-mix(in oklab, var(--obs) 30%, transparent); }
+.w-binheap .bh-degrees .bh-n { border-left: 1px solid var(--rule); }

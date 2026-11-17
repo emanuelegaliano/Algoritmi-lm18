@@ -13,6 +13,11 @@ const operations = {
   PageRead: 'Page-Read', PageWrite: 'Page-Write', AllocateNode: 'Allocate-Node',
   BTreeSearch: 'B-Tree-Search', BTreeCreate: 'B-Tree-Create', BTreeInsert: 'B-Tree-Insert',
   BTreeInsertNonfull: 'B-Tree-Insert-Nonfull', BTreeSplitChild: 'B-Tree-Split-Child', BTreeDelete: 'B-Tree-Delete',
+  MakeHeap: 'Make-Heap', Minimum: 'Minimum', ExtractMin: 'Extract-Min', Union: 'Union', DecreaseKey: 'Decrease-Key',
+  MakeBinomialHeap: 'Make-Binomial-Heap', BinomialHeapMinimum: 'Binomial-Heap-Minimum',
+  BinomialLink: 'Binomial-Link', BinomialHeapMerge: 'Binomial-Heap-Merge', BinomialHeapUnion: 'Binomial-Heap-Union',
+  BinomialHeapInsert: 'Binomial-Heap-Insert', BinomialHeapExtractMin: 'Binomial-Heap-Extract-Min',
+  BinomialHeapDecreaseKey: 'Binomial-Heap-Decrease-Key', BinomialHeapDelete: 'Binomial-Heap-Delete',
 };
 
 export default {
@@ -23,5 +28,11 @@ export default {
   repository: 'emanuelegaliano/Algoritmi-lm18',
   // caso con testo a sinistra e figura a destra (capitolo sugli splay tree): «Caso (Zig).»
   boxes: { casofig: { title: 'Caso', numbered: false, style: 'plain', split: 'tcblower' } },
-  katexMacros: Object.fromEntries(Object.entries(operations).map(([macro, word]) => [`\\${macro}`, sc(word)])),
+  katexMacros: {
+    ...Object.fromEntries(Object.entries(operations).map(([macro, word]) => [`\\${macro}`, sc(word)])),
+    // capitolo sugli heap binomiali: NIL e i puntatori prev-x e next-x delle procedure
+    '\\Nil': sc('nil'),
+    '\\prevx': '\\mathit{prev}\\text{-}x',
+    '\\nextx': '\\mathit{next}\\text{-}x',
+  },
 };

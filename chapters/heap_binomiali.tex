@@ -1,0 +1,1874 @@
+\chapter{Heap binomiali}\label{ch:heap-binomiali}
+Gli \textbf{heap binomiali} sono una struttura dati per gestire un insieme di elementi con priorità, come gli heap binari, ma permettono anche l'\textbf{unione} di due heap in tempo logaritmico. Sono stati introdotti da Jean Vuillemin nel 1978.
+
+Un heap binomiale è una collezione di alberi con una forma molto rigida, detti alberi binomiali. Due collezioni di questo tipo si fondono con un procedimento simile alla somma di due numeri binari.
+
+In questo capitolo partiamo dalle operazioni che vogliamo supportare, definiamo gli alberi binomiali e le loro proprietà, e da questi arriviamo agli heap binomiali e alle loro operazioni. Chiude il capitolo l'analisi ammortizzata di una sequenza di inserimenti.
+
+\section{Mergeable heap}\label{sec:hb-mergeable}
+Un \textbf{mergeable heap} (heap unificabile) è una struttura dati che contiene un insieme di nodi, ciascuno con una chiave, e che supporta le seguenti operazioni:
+\begin{itemize}
+    \item \MakeHeap$()$: crea e restituisce un nuovo heap vuoto.
+    \item \Insert$(H,x)$: inserisce nell'heap $H$ il nodo $x$, la cui chiave è già stata assegnata.
+    \item \Minimum$(H)$: restituisce un puntatore al nodo di $H$ con la chiave minima.
+    \item \ExtractMin$(H)$: elimina da $H$ il nodo con la chiave minima, e ne restituisce il puntatore.
+    \item \Union$(H_1,H_2)$: crea e restituisce un nuovo heap con tutti i nodi di $H_1$ e di $H_2$. I due heap di partenza vengono ``distrutti'' dall'operazione.
+    \item \DecreaseKey$(H,x,k)$: assegna al nodo $x$ di $H$ la nuova chiave $k$, che si suppone non maggiore della chiave attuale.
+    \item \Delete$(H,x)$: elimina il nodo $x$ da $H$.
+\end{itemize}
+Di queste operazioni considereremo due implementazioni:
+\begin{itemize}
+    \item \textbf{Heap binomiali} (J.~Vuillemin, 1978): tutte le operazioni costano $O(\lg n)$ nel caso peggiore, unione compresa.
+    \item \textbf{Heap di Fibonacci} (M.\,L.~Fredman e R.\,E.~Tarjan, 1984--1987): \Insert{}, \Minimum{}, \Union{} e \DecreaseKey{} costano $\Theta(1)$ in senso ammortizzato.
+\end{itemize}
+La tabella~\ref{tab:hb-confronto} ne confronta i costi con quelli degli heap binari.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Operazione & Heap binario & Heap binomiale & Heap di Fibonacci \\
+ & (caso peggiore) & (caso peggiore) & (ammortizzato) \\
+\midrule
+\MakeHeap{} & $\Theta(1)$ & $\Theta(1)$ & $\Theta(1)$ \\
+\Insert{} & $\Theta(\lg n)$ & $O(\lg n)$ & $\Theta(1)$ \\
+\Minimum{} & $\Theta(1)$ & $O(\lg n)$ & $\Theta(1)$ \\
+\ExtractMin{} & $\Theta(\lg n)$ & $O(\lg n)$ & $O(\lg n)$ \\
+\Union{} & $\Theta(n)$ & $O(\lg n)$ & $\Theta(1)$ \\
+\DecreaseKey{} & $\Theta(\lg n)$ & $O(\lg n)$ & $\Theta(1)$ \\
+\Delete{} & $\Theta(\lg n)$ & $O(\lg n)$ & $O(\lg n)$ \\
+\bottomrule
+\end{tabular}
+\caption{Il costo delle operazioni in tre implementazioni dei mergeable heap, dove $n$ è il numero di elementi. Per gli heap binari e binomiali il costo è quello del caso peggiore, mentre per gli heap di Fibonacci è un costo ammortizzato.}
+\label{tab:hb-confronto}
+\end{table}
+
+\section{Alberi binomiali}\label{sec:hb-alberi}
+Un heap binomiale è una collezione di alberi con una forma molto particolare, detti alberi binomiali. Prima di vedere gli heap, quindi, studiamo questi alberi e le loro proprietà.
+
+\begin{definizione}[Albero binomiale]\label{def:albero-binomiale}
+Per ogni $k \in \mathbb{N}$, l'\textbf{albero binomiale} $B_k$ di grado $k$ è l'albero ordinato definito dalla seguente ricorsione:
+\begin{itemize}
+    \item $B_0$ è l'albero formato da un solo nodo.
+    \item Per $k \ge 1$, $B_k$ si ottiene da due copie di $B_{k-1}$: la radice di una delle due diventa il figlio più a sinistra della radice dell'altra.
+\end{itemize}
+\end{definizione}
+
+Gli alberi binomiali sono \textbf{alberi ordinati}, ovvero alberi in cui i figli di ogni nodo hanno un ordine: si parla di primo figlio, secondo figlio, e così via. Il \textbf{grado} di un nodo è il numero dei suoi figli, e il grado di un albero binomiale è quello della sua radice.
+
+La definizione è ricorsiva: per costruire $B_k$ si prendono due copie di $B_{k-1}$, e si appende la radice di una delle due sotto la radice dell'altra, come primo figlio (figura~\ref{fig:hb-definizione}a). Ad esempio, $B_1$ è formato da due nodi collegati da un arco, $B_2$ da due copie di $B_1$, e così via.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[binheap]
+  % \sotto{x}{y}{mezza base}{altezza}{etichetta}{colore}: un sottoalbero con vertice in (x,y),
+  % con il nome sotto la base
+  \newcommand{\sotto}[6]{%
+    \draw[#6, fill=#6!8] (#1,#2) -- ({#1-#3},{#2-#4}) -- ({#1+#3},{#2-#4}) -- cycle;
+    \node[font=\footnotesize] at (#1,{#2-#4-0.22}) {$#5$};}
+  % (a) la definizione ricorsiva
+  \node[lab, anchor=west] at (-0.7,0.45) {(a)};
+  \node[vn] at (0,0) {};
+  \node[lab] at (0,-2.45) {$B_0$};
+  \sotto{1.45}{-0.55}{0.45}{1.0}{B_{k-1}}{FigColor}
+  \sotto{2.6}{0}{0.45}{1.0}{B_{k-1}}{Accent}
+  \node[vn, draw=FigColor, fill=FigColor!30] (r1) at (1.45,-0.55) {};
+  \node[vn] (r2) at (2.6,0) {};
+  \draw (r2) -- (r1);
+  \draw[decorate, decoration={brace, mirror, amplitude=4pt}, TextGray] (0.95,-2.05) -- node[lab, below=4pt] {$B_k$} (3.1,-2.05);
+  % (b) i figli della radice
+  \node[lab, anchor=west] at (4.2,0.45) {(b)};
+  \node[vn] (r) at (9.3,0.25) {};
+  \sotto{5.6}{-0.35}{0.55}{1.25}{B_{k-1}}{Accent}
+  \sotto{6.95}{-0.35}{0.45}{1.0}{B_{k-2}}{Accent}
+  \node at (7.85,-0.75) {$\cdots$};
+  \sotto{8.55}{-0.35}{0.28}{0.65}{B_2}{Accent}
+  \sotto{9.1}{-0.35}{0.18}{0.42}{B_1}{Accent}
+  \foreach \x/\n in {5.6/c1, 6.95/c2, 8.55/c3, 9.1/c4, 9.55/c5} \node[vn] (\n) at (\x,-0.35) {};
+  \foreach \n in {c1, c2, c3, c4, c5} \draw (r) -- (\n);
+  \node[font=\footnotesize] at (9.6,-0.67) {$B_0$};
+  \draw[decorate, decoration={brace, mirror, amplitude=4pt}, TextGray] (5.0,-2.05) -- node[lab, below=4pt] {$B_k$} (9.8,-2.05);
+\end{tikzpicture}
+\caption{(a) La definizione ricorsiva degli alberi binomiali: $B_0$ è un solo nodo, mentre $B_k$ è formato da due copie di $B_{k-1}$, in cui la radice di una copia diventa il primo figlio della radice dell'altra. I triangoli rappresentano sottoalberi. (b) Un altro modo di vedere $B_k$: i figli della radice, da sinistra a destra, sono le radici di $B_{k-1}, B_{k-2}, \ldots, B_1, B_0$.}
+\label{fig:hb-definizione}
+\end{figure}
+
+La figura~\ref{fig:hb-alberi} mostra i primi cinque alberi binomiali. Si notano subito alcune regolarità: il numero di nodi raddoppia a ogni passo, l'altezza cresce di uno, e la radice di $B_k$ ha $k$ figli. Inoltre i nodi di $B_4$ alle profondità $0, 1, 2, 3, 4$ sono $1, 4, 6, 4, 1$, ovvero una riga del triangolo di Tartaglia: è da qui che gli alberi binomiali prendono il nome.
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{binomial-tree}[k=4]
+\begin{tikzpicture}[binheap]
+  \node[vn] (b0-r) at (0.000,0.000) {};
+  \node[lab] at (0.000,-2.550) {$B_0$};
+  \node[vn] (b1-0) at (0.910,-0.500) {};
+  \node[vn] (b1-1) at (0.910,0.000) {};
+  \draw (b1-1) -- (b1-0);
+  \node[lab] at (0.910,-2.550) {$B_1$};
+  \node[vn] (b2-00) at (1.820,-1.000) {};
+  \node[vn] (b2-01) at (1.820,-0.500) {};
+  \node[vn] (b2-10) at (2.180,-0.500) {};
+  \node[vn] (b2-11) at (2.180,0.000) {};
+  \draw (b2-01) -- (b2-00);
+  \draw (b2-11) -- (b2-01);
+  \draw (b2-11) -- (b2-10);
+  \node[lab] at (2.000,-2.550) {$B_2$};
+  \node[vn] (b3-000) at (3.290,-1.500) {};
+  \node[vn] (b3-001) at (3.290,-1.000) {};
+  \node[vn] (b3-010) at (3.650,-1.000) {};
+  \node[vn] (b3-011) at (3.650,-0.500) {};
+  \node[vn] (b3-100) at (4.010,-1.000) {};
+  \node[vn] (b3-101) at (4.010,-0.500) {};
+  \node[vn] (b3-110) at (4.370,-0.500) {};
+  \node[vn] (b3-111) at (4.370,0.000) {};
+  \draw (b3-001) -- (b3-000);
+  \draw (b3-011) -- (b3-001);
+  \draw (b3-011) -- (b3-010);
+  \draw (b3-111) -- (b3-011);
+  \draw (b3-101) -- (b3-100);
+  \draw (b3-111) -- (b3-101);
+  \draw (b3-111) -- (b3-110);
+  \node[lab] at (3.830,-2.550) {$B_3$};
+  \node[vn] (b4-0000) at (5.480,-2.000) {};
+  \node[vn] (b4-0001) at (5.480,-1.500) {};
+  \node[vn] (b4-0010) at (5.840,-1.500) {};
+  \node[vn] (b4-0011) at (5.840,-1.000) {};
+  \node[vn] (b4-0100) at (6.200,-1.500) {};
+  \node[vn] (b4-0101) at (6.200,-1.000) {};
+  \node[vn] (b4-0110) at (6.560,-1.000) {};
+  \node[vn] (b4-0111) at (6.560,-0.500) {};
+  \node[vn] (b4-1000) at (6.920,-1.500) {};
+  \node[vn] (b4-1001) at (6.920,-1.000) {};
+  \node[vn] (b4-1010) at (7.280,-1.000) {};
+  \node[vn] (b4-1011) at (7.280,-0.500) {};
+  \node[vn] (b4-1100) at (7.640,-1.000) {};
+  \node[vn] (b4-1101) at (7.640,-0.500) {};
+  \node[vn] (b4-1110) at (8.000,-0.500) {};
+  \node[vn] (b4-1111) at (8.000,0.000) {};
+  \draw (b4-0001) -- (b4-0000);
+  \draw (b4-0011) -- (b4-0001);
+  \draw (b4-0011) -- (b4-0010);
+  \draw (b4-0111) -- (b4-0011);
+  \draw (b4-0101) -- (b4-0100);
+  \draw (b4-0111) -- (b4-0101);
+  \draw (b4-0111) -- (b4-0110);
+  \draw (b4-1111) -- (b4-0111);
+  \draw (b4-1001) -- (b4-1000);
+  \draw (b4-1011) -- (b4-1001);
+  \draw (b4-1011) -- (b4-1010);
+  \draw (b4-1111) -- (b4-1011);
+  \draw (b4-1101) -- (b4-1100);
+  \draw (b4-1111) -- (b4-1101);
+  \draw (b4-1111) -- (b4-1110);
+  \node[lab] at (6.740,-2.550) {$B_4$};
+  \node[lab, anchor=south] at (9.010,0.22) {$i$};
+  \node[lab, anchor=south west] at (9.560,0.22) {nodi};
+  \draw[RuleGray, densely dotted] (8.460,0.000) -- (8.860,0.000);
+  \node[lab, anchor=west] at (8.910,0.000) {$0$};
+  \node[lab, anchor=west] at (9.610,0.000) {$\binom{4}{0} = 1$};
+  \draw[RuleGray, densely dotted] (8.460,-0.500) -- (8.860,-0.500);
+  \node[lab, anchor=west] at (8.910,-0.500) {$1$};
+  \node[lab, anchor=west] at (9.610,-0.500) {$\binom{4}{1} = 4$};
+  \draw[RuleGray, densely dotted] (8.460,-1.000) -- (8.860,-1.000);
+  \node[lab, anchor=west] at (8.910,-1.000) {$2$};
+  \node[lab, anchor=west] at (9.610,-1.000) {$\binom{4}{2} = 6$};
+  \draw[RuleGray, densely dotted] (8.460,-1.500) -- (8.860,-1.500);
+  \node[lab, anchor=west] at (8.910,-1.500) {$3$};
+  \node[lab, anchor=west] at (9.610,-1.500) {$\binom{4}{3} = 4$};
+  \draw[RuleGray, densely dotted] (8.460,-2.000) -- (8.860,-2.000);
+  \node[lab, anchor=west] at (8.910,-2.000) {$4$};
+  \node[lab, anchor=west] at (9.610,-2.000) {$\binom{4}{4} = 1$};
+\end{tikzpicture}
+\end{widget}
+\caption{Gli alberi binomiali da $B_0$ a $B_4$. Ogni albero è formato da due copie del precedente, quindi il numero di nodi raddoppia e l'altezza cresce di uno. A destra il numero di nodi di $B_4$ a ciascuna profondità, dato dai coefficienti binomiali $\binom{4}{i}$.}
+\label{fig:hb-alberi}
+\end{figure}
+
+\subsection{Proprietà degli alberi binomiali}\label{sec:hb-proprieta}
+Il lemma~\ref{lem:hb-proprieta} raccoglie le regolarità che abbiamo osservato.
+
+\begin{lemma}[Proprietà degli alberi binomiali]\label{lem:hb-proprieta}
+Per ogni $k = 0, 1, 2, \ldots$ valgono le seguenti proprietà:
+\begin{enumerate}
+    \item $B_k$ ha $2^k$ nodi.
+    \item L'altezza di $B_k$ è $k$.
+    \item $B_k$ ha esattamente $\binom{k}{i}$ nodi a profondità $i$, per $i = 0, 1, \ldots, k$.
+    \item La radice di $B_k$ ha grado $k$, e ogni altro nodo di $B_k$ ha grado minore di $k$. Inoltre i figli della radice di $B_k$ sono, nell'ordine, le radici di $B_{k-1}, B_{k-2}, \ldots, B_2, B_1, B_0$.
+\end{enumerate}
+\end{lemma}
+
+\paragraph{Dimostrazione.}
+Procediamo per induzione su $k$. Nel caso base, $k = 0$, l'albero $B_0$ è formato da un solo nodo, quindi le quattro proprietà sono immediate. $B_0$ ha $1 = 2^0$ nodi e altezza $0$, ha $1 = \binom{0}{0}$ nodi a profondità $0$, e la sua radice, l'unico nodo, ha grado $0$.
+
+Per il passo induttivo supponiamo che il lemma valga per $k-1$, con $k \ge 1$, e consideriamo le due copie di $B_{k-1}$ che formano $B_k$. Chiamiamo \textbf{copia di destra} quella che conserva la radice, e \textbf{copia di sinistra} quella la cui radice diventa il primo figlio della radice di $B_k$ (figura~\ref{fig:hb-dimostrazione}).
+
+\begin{enumerate}
+    \item Il numero di nodi di $B_k$ è la somma dei nodi delle due copie. Indicando con $|B_k|$ il numero di nodi di $B_k$, per l'ipotesi induttiva si ha:
+    \[
+    |B_k| = |B_{k-1}| + |B_{k-1}| = 2 \cdot 2^{k-1} = 2^k.
+    \]
+    \item I nodi della copia di destra mantengono la loro profondità, mentre quelli della copia di sinistra scendono di un livello. Il nodo più profondo di $B_k$, quindi, è il nodo più profondo della copia di sinistra, e l'altezza vale:
+    \[
+    h(B_k) = h(B_{k-1}) + 1 = (k-1) + 1 = k,
+    \]
+    dove $h(B)$ indica l'altezza dell'albero $B$.
+    \item Sia $D(k,i)$ il numero di nodi di $B_k$ a profondità $i$. Un nodo di $B_k$ a profondità $i$ è un nodo a profondità $i$ della copia di destra, oppure un nodo a profondità $i-1$ della copia di sinistra, che è scesa di un livello. Per l'ipotesi induttiva, quindi, se $1 \le i \le k-1$ si ha:
+    \[
+    D(k,i) = D(k-1,i) + D(k-1,i-1) = \binom{k-1}{i} + \binom{k-1}{i-1} = \binom{k}{i},
+    \]
+    dove l'ultima uguaglianza è la regola con cui si costruisce il triangolo di Tartaglia. Restano i due estremi. A profondità $0$ c'è soltanto la radice, e $1 = \binom{k}{0}$. A profondità $k$ ci sono soltanto i nodi a profondità $k-1$ della copia di sinistra, ovvero $\binom{k-1}{k-1} = 1 = \binom{k}{k}$.
+    \item La radice di $B_k$ è la radice della copia di destra, che riceve un figlio in più: il suo grado vale $(k-1) + 1 = k$. Ogni altro nodo appartiene a una delle due copie, e il suo grado non cambia, in quanto l'unico nodo che riceve un nuovo figlio è la radice. Per l'ipotesi induttiva questo grado è al più $k-1$, ovvero minore di $k$.
+
+    Infine, il primo figlio della radice di $B_k$ è la radice della copia di sinistra, ovvero di un $B_{k-1}$. I figli successivi sono quelli della radice della copia di destra, che per l'ipotesi induttiva sono le radici di $B_{k-2}, \ldots, B_1, B_0$, in quest'ordine. \hfill $\square$
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[binheap]
+  % le profondità
+  \foreach \y/\l in {0/0, -0.6/1, -1.8/i, -3.0/k} {
+    \draw[RuleGray, densely dotted] (-0.2,\y) -- (4.4,\y);
+    \node[lab, anchor=east] at (-0.25,\y) {$\l$};
+  }
+  \node[lab, anchor=east] at (-0.25,0.55) {profondità};
+  % copia di destra, che conserva la radice, e copia di sinistra, scesa di un livello
+  \draw[Accent, fill=Accent!8] (3.2,0) -- (2.5,-2.4) -- (3.9,-2.4) -- cycle;
+  \draw[FigColor, fill=FigColor!8] (1.6,-0.6) -- (0.9,-3.0) -- (2.3,-3.0) -- cycle;
+  \node[vn] (r2) at (3.2,0) {};
+  \node[vn, draw=FigColor, fill=FigColor!30] (r1) at (1.6,-0.6) {};
+  \draw (r2) -- (r1);
+  % i nodi a profondità i delle due copie
+  \draw[FigColor, line width=2.2pt] (1.25,-1.8) -- (1.95,-1.8);
+  \draw[Accent, line width=2.2pt] (2.675,-1.8) -- (3.725,-1.8);
+  \node[lab, font=\footnotesize, text=FigColor, anchor=east] at (0.95,-1.25) {copia di sinistra};
+  \node[lab, font=\footnotesize, text=Accent, anchor=west] at (3.7,-0.95) {copia di destra};
+  % i conteggi
+  \node[lab, anchor=west] at (4.6,0) {$1 = \binom{k}{0}$};
+  \node[lab, anchor=west] at (4.6,-1.8) {$\textcolor{FigColor}{\binom{k-1}{i-1}} + \textcolor{Accent}{\binom{k-1}{i}} = \binom{k}{i}$};
+  \node[lab, anchor=west] at (4.6,-3.0) {$\binom{k-1}{k-1} = 1 = \binom{k}{k}$};
+\end{tikzpicture}
+\caption{Il passo induttivo della proprietà 3. La copia di destra conserva la radice e la profondità dei suoi nodi, mentre la copia di sinistra scende di un livello. A profondità $i$ si trovano quindi i $\binom{k-1}{i}$ nodi a profondità $i$ della copia di destra e i $\binom{k-1}{i-1}$ nodi a profondità $i-1$ della copia di sinistra.}
+\label{fig:hb-dimostrazione}
+\end{figure}
+
+\begin{osservazione}[Perché binomiali]
+La regola $\binom{k}{i} = \binom{k-1}{i} + \binom{k-1}{i-1}$ ha una lettura combinatoria che ricalca la costruzione di $B_k$. Fissato un elemento in un insieme di $k$ elementi, i sottoinsiemi di $i$ elementi si dividono in quelli che non lo contengono, che sono $\binom{k-1}{i}$, e in quelli che lo contengono, che sono $\binom{k-1}{i-1}$. Allo stesso modo, i nodi di $B_k$ a profondità $i$ si dividono tra la copia di destra e la copia di sinistra.
+\end{osservazione}
+
+Dalla proprietà 4 segue un limite al grado dei nodi, che useremo per stimare il costo delle operazioni.
+
+\begin{corollario}[Grado massimo]\label{cor:hb-grado}
+Sia $B$ un albero binomiale con $n$ nodi. Allora ogni nodo di $B$ ha grado al più $\lg n$.
+\end{corollario}
+
+\paragraph{Dimostrazione.}
+Per qualche $k \in \mathbb{N}$ si ha $B = B_k$, quindi per la proprietà 1 vale $n = 2^k$, ovvero $k = \lg n$. Per la proprietà 4 ogni nodo di $B_k$ ha grado al più $k$, da cui la tesi. \hfill $\square$
+
+\section{Heap binomiali}\label{sec:hb-heap}
+Possiamo ora definire gli heap binomiali, come collezioni di alberi binomiali con due vincoli.
+
+\begin{definizione}[Heap binomiale]\label{def:heap-binomiale}
+Un \textbf{heap binomiale} $H$ è una foresta di alberi binomiali tale che:
+\begin{itemize}
+    \item Ogni albero binomiale di $H$ gode della proprietà di \textbf{min-heap}: la chiave di ogni nodo è maggiore o uguale alla chiave di suo padre.
+    \item Per ogni $k \in \mathbb{N}$, $H$ contiene al più un albero binomiale di grado $k$.
+\end{itemize}
+\end{definizione}
+
+La figura~\ref{fig:hb-esempio} mostra un heap binomiale con $13$ nodi, formato da tre alberi binomiali di grado $0$, $2$ e $3$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[binheap, >=Stealth]
+  % (a) 
+  \node[hn] (s0n0) at (1.530,0.000) {10};
+  \node[hn] (s0n3) at (2.510,-1.200) {18};
+  \node[hn] (s0n2) at (2.510,-0.600) {12};
+  \node[hn] (s0n4) at (3.070,-0.600) {25};
+  \node[hn] (s0n1) at (3.070,0.000) {1};
+  \node[hn] (s0n8) at (4.050,-1.800) {27};
+  \node[hn] (s0n7) at (4.050,-1.200) {11};
+  \node[hn] (s0n9) at (4.610,-1.200) {17};
+  \node[hn] (s0n6) at (4.610,-0.600) {8};
+  \node[hn] (s0n11) at (5.170,-1.200) {38};
+  \node[hn] (s0n10) at (5.170,-0.600) {14};
+  \node[hn] (s0n12) at (5.730,-0.600) {29};
+  \node[hn] (s0n5) at (5.730,0.000) {6};
+  \draw (s0n2) -- (s0n3);
+  \draw (s0n1) -- (s0n2);
+  \draw (s0n1) -- (s0n4);
+  \draw (s0n7) -- (s0n8);
+  \draw (s0n6) -- (s0n7);
+  \draw (s0n6) -- (s0n9);
+  \draw (s0n5) -- (s0n6);
+  \draw (s0n10) -- (s0n11);
+  \draw (s0n5) -- (s0n10);
+  \draw (s0n5) -- (s0n12);
+  \draw[->] (s0n0) -- (s0n1);
+  \draw[->] (s0n1) -- (s0n5);
+  \node[head, anchor=east] (s0h0) at (1.094,0.000) {$\mathit{head}[H]$};
+  \draw[->] (s0h0) -- (s0n0);
+\end{tikzpicture}
+\caption{Un heap binomiale con $13$ nodi, formato dagli alberi binomiali $B_0$, $B_2$ e $B_3$. Le radici sono collegate nella lista delle radici, ordinata per grado crescente, e $\mathit{head}[H]$ punta alla prima.}
+\label{fig:hb-esempio}
+\end{figure}
+
+\paragraph{Conseguenze.}
+Dalla definizione seguono subito due fatti:
+\begin{itemize}
+    \item In ogni albero binomiale di un heap binomiale, la radice contiene la chiave minima dell'albero. La chiave minima dell'intero heap, quindi, si trova in una delle radici.
+    \item Un heap binomiale $H$ con $n$ nodi è formato da al più $\lfloor \lg n \rfloor + 1$ alberi binomiali.
+\end{itemize}
+Il primo fatto segue dalla proprietà di min-heap: risalendo da un nodo verso la radice le chiavi non aumentano mai. Per dimostrare il secondo, sia $B_k$ l'albero binomiale di grado massimo in $H$. Questo albero ha $2^k$ nodi, che non possono essere più di $n$:
+\[
+2^k \le n \implies k \le \lg n \implies k \le \lfloor \lg n \rfloor,
+\]
+dove l'ultimo passaggio vale in quanto $k$ è un intero. Gli alberi di $H$ hanno gradi distinti, compresi tra $0$ e $k$, quindi sono al più $k + 1 \le \lfloor \lg n \rfloor + 1$.
+
+\subsection{Rappresentazione}\label{sec:hb-rappresentazione}
+Ogni nodo $x$ di un heap binomiale ha i seguenti campi (figura~\ref{fig:hb-rappresentazione}a):
+\begin{itemize}
+    \item $\mathit{key}[x]$: la chiave, insieme alle eventuali informazioni satellite.
+    \item $p[x]$: un puntatore al padre, che vale \Nil{} se $x$ è una radice.
+    \item $\mathit{child}[x]$: un puntatore al figlio più a sinistra, che vale \Nil{} se $x$ non ha figli.
+    \item $\mathit{sibling}[x]$: un puntatore al fratello immediatamente a destra, che vale \Nil{} se $x$ è l'ultimo figlio di suo padre, oppure l'ultima radice.
+    \item $\mathit{degree}[x]$: il grado di $x$, ovvero il numero dei suoi figli.
+\end{itemize}
+I figli di un nodo formano quindi una lista concatenata tramite il campo $\mathit{sibling}$, e il nodo conosce soltanto il primo.
+
+Anche le radici sono collegate tramite il campo $\mathit{sibling}$, e formano la \textbf{lista delle radici}, ordinata per grado crescente. L'heap è individuato da un puntatore $\mathit{head}[H]$ alla prima radice, che vale \Nil{} se l'heap è vuoto. La figura~\ref{fig:hb-rappresentazione}b mostra la rappresentazione dell'heap di figura~\ref{fig:hb-esempio}.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[binheap, >=Stealth]
+  \node[lab, anchor=west] at (-3.2,1.1) {(a)};
+  \draw[Accent, fill=Accent!6] (-1.2,0.96) rectangle (1.2,-0.96);
+  \foreach \y in {0.48, 0, -0.48} \draw[Accent] (-1.2,\y) -- (1.2,\y);
+  \draw[Accent] (0,-0.48) -- (0,-0.96);
+  \node[font=\small] at (0,0.72) {$p$};
+  \node[font=\small] at (0,0.24) {$\mathit{key}$};
+  \node[font=\small] at (0,-0.24) {$\mathit{degree}$};
+  \node[font=\small] at (-0.6,-0.72) {$\mathit{child}$};
+  \node[font=\small] at (0.6,-0.72) {$\mathit{sibling}$};
+  \draw[->, ptrp] (0,0.96) -- (0,1.45) node[lab, right] {padre};
+  \draw[->, ptrc] (-0.6,-0.96) -- (-0.6,-1.45) node[lab, left] {primo figlio};
+  \draw[->, ptrs] (1.2,-0.72) -- (1.75,-0.72) node[lab, right] {fratello destro};
+\end{tikzpicture}
+
+\vspace{4mm}
+\begin{tikzpicture}[binheap, >=Stealth]
+  % nodo 10
+  \draw[Accent, fill=Accent!6] (-0.400,0.480) rectangle (0.400,-0.480);
+  \draw[Accent] (-0.400,0.240) -- (0.400,0.240);
+  \draw[Accent] (-0.400,0.000) -- (0.400,0.000);
+  \draw[Accent] (-0.400,-0.240) -- (0.400,-0.240);
+  \draw[Accent] (0.000,-0.240) -- (0.000,-0.480);
+  \node[rec] at (0.000,0.120) {10};
+  \node[rec] at (0.000,-0.120) {0};
+  \draw[Accent] (-0.340,0.280) -- (0.340,0.440);
+  \draw[Accent] (-0.350,-0.440) -- (-0.050,-0.280);
+  % nodo 18
+  \draw[Accent, fill=Accent!6] (2.085,-2.720) rectangle (2.885,-3.680);
+  \draw[Accent] (2.085,-2.960) -- (2.885,-2.960);
+  \draw[Accent] (2.085,-3.200) -- (2.885,-3.200);
+  \draw[Accent] (2.085,-3.440) -- (2.885,-3.440);
+  \draw[Accent] (2.485,-3.440) -- (2.485,-3.680);
+  \node[rec] at (2.485,-3.080) {18};
+  \node[rec] at (2.485,-3.320) {0};
+  \draw[Accent] (2.135,-3.640) -- (2.435,-3.480);
+  \draw[Accent] (2.535,-3.640) -- (2.835,-3.480);
+  % nodo 12
+  \draw[Accent, fill=Accent!6] (2.085,-1.120) rectangle (2.885,-2.080);
+  \draw[Accent] (2.085,-1.360) -- (2.885,-1.360);
+  \draw[Accent] (2.085,-1.600) -- (2.885,-1.600);
+  \draw[Accent] (2.085,-1.840) -- (2.885,-1.840);
+  \draw[Accent] (2.485,-1.840) -- (2.485,-2.080);
+  \node[rec] at (2.485,-1.480) {12};
+  \node[rec] at (2.485,-1.720) {1};
+  % nodo 25
+  \draw[Accent, fill=Accent!6] (3.505,-1.120) rectangle (4.305,-2.080);
+  \draw[Accent] (3.505,-1.360) -- (4.305,-1.360);
+  \draw[Accent] (3.505,-1.600) -- (4.305,-1.600);
+  \draw[Accent] (3.505,-1.840) -- (4.305,-1.840);
+  \draw[Accent] (3.905,-1.840) -- (3.905,-2.080);
+  \node[rec] at (3.905,-1.480) {25};
+  \node[rec] at (3.905,-1.720) {0};
+  \draw[Accent] (3.555,-2.040) -- (3.855,-1.880);
+  \draw[Accent] (3.955,-2.040) -- (4.255,-1.880);
+  % nodo 1
+  \draw[Accent, fill=Accent!6] (3.505,0.480) rectangle (4.305,-0.480);
+  \draw[Accent] (3.505,0.240) -- (4.305,0.240);
+  \draw[Accent] (3.505,0.000) -- (4.305,0.000);
+  \draw[Accent] (3.505,-0.240) -- (4.305,-0.240);
+  \draw[Accent] (3.905,-0.240) -- (3.905,-0.480);
+  \node[rec] at (3.905,0.120) {1};
+  \node[rec] at (3.905,-0.120) {2};
+  \draw[Accent] (3.565,0.280) -- (4.245,0.440);
+  % nodo 27
+  \draw[Accent, fill=Accent!6] (5.990,-4.320) rectangle (6.790,-5.280);
+  \draw[Accent] (5.990,-4.560) -- (6.790,-4.560);
+  \draw[Accent] (5.990,-4.800) -- (6.790,-4.800);
+  \draw[Accent] (5.990,-5.040) -- (6.790,-5.040);
+  \draw[Accent] (6.390,-5.040) -- (6.390,-5.280);
+  \node[rec] at (6.390,-4.680) {27};
+  \node[rec] at (6.390,-4.920) {0};
+  \draw[Accent] (6.040,-5.240) -- (6.340,-5.080);
+  \draw[Accent] (6.440,-5.240) -- (6.740,-5.080);
+  % nodo 11
+  \draw[Accent, fill=Accent!6] (5.990,-2.720) rectangle (6.790,-3.680);
+  \draw[Accent] (5.990,-2.960) -- (6.790,-2.960);
+  \draw[Accent] (5.990,-3.200) -- (6.790,-3.200);
+  \draw[Accent] (5.990,-3.440) -- (6.790,-3.440);
+  \draw[Accent] (6.390,-3.440) -- (6.390,-3.680);
+  \node[rec] at (6.390,-3.080) {11};
+  \node[rec] at (6.390,-3.320) {1};
+  % nodo 17
+  \draw[Accent, fill=Accent!6] (7.410,-2.720) rectangle (8.210,-3.680);
+  \draw[Accent] (7.410,-2.960) -- (8.210,-2.960);
+  \draw[Accent] (7.410,-3.200) -- (8.210,-3.200);
+  \draw[Accent] (7.410,-3.440) -- (8.210,-3.440);
+  \draw[Accent] (7.810,-3.440) -- (7.810,-3.680);
+  \node[rec] at (7.810,-3.080) {17};
+  \node[rec] at (7.810,-3.320) {0};
+  \draw[Accent] (7.460,-3.640) -- (7.760,-3.480);
+  \draw[Accent] (7.860,-3.640) -- (8.160,-3.480);
+  % nodo 8
+  \draw[Accent, fill=Accent!6] (7.410,-1.120) rectangle (8.210,-2.080);
+  \draw[Accent] (7.410,-1.360) -- (8.210,-1.360);
+  \draw[Accent] (7.410,-1.600) -- (8.210,-1.600);
+  \draw[Accent] (7.410,-1.840) -- (8.210,-1.840);
+  \draw[Accent] (7.810,-1.840) -- (7.810,-2.080);
+  \node[rec] at (7.810,-1.480) {8};
+  \node[rec] at (7.810,-1.720) {2};
+  % nodo 38
+  \draw[Accent, fill=Accent!6] (8.830,-2.720) rectangle (9.630,-3.680);
+  \draw[Accent] (8.830,-2.960) -- (9.630,-2.960);
+  \draw[Accent] (8.830,-3.200) -- (9.630,-3.200);
+  \draw[Accent] (8.830,-3.440) -- (9.630,-3.440);
+  \draw[Accent] (9.230,-3.440) -- (9.230,-3.680);
+  \node[rec] at (9.230,-3.080) {38};
+  \node[rec] at (9.230,-3.320) {0};
+  \draw[Accent] (8.880,-3.640) -- (9.180,-3.480);
+  \draw[Accent] (9.280,-3.640) -- (9.580,-3.480);
+  % nodo 14
+  \draw[Accent, fill=Accent!6] (8.830,-1.120) rectangle (9.630,-2.080);
+  \draw[Accent] (8.830,-1.360) -- (9.630,-1.360);
+  \draw[Accent] (8.830,-1.600) -- (9.630,-1.600);
+  \draw[Accent] (8.830,-1.840) -- (9.630,-1.840);
+  \draw[Accent] (9.230,-1.840) -- (9.230,-2.080);
+  \node[rec] at (9.230,-1.480) {14};
+  \node[rec] at (9.230,-1.720) {1};
+  % nodo 29
+  \draw[Accent, fill=Accent!6] (10.250,-1.120) rectangle (11.050,-2.080);
+  \draw[Accent] (10.250,-1.360) -- (11.050,-1.360);
+  \draw[Accent] (10.250,-1.600) -- (11.050,-1.600);
+  \draw[Accent] (10.250,-1.840) -- (11.050,-1.840);
+  \draw[Accent] (10.650,-1.840) -- (10.650,-2.080);
+  \node[rec] at (10.650,-1.480) {29};
+  \node[rec] at (10.650,-1.720) {0};
+  \draw[Accent] (10.300,-2.040) -- (10.600,-1.880);
+  \draw[Accent] (10.700,-2.040) -- (11.000,-1.880);
+  % nodo 6
+  \draw[Accent, fill=Accent!6] (10.250,0.480) rectangle (11.050,-0.480);
+  \draw[Accent] (10.250,0.240) -- (11.050,0.240);
+  \draw[Accent] (10.250,0.000) -- (11.050,0.000);
+  \draw[Accent] (10.250,-0.240) -- (11.050,-0.240);
+  \draw[Accent] (10.650,-0.240) -- (10.650,-0.480);
+  \node[rec] at (10.650,0.120) {6};
+  \node[rec] at (10.650,-0.120) {3};
+  \draw[Accent] (10.310,0.280) -- (10.990,0.440);
+  \draw[Accent] (10.700,-0.440) -- (11.000,-0.280);
+  \draw[->, ptrs] (0.200,-0.360) -- (3.505,-0.360);
+  \draw[->, ptrp] (2.615,-2.840) -- (2.505,-2.080);
+  \draw[->, ptrc] (2.285,-1.960) -- (2.355,-2.720);
+  \draw[->, ptrp] (2.615,-1.240) -- (3.925,-0.480);
+  \draw[->, ptrs] (2.685,-1.960) -- (3.505,-1.960);
+  \draw[->, ptrp] (4.035,-1.240) -- (3.925,-0.480);
+  \draw[->, ptrc] (3.705,-0.360) -- (2.355,-1.120);
+  \draw[->, ptrs] (4.105,-0.360) -- (10.250,-0.360);
+  \draw[->, ptrp] (6.520,-4.440) -- (6.410,-3.680);
+  \draw[->, ptrc] (6.190,-3.560) -- (6.260,-4.320);
+  \draw[->, ptrp] (6.520,-2.840) -- (7.830,-2.080);
+  \draw[->, ptrs] (6.590,-3.560) -- (7.410,-3.560);
+  \draw[->, ptrp] (7.940,-2.840) -- (7.830,-2.080);
+  \draw[->, ptrc] (7.610,-1.960) -- (6.260,-2.720);
+  \draw[->, ptrp] (7.940,-1.240) -- (10.670,-0.480);
+  \draw[->, ptrs] (8.010,-1.960) -- (8.830,-1.960);
+  \draw[->, ptrp] (9.360,-2.840) -- (9.250,-2.080);
+  \draw[->, ptrc] (9.030,-1.960) -- (9.100,-2.720);
+  \draw[->, ptrp] (9.360,-1.240) -- (10.670,-0.480);
+  \draw[->, ptrs] (9.430,-1.960) -- (10.250,-1.960);
+  \draw[->, ptrp] (10.780,-1.240) -- (10.670,-0.480);
+  \draw[->, ptrc] (10.450,-0.360) -- (7.680,-1.120);
+  \node[lab, anchor=west] at (-2.750,0.950) {(b)};
+  \node[head, anchor=east] (rh) at (-1.150,-0.360) {$\mathit{head}[H]$};
+  \draw[->, ptrs] (rh) -- (-0.400,-0.360);
+\end{tikzpicture}
+\caption{(a) I campi di un nodo. (b) La rappresentazione dell'heap di figura~\ref{fig:hb-esempio}: in ogni nodo, dall'alto, il puntatore al padre, la chiave, il grado e i puntatori al primo figlio e al fratello destro. Una barra indica un puntatore che vale \Nil{}. Le radici sono collegate dal campo $\mathit{sibling}$ nella lista delle radici, ordinata per grado crescente, mentre i figli di ogni nodo sono in ordine di grado decrescente.}
+\label{fig:hb-rappresentazione}
+\end{figure}
+
+\section{Operazioni sugli heap binomiali}\label{sec:hb-op}
+Vediamo ora come si realizzano le operazioni dei mergeable heap. Le procedure che studiamo sono le seguenti:
+\begin{itemize}
+    \item \MakeBinomialHeap$()$: crea un heap binomiale vuoto.
+    \item \BinomialHeapMinimum$(H)$: restituisce il nodo con la chiave minima.
+    \item \BinomialHeapUnion$(H_1,H_2)$: unisce due heap binomiali, e si appoggia a due procedure ausiliarie, \BinomialLink{} e \BinomialHeapMerge{}.
+    \item \BinomialHeapInsert$(H,x)$: inserisce il nodo $x$.
+    \item \BinomialHeapExtractMin$(H)$: estrae il nodo con la chiave minima.
+    \item \BinomialHeapDecreaseKey$(H,x,k)$: assegna al nodo $x$ la chiave $k$, non maggiore di quella attuale.
+    \item \BinomialHeapDelete$(H,x)$: cancella il nodo $x$.
+\end{itemize}
+In tutti i costi, $n$ indica il numero di nodi dell'heap. Per l'unione, $n$ è la somma dei nodi dei due heap.
+
+\subsection{Creazione di un heap vuoto}\label{sec:hb-make}
+Un heap binomiale vuoto è semplicemente un oggetto con $\mathit{head}[H] = \Nil$ (algoritmo~\ref{alg:hb-make}). La procedura richiede tempo $O(1)$.
+
+\begin{algorithm}[htbp]
+\caption{La creazione di un heap binomiale vuoto.}\label{alg:hb-make}
+\begin{algorithmic}[1]
+\Procedure{Make-Binomial-Heap}{}
+  \State $H \gets$ \Call{Allocate-Heap}{}
+  \State $\mathit{head}[H] \gets \Nil$
+  \State \Return $H$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Ricerca del minimo}\label{sec:hb-minimum}
+Per la proprietà di min-heap, la chiave minima si trova in una delle radici. \BinomialHeapMinimum{} scorre quindi la lista delle radici, e restituisce la radice con la chiave minima (algoritmo~\ref{alg:hb-minimum}). Nell'heap di figura~\ref{fig:hb-esempio} le radici sono 10, 1 e 6, e la procedura restituisce la radice con chiave 1.
+
+\begin{algorithm}[htbp]
+\caption{La ricerca del nodo con la chiave minima, che si trova in una delle radici.}\label{alg:hb-minimum}
+\begin{algorithmic}[1]
+\Procedure{Binomial-Heap-Minimum}{$H$}
+  \State $y \gets \Nil$
+  \State $x \gets \mathit{head}[H]$
+  \State $\mathit{min} \gets \infty$
+  \While{$x \ne \Nil$}
+    \If{$\mathit{key}[x] < \mathit{min}$}
+      \State $\mathit{min} \gets \mathit{key}[x]$
+      \State $y \gets x$
+    \EndIf
+    \State $x \gets \mathit{sibling}[x]$
+  \EndWhile
+  \State \Return $y$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Costo.}
+La procedura esegue un'iterazione per ogni radice, e ogni iterazione costa $O(1)$. Il costo è quindi proporzionale alla lunghezza della lista delle radici, che contiene al più $\lfloor \lg n \rfloor + 1$ alberi:
+\[
+O(\lfloor \lg n \rfloor + 1) = O(\lg n).
+\]
+
+\subsection{Unione}\label{sec:hb-union}
+L'unione è l'operazione che distingue gli heap binomiali dagli heap binari, ed è anche quella su cui si appoggiano quasi tutte le altre. La costruiamo in tre passi: il collegamento di due alberi dello stesso grado, la fusione di due liste delle radici, e infine la procedura completa.
+
+\paragraph{Collegare due alberi.}
+La procedura \BinomialLink$(y,z)$ riceve le radici $y$ e $z$ di due alberi binomiali dello stesso grado, con $\mathit{key}[z] \le \mathit{key}[y]$, e rende $y$ il primo figlio di $z$ (algoritmo~\ref{alg:hb-link}). È esattamente la costruzione della definizione~\ref{def:albero-binomiale}: due copie di $B_{k-1}$ diventano un $B_k$ (figura~\ref{fig:hb-link}).
+
+\begin{algorithm}[htbp]
+\caption{Il collegamento di due alberi binomiali dello stesso grado, con $\mathit{key}[z] \le \mathit{key}[y]$: $y$ diventa il primo figlio di $z$.}\label{alg:hb-link}
+\begin{algorithmic}[1]
+\Procedure{Binomial-Link}{$y,z$}
+  \State $p[y] \gets z$
+  \State $\mathit{sibling}[y] \gets \mathit{child}[z]$
+  \State $\mathit{child}[z] \gets y$
+  \State $\mathit{degree}[z] \gets \mathit{degree}[z] + 1$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Il vecchio primo figlio di $z$ diventa il fratello destro di $y$, e $y$ prende il suo posto in testa alla lista dei figli. Poiché $z$ ha la chiave minore, il nuovo albero rispetta ancora la proprietà di min-heap. La procedura modifica un numero costante di campi, quindi costa $O(1)$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[binheap, >=Stealth]
+  % \sotto{x}{y}: un sottoalbero B_{k-1} con vertice in (x,y), con il nome sotto la base
+  \newcommand{\sotto}[2]{%
+    \draw[Accent, fill=Accent!8] (#1,#2) -- ({#1-0.42},{#2-0.95}) -- ({#1+0.42},{#2-0.95}) -- cycle;
+    \node[font=\footnotesize] at (#1,{#2-1.17}) {$B_{k-1}$};}
+  % prima del collegamento
+  \sotto{0}{0}
+  \sotto{1.5}{0}
+  \node[hn] at (0,0) {$y$};
+  \node[hn] at (1.5,0) {$z$};
+  \node[lab, font=\footnotesize] at (0.75,-1.7) {$\mathit{key}[z] \le \mathit{key}[y]$};
+  \draw[->, thick] (2.5,-0.45) -- node[lab, above] {\BinomialLink$(y,z)$} (4.7,-0.45);
+  % dopo il collegamento
+  \sotto{5.7}{-0.55}
+  \sotto{6.9}{0}
+  \node[hl] (y) at (5.7,-0.55) {$y$};
+  \node[hl] (z) at (6.9,0) {$z$};
+  \draw (z) -- (y);
+  \draw[decorate, decoration={brace, mirror, amplitude=4pt}, TextGray] (5.2,-2.05) -- node[lab, below=4pt] {$B_k$} (7.4,-2.05);
+\end{tikzpicture}
+\caption{\BinomialLink$(y,z)$ collega le radici di due alberi binomiali $B_{k-1}$, con $\mathit{key}[z] \le \mathit{key}[y]$: $y$ diventa il primo figlio di $z$, e si ottiene un $B_k$ con la proprietà di min-heap.}
+\label{fig:hb-link}
+\end{figure}
+
+\paragraph{L'idea: la somma binaria.}
+Per capire l'unione conviene partire da un modo alternativo di sommare due numeri binari. Un albero $B_k$ ha $2^k$ nodi, quindi un heap con $103 = 2^6 + 2^5 + 2^2 + 2^1 + 2^0$ nodi è formato dagli alberi $B_6$, $B_5$, $B_2$, $B_1$ e $B_0$. Sommiamo $n_1 = 103$ e $n_2 = 54$, scrivendo i due numeri come somme di potenze di $2$ e mettendo insieme le potenze in ordine crescente:
+\[
+\begin{aligned}
+103 + 54 &= (2^0 + 2^1 + 2^2 + 2^5 + 2^6) + (2^1 + 2^2 + 2^4 + 2^5) \\
+&= 2^0 + 2^1 + 2^1 + 2^2 + 2^2 + 2^4 + 2^5 + 2^5 + 2^6.
+\end{aligned}
+\]
+Questo primo passo corrisponde alla fusione delle due liste delle radici, ordinate per grado. Poi si scorrono le potenze da sinistra a destra e, ogni volta che due potenze uguali sono vicine, le si sostituisce con la loro somma $2^j + 2^j = 2^{j+1}$:
+\[
+\begin{aligned}
+103 + 54 &= 2^0 + 2^2 + 2^2 + 2^2 + 2^4 + 2^5 + 2^5 + 2^6 \\
+&= 2^0 + 2^2 + 2^3 + 2^4 + 2^5 + 2^5 + 2^6 \\
+&= 2^0 + 2^2 + 2^3 + 2^4 + 2^6 + 2^6 \\
+&= 2^0 + 2^2 + 2^3 + 2^4 + 2^7 = 157.
+\end{aligned}
+\]
+Ogni sostituzione $2^j + 2^j = 2^{j+1}$ corrisponde a un \BinomialLink{} tra due alberi $B_j$, che produce un $B_{j+1}$: è il \textbf{riporto} della somma in colonna. Il caso delicato è quello delle tre potenze $2^2$ consecutive, dopo la prima sostituzione. Due vengono dagli heap di partenza e una dal riporto appena creato. La prima resta, e si sommano le altre due, come in una colonna della somma binaria con tre bit uguali a $1$, dove $1 + 1 + 1 = (11)_2$.
+
+La stessa somma, scritta in colonna con i riporti, è la seguente:
+\[
+\begin{array}{rcccccccc}
+ & B_7 & B_6 & B_5 & B_4 & B_3 & B_2 & B_1 & B_0 \\
+\text{riporti} & 1 & 1 & & & 1 & 1 & & \\
+n_1 = 103 & & 1 & 1 & 0 & 0 & 1 & 1 & 1 \\
+n_2 = 54 & & & 1 & 1 & 0 & 1 & 1 & 0 \\
+\hline
+n = 157 & 1 & 0 & 0 & 1 & 1 & 1 & 0 & 1
+\end{array}
+\]
+dove la colonna $B_i$ contiene l'$i$-esimo bit, ovvero dice se l'heap contiene un albero di grado $i$. I quattro riporti sono i quattro collegamenti che servono per unire i due heap.
+
+\paragraph{Fusione delle liste delle radici.}
+La procedura \BinomialHeapMerge$(H_1,H_2)$ fonde le liste delle radici di $H_1$ e di $H_2$ in un'unica lista ordinata per grado crescente, e ne restituisce la prima radice. A parità di grado viene prima la radice di $H_1$. Le due liste sono già ordinate per grado, quindi basta una sola scansione, e il costo è proporzionale al numero complessivo di radici, ovvero $O(\lg n)$.
+
+\paragraph{La procedura completa.}
+\BinomialHeapUnion$(H_1,H_2)$ crea un heap vuoto $H$, gli assegna la lista prodotta da \BinomialHeapMerge{}, e poi la scorre da sinistra a destra collegando le radici dello stesso grado, come nella somma vista sopra (algoritmo~\ref{alg:hb-union}).
+
+\begin{algorithm}[htbp]
+\caption{L'unione di due heap binomiali: la fusione delle liste delle radici, poi il collegamento delle radici dello stesso grado.}\label{alg:hb-union}
+\begin{algorithmic}[1]
+\Procedure{Binomial-Heap-Union}{$H_1,H_2$}
+  \State $H \gets$ \Call{Make-Binomial-Heap}{}
+  \State $\mathit{head}[H] \gets$ \Call{Binomial-Heap-Merge}{$H_1,H_2$}
+  \State libera gli oggetti $H_1$ e $H_2$, ma non le liste a cui puntano
+  \If{$\mathit{head}[H] = \Nil$}
+    \State \Return $H$
+  \EndIf
+  \State $\prevx \gets \Nil$
+  \State $x \gets \mathit{head}[H]$
+  \State $\nextx \gets \mathit{sibling}[x]$
+  \While{$\nextx \ne \Nil$}
+    \If{$\mathit{degree}[x] \ne \mathit{degree}[\nextx]$}
+      \State $\prevx \gets x$ \Comment{caso 1}
+      \State $x \gets \nextx$
+    \ElsIf{$\mathit{sibling}[\nextx] \ne \Nil$ \textbf{and} $\mathit{degree}[\mathit{sibling}[\nextx]] = \mathit{degree}[x]$}
+      \State $\prevx \gets x$ \Comment{caso 2}
+      \State $x \gets \nextx$
+    \ElsIf{$\mathit{key}[x] \le \mathit{key}[\nextx]$}
+      \State $\mathit{sibling}[x] \gets \mathit{sibling}[\nextx]$ \Comment{caso 3}
+      \State \Call{Binomial-Link}{$\nextx, x$}
+    \Else
+      \If{$\prevx = \Nil$} \Comment{caso 4}
+        \State $\mathit{head}[H] \gets \nextx$
+      \Else
+        \State $\mathit{sibling}[\prevx] \gets \nextx$
+      \EndIf
+      \State \Call{Binomial-Link}{$x, \nextx$}
+      \State $x \gets \nextx$
+    \EndIf
+    \State $\nextx \gets \mathit{sibling}[x]$
+  \EndWhile
+  \State \Return $H$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Il ciclo mantiene tre puntatori a radici consecutive: $x$ è la radice corrente, $\nextx$ la successiva e $\prevx$ la precedente, che serve per aggiornare la lista quando si toglie $x$. Nella lista fusa ci sono al più due radici di ogni grado. Collegando due radici di grado $k$, però, se ne ottiene una di grado $k+1$, che può trovarsi accanto alle due radici di grado $k+1$ dei due heap. In ogni momento, quindi, ci sono al più tre radici consecutive dello stesso grado.
+
+A ogni iterazione si guardano i gradi di $x$, di $\nextx$ e di $\mathit{sibling}[\nextx]$, e si distinguono quattro casi.
+
+\begin{description}
+  \item[{Caso 1: $\mathit{degree}[x] \ne \mathit{degree}[\nextx]$.}] Sia $x$ la radice di un $B_k$ e $\nextx$ la radice di un $B_l$, con $l > k$. Allora $x$ è l'unica radice di grado $k$, e non c'è niente da collegare: si avanza di una posizione, e $x$ passa alla radice successiva. In binario è una colonna con un solo bit uguale a $1$, che resta nel risultato.
+
+  \begin{casofig}[1]
+  I puntatori avanzano di una posizione, e la lista non cambia. Lo stesso accade quando $\nextx$ è l'ultima radice della lista: dopo l'avanzamento $\nextx$ diventa \Nil{}, e il ciclo termina.
+  \tcblower
+  \begin{tikzpicture}[binheap, >=Stealth]
+    % \rad{nome}{etichetta}{x}{y}{puntatore}{albero}: una radice con il suo sottoalbero
+    \newcommand{\rad}[6]{%
+      \draw[Accent, fill=Accent!6] (#3,#4) -- ({#3-0.24},{#4-0.62}) -- ({#3+0.24},{#4-0.62}) -- cycle;
+      \node[hn] (#1) at (#3,#4) {$#2$};
+      \node[ptr, anchor=south] at (#1.north) {#5};
+      \node[font=\scriptsize] at (#3,{#4-0.82}) {$#6$};}
+    \rad{a1}{a}{0}{0}{\textit{prev-x}}{}
+    \rad{b1}{b}{1.4}{0}{\textit{x}}{B_k}
+    \rad{c1}{c}{2.8}{0}{\textit{next-x}}{B_l}
+    \rad{d1}{d}{4.2}{0}{\textit{sibling}[\textit{next-x}]}{}
+    \draw[->] (a1) -- (b1); \draw[->] (b1) -- (c1); \draw[->] (c1) -- (d1);
+    \draw[->, thick] (2.1,-1.15) -- node[lab, right, font=\scriptsize] {caso 1} (2.1,-1.6);
+    \rad{a2}{a}{0}{-2.2}{}{}
+    \rad{b2}{b}{1.4}{-2.2}{\textit{prev-x}}{B_k}
+    \rad{c2}{c}{2.8}{-2.2}{\textit{x}}{B_l}
+    \rad{d2}{d}{4.2}{-2.2}{\textit{next-x}}{}
+    \draw[->] (a2) -- (b2); \draw[->] (b2) -- (c2); \draw[->] (c2) -- (d2);
+  \end{tikzpicture}
+  \end{casofig}
+
+  \item[{Caso 2: tre radici consecutive dello stesso grado.}] Le radici $x$, $\nextx$ e $\mathit{sibling}[\nextx]$ hanno tutte grado $k$: la prima è il riporto prodotto dall'ultimo collegamento, le altre due vengono dai due heap. Si avanza di una posizione, e alla prossima iterazione si collegano le ultime due, con il caso 3 o 4. In binario è la colonna con tre bit uguali a $1$: un bit resta nel risultato, e uno va in riporto.
+
+  \begin{casofig}[2]
+  Come nel caso 1, i puntatori avanzano di una posizione e la lista non cambia. La radice $b$ resta nel risultato come unico $B_k$, mentre $c$ e $d$ verranno collegate.
+  \tcblower
+  \begin{tikzpicture}[binheap, >=Stealth]
+    \newcommand{\rad}[6]{%
+      \draw[Accent, fill=Accent!6] (#3,#4) -- ({#3-0.24},{#4-0.62}) -- ({#3+0.24},{#4-0.62}) -- cycle;
+      \node[hn] (#1) at (#3,#4) {$#2$};
+      \node[ptr, anchor=south] at (#1.north) {#5};
+      \node[font=\scriptsize] at (#3,{#4-0.82}) {$#6$};}
+    \rad{a1}{a}{0}{0}{\textit{prev-x}}{}
+    \rad{b1}{b}{1.4}{0}{\textit{x}}{B_k}
+    \rad{c1}{c}{2.8}{0}{\textit{next-x}}{B_k}
+    \rad{d1}{d}{4.2}{0}{\textit{sibling}[\textit{next-x}]}{B_k}
+    \draw[->] (a1) -- (b1); \draw[->] (b1) -- (c1); \draw[->] (c1) -- (d1);
+    \draw[->, thick] (2.1,-1.15) -- node[lab, right, font=\scriptsize] {caso 2} (2.1,-1.6);
+    \rad{a2}{a}{0}{-2.2}{}{}
+    \rad{b2}{b}{1.4}{-2.2}{\textit{prev-x}}{B_k}
+    \rad{c2}{c}{2.8}{-2.2}{\textit{x}}{B_k}
+    \rad{d2}{d}{4.2}{-2.2}{\textit{next-x}}{B_k}
+    \draw[->] (a2) -- (b2); \draw[->] (b2) -- (c2); \draw[->] (c2) -- (d2);
+  \end{tikzpicture}
+  \end{casofig}
+
+  \item[{Caso 3: due radici dello stesso grado, con $\mathit{key}[x] \le \mathit{key}[\nextx]$.}] Le radici $x$ e $\nextx$ hanno grado $k$, mentre $\mathit{sibling}[\nextx]$ ha un grado diverso oppure è \Nil{}. Sono quindi le uniche due radici di grado $k$, e vanno collegate. Poiché $x$ ha la chiave minore, $\nextx$ viene tolta dalla lista e diventa il primo figlio di $x$, che ora è la radice di un $B_{k+1}$.
+
+  \begin{casofig}[3]
+  Si pone $\mathit{sibling}[x] \gets \mathit{sibling}[\nextx]$, che toglie $c$ dalla lista, e si chiama \BinomialLink$(\nextx, x)$. La radice corrente resta $x$: alla prossima iterazione il nuovo $B_{k+1}$ si confronta con la radice successiva, che potrebbe avere anch'essa grado $k+1$.
+  \tcblower
+  \begin{tikzpicture}[binheap, >=Stealth]
+    \newcommand{\rad}[6]{%
+      \draw[Accent, fill=Accent!6] (#3,#4) -- ({#3-0.24},{#4-0.62}) -- ({#3+0.24},{#4-0.62}) -- cycle;
+      \node[hn] (#1) at (#3,#4) {$#2$};
+      \node[ptr, anchor=south] at (#1.north) {#5};
+      \node[font=\scriptsize] at (#3,{#4-0.82}) {$#6$};}
+    \rad{a1}{a}{0}{0}{\textit{prev-x}}{}
+    \rad{b1}{b}{1.4}{0}{\textit{x}}{B_k}
+    \rad{c1}{c}{2.8}{0}{\textit{next-x}}{B_k}
+    \rad{d1}{d}{4.2}{0}{\textit{sibling}[\textit{next-x}]}{B_l}
+    \draw[->] (a1) -- (b1); \draw[->] (b1) -- (c1); \draw[->] (c1) -- (d1);
+    \node[font=\scriptsize] at (2.1,-1.15) {$\mathit{key}[x] \le \mathit{key}[\textit{next-x}]$};
+    \draw[->, thick] (2.1,-1.4) -- node[lab, right, font=\scriptsize] {caso 3} (2.1,-1.85);
+    \rad{a2}{a}{0}{-2.45}{\textit{prev-x}}{}
+    \rad{c2}{c}{1.05}{-3.0}{}{B_k}
+    \rad{b2}{b}{1.6}{-2.45}{\textit{x}}{B_k}
+    \draw (b2) -- (c2);
+    \rad{d2}{d}{3.4}{-2.45}{\textit{next-x}}{B_l}
+    \draw[->] (a2) -- (b2); \draw[->] (b2) -- (d2);
+    \draw[decorate, decoration={brace, mirror, amplitude=3pt}, TextGray] (0.75,-4.05) -- node[font=\scriptsize, below=3pt] {$B_{k+1}$} (1.9,-4.05);
+  \end{tikzpicture}
+  \end{casofig}
+
+  \item[{Caso 4: due radici dello stesso grado, con $\mathit{key}[x] > \mathit{key}[\nextx]$.}] Questa volta è $\nextx$ ad avere la chiave minore, quindi $x$ viene tolta dalla lista e diventa il primo figlio di $\nextx$. Se $x$ era la prima radice si aggiorna $\mathit{head}[H]$, altrimenti il fratello destro di $\prevx$.
+
+  \begin{casofig}[4]
+  Si collega $x$ alla lista precedente con $\mathit{head}[H] \gets \nextx$ oppure con $\mathit{sibling}[\prevx] \gets \nextx$, si chiama \BinomialLink$(x, \nextx)$, e infine $x$ avanza sulla radice del nuovo $B_{k+1}$.
+  \tcblower
+  \begin{tikzpicture}[binheap, >=Stealth]
+    \newcommand{\rad}[6]{%
+      \draw[Accent, fill=Accent!6] (#3,#4) -- ({#3-0.24},{#4-0.62}) -- ({#3+0.24},{#4-0.62}) -- cycle;
+      \node[hn] (#1) at (#3,#4) {$#2$};
+      \node[ptr, anchor=south] at (#1.north) {#5};
+      \node[font=\scriptsize] at (#3,{#4-0.82}) {$#6$};}
+    \rad{a1}{a}{0}{0}{\textit{prev-x}}{}
+    \rad{b1}{b}{1.4}{0}{\textit{x}}{B_k}
+    \rad{c1}{c}{2.8}{0}{\textit{next-x}}{B_k}
+    \rad{d1}{d}{4.2}{0}{\textit{sibling}[\textit{next-x}]}{B_l}
+    \draw[->] (a1) -- (b1); \draw[->] (b1) -- (c1); \draw[->] (c1) -- (d1);
+    \node[font=\scriptsize] at (2.1,-1.15) {$\mathit{key}[x] > \mathit{key}[\textit{next-x}]$};
+    \draw[->, thick] (2.1,-1.4) -- node[lab, right, font=\scriptsize] {caso 4} (2.1,-1.85);
+    \rad{a2}{a}{0}{-2.45}{\textit{prev-x}}{}
+    \rad{b2}{b}{1.05}{-3.0}{}{B_k}
+    \rad{c2}{c}{1.6}{-2.45}{\textit{x}}{B_k}
+    \draw (c2) -- (b2);
+    \rad{d2}{d}{3.4}{-2.45}{\textit{next-x}}{B_l}
+    \draw[->] (a2) -- (c2); \draw[->] (c2) -- (d2);
+    \draw[decorate, decoration={brace, mirror, amplitude=3pt}, TextGray] (0.75,-4.05) -- node[font=\scriptsize, below=3pt] {$B_{k+1}$} (1.9,-4.05);
+  \end{tikzpicture}
+  \end{casofig}
+\end{description}
+
+In tutti i casi, alla fine dell'iterazione $\nextx$ diventa la radice che segue $x$. Nei casi 3 e 4, inoltre, $x$ è la radice di un $B_{k+1}$ appena formato: se anche la radice successiva ha grado $k+1$, la prossima iterazione la collegherà a $x$. È il riporto che si propaga verso i gradi più alti.
+
+\paragraph{Esempio.}
+Uniamo i due heap della figura~\ref{fig:hb-unione}a, con $n_1 = 7$ e $n_2 = 19$ nodi. \BinomialHeapMerge{} produce la lista delle radici 12, 18, 7, 3, 15 e 6, di grado $0, 0, 1, 1, 2, 4$ (figura~\ref{fig:hb-unione}b). Poi il ciclo esegue i seguenti passi:
+\begin{itemize}
+    \item \textbf{Caso 3}: 12 e 18 hanno grado $0$, mentre la radice successiva, 7, ha grado $1$. Poiché $12 \le 18$, 18 diventa figlio di 12, che è ora la radice di un $B_1$ (c).
+    \item \textbf{Caso 2}: 12, 7 e 3 hanno tutti grado $1$, quindi $x$ avanza su 7. Il $B_1$ con radice 12 resterà nel risultato (d).
+    \item \textbf{Caso 4}: 7 e 3 hanno grado $1$, e la radice successiva, 15, ha grado $2$. Poiché $7 > 3$, 7 diventa figlio di 3, e $x$ avanza su 3, ora la radice di un $B_2$ (e).
+    \item \textbf{Caso 3}: 3 e 15 hanno grado $2$, mentre 6 ha grado $4$. Poiché $3 \le 15$, 15 diventa figlio di 3, ora la radice di un $B_3$ (f).
+    \item \textbf{Caso 1}: 3 ha grado $3$ e 6 ha grado $4$, quindi $x$ avanza su 6. Ora $\nextx = \Nil$, e il ciclo termina.
+\end{itemize}
+L'heap risultante ha $26$ nodi, e contiene gli alberi $B_1$, $B_3$ e $B_4$. In binario, infatti:
+\[
+n_1 + n_2 = (00111)_2 + (10011)_2 = (11010)_2 = 26.
+\]
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{binomial-heap}[heap={(12) (7 (25)) (15 (28 (41)) (33))}, other={(18) (3 (37)) (6 (8 (30 (45 (55)) (32)) (23 (24)) (22)) (29 (48 (50)) (31)) (10 (17)) (44))}, ops={union}, actions={}]
+\begin{tikzpicture}[binheap, >=Stealth]
+  % (a) 
+  \node[lab, anchor=west] at (-1.05,0.000) {(a)};
+  \node[hn] (s0n0) at (1.530,0.000) {12};
+  \node[hn] (s0n2) at (2.510,-0.600) {25};
+  \node[hn] (s0n1) at (2.510,0.000) {7};
+  \node[hn] (s0n5) at (3.490,-1.200) {41};
+  \node[hn] (s0n4) at (3.490,-0.600) {28};
+  \node[hn] (s0n6) at (4.050,-0.600) {33};
+  \node[hn] (s0n3) at (4.050,0.000) {15};
+  \node[hn] (s0n7) at (6.228,0.000) {18};
+  \node[hn] (s0n9) at (7.208,-0.600) {37};
+  \node[hn] (s0n8) at (7.208,0.000) {3};
+  \node[hn] (s0n14) at (8.188,-2.400) {55};
+  \node[hn] (s0n13) at (8.188,-1.800) {45};
+  \node[hn] (s0n15) at (8.748,-1.800) {32};
+  \node[hn] (s0n12) at (8.748,-1.200) {30};
+  \node[hn] (s0n17) at (9.308,-1.800) {24};
+  \node[hn] (s0n16) at (9.308,-1.200) {23};
+  \node[hn] (s0n18) at (9.868,-1.200) {22};
+  \node[hn] (s0n11) at (9.868,-0.600) {8};
+  \node[hn] (s0n21) at (10.428,-1.800) {50};
+  \node[hn] (s0n20) at (10.428,-1.200) {48};
+  \node[hn] (s0n22) at (10.988,-1.200) {31};
+  \node[hn] (s0n19) at (10.988,-0.600) {29};
+  \node[hn] (s0n24) at (11.548,-1.200) {17};
+  \node[hn] (s0n23) at (11.548,-0.600) {10};
+  \node[hn] (s0n25) at (12.108,-0.600) {44};
+  \node[hn] (s0n10) at (12.108,0.000) {6};
+  \draw (s0n1) -- (s0n2);
+  \draw (s0n4) -- (s0n5);
+  \draw (s0n3) -- (s0n4);
+  \draw (s0n3) -- (s0n6);
+  \draw (s0n8) -- (s0n9);
+  \draw (s0n13) -- (s0n14);
+  \draw (s0n12) -- (s0n13);
+  \draw (s0n12) -- (s0n15);
+  \draw (s0n11) -- (s0n12);
+  \draw (s0n16) -- (s0n17);
+  \draw (s0n11) -- (s0n16);
+  \draw (s0n11) -- (s0n18);
+  \draw (s0n10) -- (s0n11);
+  \draw (s0n20) -- (s0n21);
+  \draw (s0n19) -- (s0n20);
+  \draw (s0n19) -- (s0n22);
+  \draw (s0n10) -- (s0n19);
+  \draw (s0n23) -- (s0n24);
+  \draw (s0n10) -- (s0n23);
+  \draw (s0n10) -- (s0n25);
+  \draw[->] (s0n0) -- (s0n1);
+  \draw[->] (s0n1) -- (s0n3);
+  \draw[->] (s0n7) -- (s0n8);
+  \draw[->] (s0n8) -- (s0n10);
+  \node[head, anchor=east] (s0h0) at (1.094,0.000) {$\mathit{head}[H_1]$};
+  \draw[->] (s0h0) -- (s0n0);
+  \node[head, anchor=east] (s0h1) at (5.792,0.000) {$\mathit{head}[H_2]$};
+  \draw[->] (s0h1) -- (s0n7);
+  % (b) 
+  \node[lab, anchor=west] at (-1.05,-3.250) {(b)};
+  \node[hn] (s1n0) at (1.530,-3.250) {12};
+  \node[hn] (s1n7) at (2.510,-3.250) {18};
+  \node[hn] (s1n2) at (3.490,-3.850) {25};
+  \node[hn] (s1n1) at (3.490,-3.250) {7};
+  \node[hn] (s1n9) at (4.470,-3.850) {37};
+  \node[hn] (s1n8) at (4.470,-3.250) {3};
+  \node[hn] (s1n5) at (5.450,-4.450) {41};
+  \node[hn] (s1n4) at (5.450,-3.850) {28};
+  \node[hn] (s1n6) at (6.010,-3.850) {33};
+  \node[hn] (s1n3) at (6.010,-3.250) {15};
+  \node[hn] (s1n14) at (6.990,-5.650) {55};
+  \node[hn] (s1n13) at (6.990,-5.050) {45};
+  \node[hn] (s1n15) at (7.550,-5.050) {32};
+  \node[hn] (s1n12) at (7.550,-4.450) {30};
+  \node[hn] (s1n17) at (8.110,-5.050) {24};
+  \node[hn] (s1n16) at (8.110,-4.450) {23};
+  \node[hn] (s1n18) at (8.670,-4.450) {22};
+  \node[hn] (s1n11) at (8.670,-3.850) {8};
+  \node[hn] (s1n21) at (9.230,-5.050) {50};
+  \node[hn] (s1n20) at (9.230,-4.450) {48};
+  \node[hn] (s1n22) at (9.790,-4.450) {31};
+  \node[hn] (s1n19) at (9.790,-3.850) {29};
+  \node[hn] (s1n24) at (10.350,-4.450) {17};
+  \node[hn] (s1n23) at (10.350,-3.850) {10};
+  \node[hn] (s1n25) at (10.910,-3.850) {44};
+  \node[hn] (s1n10) at (10.910,-3.250) {6};
+  \draw (s1n1) -- (s1n2);
+  \draw (s1n8) -- (s1n9);
+  \draw (s1n4) -- (s1n5);
+  \draw (s1n3) -- (s1n4);
+  \draw (s1n3) -- (s1n6);
+  \draw (s1n13) -- (s1n14);
+  \draw (s1n12) -- (s1n13);
+  \draw (s1n12) -- (s1n15);
+  \draw (s1n11) -- (s1n12);
+  \draw (s1n16) -- (s1n17);
+  \draw (s1n11) -- (s1n16);
+  \draw (s1n11) -- (s1n18);
+  \draw (s1n10) -- (s1n11);
+  \draw (s1n20) -- (s1n21);
+  \draw (s1n19) -- (s1n20);
+  \draw (s1n19) -- (s1n22);
+  \draw (s1n10) -- (s1n19);
+  \draw (s1n23) -- (s1n24);
+  \draw (s1n10) -- (s1n23);
+  \draw (s1n10) -- (s1n25);
+  \draw[->] (s1n0) -- (s1n7);
+  \draw[->] (s1n7) -- (s1n1);
+  \draw[->] (s1n1) -- (s1n8);
+  \draw[->] (s1n8) -- (s1n3);
+  \draw[->] (s1n3) -- (s1n10);
+  \node[head, anchor=east] (s1h0) at (1.094,-3.250) {$\mathit{head}[H]$};
+  \draw[->] (s1h0) -- (s1n0);
+  \node[ptr, anchor=south] at (s1n0.north) {\textit{x}};
+  \node[ptr, anchor=south] at (s1n7.north) {\textit{next-x}};
+  % (c) 
+  \node[lab, anchor=west] at (-1.05,-6.500) {(c)};
+  \node[hl] (s2n7) at (1.530,-7.100) {18};
+  \node[hl] (s2n0) at (1.530,-6.500) {12};
+  \node[hn] (s2n2) at (2.510,-7.100) {25};
+  \node[hn] (s2n1) at (2.510,-6.500) {7};
+  \node[hn] (s2n9) at (3.490,-7.100) {37};
+  \node[hn] (s2n8) at (3.490,-6.500) {3};
+  \node[hn] (s2n5) at (4.470,-7.700) {41};
+  \node[hn] (s2n4) at (4.470,-7.100) {28};
+  \node[hn] (s2n6) at (5.030,-7.100) {33};
+  \node[hn] (s2n3) at (5.030,-6.500) {15};
+  \node[hn] (s2n14) at (6.010,-8.900) {55};
+  \node[hn] (s2n13) at (6.010,-8.300) {45};
+  \node[hn] (s2n15) at (6.570,-8.300) {32};
+  \node[hn] (s2n12) at (6.570,-7.700) {30};
+  \node[hn] (s2n17) at (7.130,-8.300) {24};
+  \node[hn] (s2n16) at (7.130,-7.700) {23};
+  \node[hn] (s2n18) at (7.690,-7.700) {22};
+  \node[hn] (s2n11) at (7.690,-7.100) {8};
+  \node[hn] (s2n21) at (8.250,-8.300) {50};
+  \node[hn] (s2n20) at (8.250,-7.700) {48};
+  \node[hn] (s2n22) at (8.810,-7.700) {31};
+  \node[hn] (s2n19) at (8.810,-7.100) {29};
+  \node[hn] (s2n24) at (9.370,-7.700) {17};
+  \node[hn] (s2n23) at (9.370,-7.100) {10};
+  \node[hn] (s2n25) at (9.930,-7.100) {44};
+  \node[hn] (s2n10) at (9.930,-6.500) {6};
+  \draw (s2n0) -- (s2n7);
+  \draw (s2n1) -- (s2n2);
+  \draw (s2n8) -- (s2n9);
+  \draw (s2n4) -- (s2n5);
+  \draw (s2n3) -- (s2n4);
+  \draw (s2n3) -- (s2n6);
+  \draw (s2n13) -- (s2n14);
+  \draw (s2n12) -- (s2n13);
+  \draw (s2n12) -- (s2n15);
+  \draw (s2n11) -- (s2n12);
+  \draw (s2n16) -- (s2n17);
+  \draw (s2n11) -- (s2n16);
+  \draw (s2n11) -- (s2n18);
+  \draw (s2n10) -- (s2n11);
+  \draw (s2n20) -- (s2n21);
+  \draw (s2n19) -- (s2n20);
+  \draw (s2n19) -- (s2n22);
+  \draw (s2n10) -- (s2n19);
+  \draw (s2n23) -- (s2n24);
+  \draw (s2n10) -- (s2n23);
+  \draw (s2n10) -- (s2n25);
+  \draw[->] (s2n0) -- (s2n1);
+  \draw[->] (s2n1) -- (s2n8);
+  \draw[->] (s2n8) -- (s2n3);
+  \draw[->] (s2n3) -- (s2n10);
+  \node[head, anchor=east] (s2h0) at (1.094,-6.500) {$\mathit{head}[H]$};
+  \draw[->] (s2h0) -- (s2n0);
+  \node[ptr, anchor=south] at (s2n0.north) {\textit{x}};
+  \node[ptr, anchor=south] at (s2n1.north) {\textit{next-x}};
+  % (d) 
+  \node[lab, anchor=west] at (-1.05,-9.750) {(d)};
+  \node[hn] (s3n7) at (1.530,-10.350) {18};
+  \node[hn] (s3n0) at (1.530,-9.750) {12};
+  \node[hn] (s3n2) at (2.510,-10.350) {25};
+  \node[hn] (s3n1) at (2.510,-9.750) {7};
+  \node[hn] (s3n9) at (3.490,-10.350) {37};
+  \node[hn] (s3n8) at (3.490,-9.750) {3};
+  \node[hn] (s3n5) at (4.470,-10.950) {41};
+  \node[hn] (s3n4) at (4.470,-10.350) {28};
+  \node[hn] (s3n6) at (5.030,-10.350) {33};
+  \node[hn] (s3n3) at (5.030,-9.750) {15};
+  \node[hn] (s3n14) at (6.010,-12.150) {55};
+  \node[hn] (s3n13) at (6.010,-11.550) {45};
+  \node[hn] (s3n15) at (6.570,-11.550) {32};
+  \node[hn] (s3n12) at (6.570,-10.950) {30};
+  \node[hn] (s3n17) at (7.130,-11.550) {24};
+  \node[hn] (s3n16) at (7.130,-10.950) {23};
+  \node[hn] (s3n18) at (7.690,-10.950) {22};
+  \node[hn] (s3n11) at (7.690,-10.350) {8};
+  \node[hn] (s3n21) at (8.250,-11.550) {50};
+  \node[hn] (s3n20) at (8.250,-10.950) {48};
+  \node[hn] (s3n22) at (8.810,-10.950) {31};
+  \node[hn] (s3n19) at (8.810,-10.350) {29};
+  \node[hn] (s3n24) at (9.370,-10.950) {17};
+  \node[hn] (s3n23) at (9.370,-10.350) {10};
+  \node[hn] (s3n25) at (9.930,-10.350) {44};
+  \node[hn] (s3n10) at (9.930,-9.750) {6};
+  \draw (s3n0) -- (s3n7);
+  \draw (s3n1) -- (s3n2);
+  \draw (s3n8) -- (s3n9);
+  \draw (s3n4) -- (s3n5);
+  \draw (s3n3) -- (s3n4);
+  \draw (s3n3) -- (s3n6);
+  \draw (s3n13) -- (s3n14);
+  \draw (s3n12) -- (s3n13);
+  \draw (s3n12) -- (s3n15);
+  \draw (s3n11) -- (s3n12);
+  \draw (s3n16) -- (s3n17);
+  \draw (s3n11) -- (s3n16);
+  \draw (s3n11) -- (s3n18);
+  \draw (s3n10) -- (s3n11);
+  \draw (s3n20) -- (s3n21);
+  \draw (s3n19) -- (s3n20);
+  \draw (s3n19) -- (s3n22);
+  \draw (s3n10) -- (s3n19);
+  \draw (s3n23) -- (s3n24);
+  \draw (s3n10) -- (s3n23);
+  \draw (s3n10) -- (s3n25);
+  \draw[->] (s3n0) -- (s3n1);
+  \draw[->] (s3n1) -- (s3n8);
+  \draw[->] (s3n8) -- (s3n3);
+  \draw[->] (s3n3) -- (s3n10);
+  \node[head, anchor=east] (s3h0) at (1.094,-9.750) {$\mathit{head}[H]$};
+  \draw[->] (s3h0) -- (s3n0);
+  \node[ptr, anchor=south] at (s3n0.north) {\textit{prev-x}};
+  \node[ptr, anchor=south] at (s3n1.north) {\textit{x}};
+  \node[ptr, anchor=south] at (s3n8.north) {\textit{next-x}};
+  % (e) 
+  \node[lab, anchor=west] at (-1.05,-13.000) {(e)};
+  \node[hn] (s4n7) at (1.530,-13.600) {18};
+  \node[hn] (s4n0) at (1.530,-13.000) {12};
+  \node[hn] (s4n2) at (2.510,-14.200) {25};
+  \node[hl] (s4n1) at (2.510,-13.600) {7};
+  \node[hn] (s4n9) at (3.070,-13.600) {37};
+  \node[hl] (s4n8) at (3.070,-13.000) {3};
+  \node[hn] (s4n5) at (4.050,-14.200) {41};
+  \node[hn] (s4n4) at (4.050,-13.600) {28};
+  \node[hn] (s4n6) at (4.610,-13.600) {33};
+  \node[hn] (s4n3) at (4.610,-13.000) {15};
+  \node[hn] (s4n14) at (5.590,-15.400) {55};
+  \node[hn] (s4n13) at (5.590,-14.800) {45};
+  \node[hn] (s4n15) at (6.150,-14.800) {32};
+  \node[hn] (s4n12) at (6.150,-14.200) {30};
+  \node[hn] (s4n17) at (6.710,-14.800) {24};
+  \node[hn] (s4n16) at (6.710,-14.200) {23};
+  \node[hn] (s4n18) at (7.270,-14.200) {22};
+  \node[hn] (s4n11) at (7.270,-13.600) {8};
+  \node[hn] (s4n21) at (7.830,-14.800) {50};
+  \node[hn] (s4n20) at (7.830,-14.200) {48};
+  \node[hn] (s4n22) at (8.390,-14.200) {31};
+  \node[hn] (s4n19) at (8.390,-13.600) {29};
+  \node[hn] (s4n24) at (8.950,-14.200) {17};
+  \node[hn] (s4n23) at (8.950,-13.600) {10};
+  \node[hn] (s4n25) at (9.510,-13.600) {44};
+  \node[hn] (s4n10) at (9.510,-13.000) {6};
+  \draw (s4n0) -- (s4n7);
+  \draw (s4n1) -- (s4n2);
+  \draw (s4n8) -- (s4n1);
+  \draw (s4n8) -- (s4n9);
+  \draw (s4n4) -- (s4n5);
+  \draw (s4n3) -- (s4n4);
+  \draw (s4n3) -- (s4n6);
+  \draw (s4n13) -- (s4n14);
+  \draw (s4n12) -- (s4n13);
+  \draw (s4n12) -- (s4n15);
+  \draw (s4n11) -- (s4n12);
+  \draw (s4n16) -- (s4n17);
+  \draw (s4n11) -- (s4n16);
+  \draw (s4n11) -- (s4n18);
+  \draw (s4n10) -- (s4n11);
+  \draw (s4n20) -- (s4n21);
+  \draw (s4n19) -- (s4n20);
+  \draw (s4n19) -- (s4n22);
+  \draw (s4n10) -- (s4n19);
+  \draw (s4n23) -- (s4n24);
+  \draw (s4n10) -- (s4n23);
+  \draw (s4n10) -- (s4n25);
+  \draw[->] (s4n0) -- (s4n8);
+  \draw[->] (s4n8) -- (s4n3);
+  \draw[->] (s4n3) -- (s4n10);
+  \node[head, anchor=east] (s4h0) at (1.094,-13.000) {$\mathit{head}[H]$};
+  \draw[->] (s4h0) -- (s4n0);
+  \node[ptr, anchor=south] at (s4n0.north) {\textit{prev-x}};
+  \node[ptr, anchor=south] at (s4n8.north) {\textit{x}};
+  \node[ptr, anchor=south] at (s4n3.north) {\textit{next-x}};
+  % (f) 
+  \node[lab, anchor=west] at (-1.05,-16.250) {(f)};
+  \node[hn] (s5n7) at (1.530,-16.850) {18};
+  \node[hn] (s5n0) at (1.530,-16.250) {12};
+  \node[hn] (s5n5) at (2.510,-18.050) {41};
+  \node[hn] (s5n4) at (2.510,-17.450) {28};
+  \node[hn] (s5n6) at (3.070,-17.450) {33};
+  \node[hl] (s5n3) at (3.070,-16.850) {15};
+  \node[hn] (s5n2) at (3.630,-17.450) {25};
+  \node[hn] (s5n1) at (3.630,-16.850) {7};
+  \node[hn] (s5n9) at (4.190,-16.850) {37};
+  \node[hl] (s5n8) at (4.190,-16.250) {3};
+  \node[hn] (s5n14) at (5.170,-18.650) {55};
+  \node[hn] (s5n13) at (5.170,-18.050) {45};
+  \node[hn] (s5n15) at (5.730,-18.050) {32};
+  \node[hn] (s5n12) at (5.730,-17.450) {30};
+  \node[hn] (s5n17) at (6.290,-18.050) {24};
+  \node[hn] (s5n16) at (6.290,-17.450) {23};
+  \node[hn] (s5n18) at (6.850,-17.450) {22};
+  \node[hn] (s5n11) at (6.850,-16.850) {8};
+  \node[hn] (s5n21) at (7.410,-18.050) {50};
+  \node[hn] (s5n20) at (7.410,-17.450) {48};
+  \node[hn] (s5n22) at (7.970,-17.450) {31};
+  \node[hn] (s5n19) at (7.970,-16.850) {29};
+  \node[hn] (s5n24) at (8.530,-17.450) {17};
+  \node[hn] (s5n23) at (8.530,-16.850) {10};
+  \node[hn] (s5n25) at (9.090,-16.850) {44};
+  \node[hn] (s5n10) at (9.090,-16.250) {6};
+  \draw (s5n0) -- (s5n7);
+  \draw (s5n4) -- (s5n5);
+  \draw (s5n3) -- (s5n4);
+  \draw (s5n3) -- (s5n6);
+  \draw (s5n8) -- (s5n3);
+  \draw (s5n1) -- (s5n2);
+  \draw (s5n8) -- (s5n1);
+  \draw (s5n8) -- (s5n9);
+  \draw (s5n13) -- (s5n14);
+  \draw (s5n12) -- (s5n13);
+  \draw (s5n12) -- (s5n15);
+  \draw (s5n11) -- (s5n12);
+  \draw (s5n16) -- (s5n17);
+  \draw (s5n11) -- (s5n16);
+  \draw (s5n11) -- (s5n18);
+  \draw (s5n10) -- (s5n11);
+  \draw (s5n20) -- (s5n21);
+  \draw (s5n19) -- (s5n20);
+  \draw (s5n19) -- (s5n22);
+  \draw (s5n10) -- (s5n19);
+  \draw (s5n23) -- (s5n24);
+  \draw (s5n10) -- (s5n23);
+  \draw (s5n10) -- (s5n25);
+  \draw[->] (s5n0) -- (s5n8);
+  \draw[->] (s5n8) -- (s5n10);
+  \node[head, anchor=east] (s5h0) at (1.094,-16.250) {$\mathit{head}[H]$};
+  \draw[->] (s5h0) -- (s5n0);
+  \node[ptr, anchor=south] at (s5n0.north) {\textit{prev-x}};
+  \node[ptr, anchor=south] at (s5n8.north) {\textit{x}};
+  \node[ptr, anchor=south] at (s5n10.north) {\textit{next-x}};
+\end{tikzpicture}
+\end{widget}
+\caption{L'unione di due heap binomiali con $7$ e $19$ nodi. (a) I due heap $H_1$ e $H_2$. (b) La lista prodotta da \BinomialHeapMerge{}, con i puntatori all'inizio del ciclo. (c)--(f) La lista all'inizio delle iterazioni successive, dopo i casi 3, 2, 4 e 3, con in evidenza le radici appena collegate. Nell'ultima iterazione si applica il caso 1 e il ciclo termina.}
+\label{fig:hb-unione}
+\end{figure}
+
+\paragraph{Costo.}
+Siano $n_1$ e $n_2$ i nodi di $H_1$ e $H_2$, e $n = n_1 + n_2$. I due heap hanno al più $\lfloor \lg n_1 \rfloor + 1$ e $\lfloor \lg n_2 \rfloor + 1$ alberi, quindi la lista prodotta da \BinomialHeapMerge{} contiene al più
+\[
+\lfloor \lg n_1 \rfloor + \lfloor \lg n_2 \rfloor + 2 \le 2 \lfloor \lg n \rfloor + 2
+\]
+radici, dove la disuguaglianza vale in quanto $n_1 \le n$ e $n_2 \le n$. La fusione, quindi, costa $O(\lg n)$.
+
+Per il ciclo \textbf{while} osserviamo che a ogni iterazione il puntatore $x$ avanza di una posizione (casi 1 e 2), oppure una radice viene tolta dalla lista (casi 3 e 4). Entrambe le cose possono accadere al più tante volte quante sono le radici, e ogni iterazione richiede tempo costante. Il costo dell'unione è quindi:
+\[
+O(\lg n).
+\]
+
+\subsection{Inserimento}\label{sec:hb-insert}
+Per inserire un nodo $x$ si costruisce un heap $H'$ che contiene soltanto $x$, ovvero un $B_0$, e lo si unisce a $H$ (algoritmo~\ref{alg:hb-insert}). Il costo è quello dell'unione, $O(\lg n)$, dove $n$ è il numero di nodi di $H$.
+
+\begin{algorithm}[htbp]
+\caption{L'inserimento del nodo $x$, come unione con un heap che contiene soltanto $x$.}\label{alg:hb-insert}
+\begin{algorithmic}[1]
+\Procedure{Binomial-Heap-Insert}{$H,x$}
+  \State $H' \gets$ \Call{Make-Binomial-Heap}{}
+  \State $p[x] \gets \Nil$
+  \State $\mathit{child}[x] \gets \Nil$
+  \State $\mathit{sibling}[x] \gets \Nil$
+  \State $\mathit{degree}[x] \gets 0$
+  \State $\mathit{head}[H'] \gets x$
+  \State $H \gets$ \Call{Binomial-Heap-Union}{$H,H'$}
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Estrazione del minimo}\label{sec:hb-extract}
+\BinomialHeapExtractMin$(H)$ toglie dall'heap il nodo con la chiave minima, e ne restituisce il puntatore (algoritmo~\ref{alg:hb-extract}).
+
+\begin{algorithm}[htbp]
+\caption{L'estrazione del nodo con la chiave minima: i figli della radice tolta formano un nuovo heap, che si unisce a quello di partenza.}\label{alg:hb-extract}
+\begin{algorithmic}[1]
+\Procedure{Binomial-Heap-Extract-Min}{$H$}
+  \State trova la radice $x$ con la chiave minima nella lista delle radici di $H$
+  \State togli $x$ dalla lista delle radici di $H$
+  \State $H' \gets$ \Call{Make-Binomial-Heap}{}
+  \State inverti l'ordine della lista dei figli di $x$
+  \State $\mathit{head}[H'] \gets$ la prima radice della lista invertita
+  \State $H \gets$ \Call{Binomial-Heap-Union}{$H,H'$}
+  \State \Return $x$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Le prime due righe trovano e tolgono la radice $x$ con la chiave minima, che per la proprietà di min-heap è il minimo dell'intero heap. I figli di $x$, però, vanno rimessi nell'heap. Se $x$ è la radice di un $B_k$, per la proprietà 4 i suoi figli sono, da sinistra, le radici di $B_{k-1}, \ldots, B_1, B_0$, ovvero sono in ordine di grado decrescente. Invertendo la loro lista si ottiene quindi la lista delle radici, ordinata per grado crescente, di un nuovo heap binomiale $H'$, che si unisce a $H$.
+
+\paragraph{Costo.}
+La ricerca di $x$ costa $O(\lg n)$, come \BinomialHeapMinimum{}, e la creazione di $H'$ costa $O(1)$. La radice $x$ di un $B_k$ ha $k$ figli, con $2^k \le n$, quindi anche l'inversione della lista dei figli costa $O(\lg n)$. Infine l'unione costa $O(\lg n)$, e il costo complessivo è:
+\[
+O(\lg n).
+\]
+
+\paragraph{Esempio.}
+Consideriamo l'heap di figura~\ref{fig:hb-estrazione}a, con $n = 22 = (10110)_2$ nodi, e quindi con gli alberi $B_1$, $B_2$ e $B_4$. Il minimo è la radice con chiave 1, la radice del $B_4$. Togliendola, $H$ resta con $B_1$ e $B_2$, ovvero con $6 = (00110)_2$ nodi. I figli di 1, in ordine inverso, formano $H'$, con $B_0$, $B_1$, $B_2$ e $B_3$, ovvero con $15 = (01111)_2$ nodi (figura~\ref{fig:hb-estrazione}b).
+
+L'unione dei due heap produce l'heap di figura~\ref{fig:hb-estrazione}c, con
+\[
+(00110)_2 + (01111)_2 = (10101)_2 = 21
+\]
+nodi, ovvero con $B_0$, $B_2$ e $B_4$. Durante l'unione si applicano, nell'ordine, i casi 1, 4, 2, 3 e 4.
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{binomial-heap}[heap={(37 (41)) (10 (28 (77)) (13)) (1 (6 (8 (11 (27)) (17)) (14 (38)) (29)) (16 (26 (42)) (23)) (12 (18)) (25))}, ops={extract-min}, actions={insert, extract-min, decrease-key, delete}]
+\begin{tikzpicture}[binheap, >=Stealth]
+  % (a) 
+  \node[lab, anchor=west] at (-1.05,0.000) {(a)};
+  \node[hn] (s0n1) at (1.530,-0.600) {41};
+  \node[hn] (s0n0) at (1.530,0.000) {37};
+  \node[hn] (s0n4) at (2.510,-1.200) {77};
+  \node[hn] (s0n3) at (2.510,-0.600) {28};
+  \node[hn] (s0n5) at (3.070,-0.600) {13};
+  \node[hn] (s0n2) at (3.070,0.000) {10};
+  \node[hn] (s0n10) at (4.050,-2.400) {27};
+  \node[hn] (s0n9) at (4.050,-1.800) {11};
+  \node[hn] (s0n11) at (4.610,-1.800) {17};
+  \node[hn] (s0n8) at (4.610,-1.200) {8};
+  \node[hn] (s0n13) at (5.170,-1.800) {38};
+  \node[hn] (s0n12) at (5.170,-1.200) {14};
+  \node[hn] (s0n14) at (5.730,-1.200) {29};
+  \node[hn] (s0n7) at (5.730,-0.600) {6};
+  \node[hn] (s0n17) at (6.290,-1.800) {42};
+  \node[hn] (s0n16) at (6.290,-1.200) {26};
+  \node[hn] (s0n18) at (6.850,-1.200) {23};
+  \node[hn] (s0n15) at (6.850,-0.600) {16};
+  \node[hn] (s0n20) at (7.410,-1.200) {18};
+  \node[hn] (s0n19) at (7.410,-0.600) {12};
+  \node[hn] (s0n21) at (7.970,-0.600) {25};
+  \node[hl] (s0n6) at (7.970,0.000) {1};
+  \draw (s0n0) -- (s0n1);
+  \draw (s0n3) -- (s0n4);
+  \draw (s0n2) -- (s0n3);
+  \draw (s0n2) -- (s0n5);
+  \draw (s0n9) -- (s0n10);
+  \draw (s0n8) -- (s0n9);
+  \draw (s0n8) -- (s0n11);
+  \draw (s0n7) -- (s0n8);
+  \draw (s0n12) -- (s0n13);
+  \draw (s0n7) -- (s0n12);
+  \draw (s0n7) -- (s0n14);
+  \draw (s0n6) -- (s0n7);
+  \draw (s0n16) -- (s0n17);
+  \draw (s0n15) -- (s0n16);
+  \draw (s0n15) -- (s0n18);
+  \draw (s0n6) -- (s0n15);
+  \draw (s0n19) -- (s0n20);
+  \draw (s0n6) -- (s0n19);
+  \draw (s0n6) -- (s0n21);
+  \draw[->] (s0n0) -- (s0n2);
+  \draw[->] (s0n2) -- (s0n6);
+  \node[head, anchor=east] (s0h0) at (1.094,0.000) {$\mathit{head}[H]$};
+  \draw[->] (s0h0) -- (s0n0);
+  \node[ptr, anchor=south] at (s0n6.north) {\textit{x}};
+  % (b) 
+  \node[lab, anchor=west] at (-1.05,-3.150) {(b)};
+  \node[hn] (s1n1) at (1.530,-3.750) {41};
+  \node[hn] (s1n0) at (1.530,-3.150) {37};
+  \node[hn] (s1n4) at (2.510,-4.350) {77};
+  \node[hn] (s1n3) at (2.510,-3.750) {28};
+  \node[hn] (s1n5) at (3.070,-3.750) {13};
+  \node[hn] (s1n2) at (3.070,-3.150) {10};
+  \node[hn] (s1n21) at (5.248,-3.150) {25};
+  \node[hn] (s1n20) at (6.228,-3.750) {18};
+  \node[hn] (s1n19) at (6.228,-3.150) {12};
+  \node[hn] (s1n17) at (7.208,-4.350) {42};
+  \node[hn] (s1n16) at (7.208,-3.750) {26};
+  \node[hn] (s1n18) at (7.768,-3.750) {23};
+  \node[hn] (s1n15) at (7.768,-3.150) {16};
+  \node[hn] (s1n10) at (8.748,-4.950) {27};
+  \node[hn] (s1n9) at (8.748,-4.350) {11};
+  \node[hn] (s1n11) at (9.308,-4.350) {17};
+  \node[hn] (s1n8) at (9.308,-3.750) {8};
+  \node[hn] (s1n13) at (9.868,-4.350) {38};
+  \node[hn] (s1n12) at (9.868,-3.750) {14};
+  \node[hn] (s1n14) at (10.428,-3.750) {29};
+  \node[hn] (s1n7) at (10.428,-3.150) {6};
+  \draw (s1n0) -- (s1n1);
+  \draw (s1n3) -- (s1n4);
+  \draw (s1n2) -- (s1n3);
+  \draw (s1n2) -- (s1n5);
+  \draw (s1n19) -- (s1n20);
+  \draw (s1n16) -- (s1n17);
+  \draw (s1n15) -- (s1n16);
+  \draw (s1n15) -- (s1n18);
+  \draw (s1n9) -- (s1n10);
+  \draw (s1n8) -- (s1n9);
+  \draw (s1n8) -- (s1n11);
+  \draw (s1n7) -- (s1n8);
+  \draw (s1n12) -- (s1n13);
+  \draw (s1n7) -- (s1n12);
+  \draw (s1n7) -- (s1n14);
+  \draw[->] (s1n0) -- (s1n2);
+  \draw[->] (s1n21) -- (s1n19);
+  \draw[->] (s1n19) -- (s1n15);
+  \draw[->] (s1n15) -- (s1n7);
+  \node[head, anchor=east] (s1h0) at (1.094,-3.150) {$\mathit{head}[H]$};
+  \draw[->] (s1h0) -- (s1n0);
+  \node[head, anchor=east] (s1h1) at (4.812,-3.150) {$\mathit{head}[H']$};
+  \draw[->] (s1h1) -- (s1n21);
+  % (c) 
+  \node[lab, anchor=west] at (-1.05,-5.700) {(c)};
+  \node[hn] (s2n21) at (1.530,-5.700) {25};
+  \node[hn] (s2n1) at (2.510,-6.900) {41};
+  \node[hn] (s2n0) at (2.510,-6.300) {37};
+  \node[hn] (s2n20) at (3.070,-6.300) {18};
+  \node[hn] (s2n19) at (3.070,-5.700) {12};
+  \node[hn] (s2n17) at (4.050,-8.100) {42};
+  \node[hn] (s2n16) at (4.050,-7.500) {26};
+  \node[hn] (s2n18) at (4.610,-7.500) {23};
+  \node[hn] (s2n15) at (4.610,-6.900) {16};
+  \node[hn] (s2n4) at (5.170,-7.500) {77};
+  \node[hn] (s2n3) at (5.170,-6.900) {28};
+  \node[hn] (s2n5) at (5.730,-6.900) {13};
+  \node[hn] (s2n2) at (5.730,-6.300) {10};
+  \node[hn] (s2n10) at (6.290,-7.500) {27};
+  \node[hn] (s2n9) at (6.290,-6.900) {11};
+  \node[hn] (s2n11) at (6.850,-6.900) {17};
+  \node[hn] (s2n8) at (6.850,-6.300) {8};
+  \node[hn] (s2n13) at (7.410,-6.900) {38};
+  \node[hn] (s2n12) at (7.410,-6.300) {14};
+  \node[hn] (s2n14) at (7.970,-6.300) {29};
+  \node[hn] (s2n7) at (7.970,-5.700) {6};
+  \draw (s2n0) -- (s2n1);
+  \draw (s2n19) -- (s2n0);
+  \draw (s2n19) -- (s2n20);
+  \draw (s2n16) -- (s2n17);
+  \draw (s2n15) -- (s2n16);
+  \draw (s2n15) -- (s2n18);
+  \draw (s2n2) -- (s2n15);
+  \draw (s2n3) -- (s2n4);
+  \draw (s2n2) -- (s2n3);
+  \draw (s2n2) -- (s2n5);
+  \draw (s2n7) -- (s2n2);
+  \draw (s2n9) -- (s2n10);
+  \draw (s2n8) -- (s2n9);
+  \draw (s2n8) -- (s2n11);
+  \draw (s2n7) -- (s2n8);
+  \draw (s2n12) -- (s2n13);
+  \draw (s2n7) -- (s2n12);
+  \draw (s2n7) -- (s2n14);
+  \draw[->] (s2n21) -- (s2n19);
+  \draw[->] (s2n19) -- (s2n7);
+  \node[head, anchor=east] (s2h0) at (1.094,-5.700) {$\mathit{head}[H]$};
+  \draw[->] (s2h0) -- (s2n21);
+\end{tikzpicture}
+\end{widget}
+\caption{L'estrazione del minimo da un heap binomiale con $22$ nodi. (a) Il minimo è la radice $x$ con chiave 1, la radice di un $B_4$. (b) Tolto $x$, i suoi figli in ordine inverso formano la lista delle radici di $H'$. (c) L'heap ottenuto dall'unione di $H$ e $H'$, con $21$ nodi.}
+\label{fig:hb-estrazione}
+\end{figure}
+
+\subsection{Decremento di una chiave}\label{sec:hb-decrease}
+\BinomialHeapDecreaseKey$(H,x,k)$ assegna al nodo $x$ la chiave $k$, che non deve essere maggiore di quella attuale (algoritmo~\ref{alg:hb-decrease}).
+
+\begin{algorithm}[htbp]
+\caption{Il decremento della chiave del nodo $x$: la nuova chiave risale verso la radice finché è minore di quella del padre.}\label{alg:hb-decrease}
+\begin{algorithmic}[1]
+\Procedure{Binomial-Heap-Decrease-Key}{$H,x,k$}
+  \If{$k > \mathit{key}[x]$}
+    \State \textbf{error} ``la nuova chiave è maggiore di quella attuale''
+  \EndIf
+  \State $\mathit{key}[x] \gets k$
+  \State $y \gets x$
+  \State $z \gets p[y]$
+  \While{$z \ne \Nil$ \textbf{and} $\mathit{key}[y] < \mathit{key}[z]$}
+    \State scambia $\mathit{key}[y]$ e $\mathit{key}[z]$ \Comment{insieme alle informazioni satellite}
+    \State $y \gets z$
+    \State $z \gets p[y]$
+  \EndWhile
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+Diminuendo la chiave di $x$, la proprietà di min-heap può non valere più tra $x$ e suo padre. La si ripristina facendo risalire la chiave. Finché la chiave di $y$ è minore di quella del padre $z$, si scambiano le due chiavi, insieme alle informazioni satellite, e si sale di un livello. Il ciclo termina quando $y$ è una radice, oppure quando la sua chiave non è più minore di quella del padre.
+
+\paragraph{Costo.}
+Ogni iterazione costa $O(1)$ e fa salire $y$ di un livello, quindi le iterazioni sono al più tante quanto la profondità di $x$. Il nodo $x$ appartiene a un albero $B_k$ con $2^k \le n$, che per la proprietà 2 ha altezza $k \le \lfloor \lg n \rfloor$. Il costo è quindi $O(\lg n)$.
+
+\paragraph{Esempio.}
+Nella figura~\ref{fig:hb-decremento} la chiave 26 dell'heap ottenuto nell'esempio precedente diventa 7. La chiave risale due volte, scambiandosi prima con 16 e poi con 10, e si ferma sotto la radice, in quanto $7 \ge 6$.
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{binomial-heap}[heap={(25) (12 (37 (41)) (18)) (6 (10 (16 (26 (42)) (23)) (28 (77)) (13)) (8 (11 (27)) (17)) (14 (38)) (29))}, ops={decrease-key 26 7}, actions={decrease-key, delete}]
+\begin{tikzpicture}[binheap, >=Stealth]
+  % (a) 
+  \node[lab, anchor=west] at (-1.05,0.000) {(a)};
+  \node[hn] (s0n21) at (1.530,0.000) {25};
+  \node[hn] (s0n1) at (2.510,-1.200) {41};
+  \node[hn] (s0n0) at (2.510,-0.600) {37};
+  \node[hn] (s0n20) at (3.070,-0.600) {18};
+  \node[hn] (s0n19) at (3.070,0.000) {12};
+  \node[hn] (s0n17) at (4.050,-2.400) {42};
+  \node[hl] (s0n16) at (4.050,-1.800) {7};
+  \node[hn] (s0n18) at (4.610,-1.800) {23};
+  \node[hn] (s0n15) at (4.610,-1.200) {16};
+  \node[hn] (s0n4) at (5.170,-1.800) {77};
+  \node[hn] (s0n3) at (5.170,-1.200) {28};
+  \node[hn] (s0n5) at (5.730,-1.200) {13};
+  \node[hn] (s0n2) at (5.730,-0.600) {10};
+  \node[hn] (s0n10) at (6.290,-1.800) {27};
+  \node[hn] (s0n9) at (6.290,-1.200) {11};
+  \node[hn] (s0n11) at (6.850,-1.200) {17};
+  \node[hn] (s0n8) at (6.850,-0.600) {8};
+  \node[hn] (s0n13) at (7.410,-1.200) {38};
+  \node[hn] (s0n12) at (7.410,-0.600) {14};
+  \node[hn] (s0n14) at (7.970,-0.600) {29};
+  \node[hn] (s0n7) at (7.970,0.000) {6};
+  \draw (s0n0) -- (s0n1);
+  \draw (s0n19) -- (s0n0);
+  \draw (s0n19) -- (s0n20);
+  \draw (s0n16) -- (s0n17);
+  \draw (s0n15) -- (s0n16);
+  \draw (s0n15) -- (s0n18);
+  \draw (s0n2) -- (s0n15);
+  \draw (s0n3) -- (s0n4);
+  \draw (s0n2) -- (s0n3);
+  \draw (s0n2) -- (s0n5);
+  \draw (s0n7) -- (s0n2);
+  \draw (s0n9) -- (s0n10);
+  \draw (s0n8) -- (s0n9);
+  \draw (s0n8) -- (s0n11);
+  \draw (s0n7) -- (s0n8);
+  \draw (s0n12) -- (s0n13);
+  \draw (s0n7) -- (s0n12);
+  \draw (s0n7) -- (s0n14);
+  \draw[->] (s0n21) -- (s0n19);
+  \draw[->] (s0n19) -- (s0n7);
+  \node[head, anchor=east] (s0h0) at (1.094,0.000) {$\mathit{head}[H]$};
+  \draw[->] (s0h0) -- (s0n21);
+  \node[ptr, anchor=east] at (s0n16.west) {\textit{y}};
+  \node[ptr, anchor=east] at (s0n15.west) {\textit{z}};
+  % (b) 
+  \node[lab, anchor=west] at (-1.05,-3.450) {(b)};
+  \node[hn] (s1n21) at (1.530,-3.450) {25};
+  \node[hn] (s1n1) at (2.510,-4.650) {41};
+  \node[hn] (s1n0) at (2.510,-4.050) {37};
+  \node[hn] (s1n20) at (3.070,-4.050) {18};
+  \node[hn] (s1n19) at (3.070,-3.450) {12};
+  \node[hn] (s1n17) at (4.050,-5.850) {42};
+  \node[hn] (s1n16) at (4.050,-5.250) {16};
+  \node[hn] (s1n18) at (4.610,-5.250) {23};
+  \node[hl] (s1n15) at (4.610,-4.650) {7};
+  \node[hn] (s1n4) at (5.170,-5.250) {77};
+  \node[hn] (s1n3) at (5.170,-4.650) {28};
+  \node[hn] (s1n5) at (5.730,-4.650) {13};
+  \node[hn] (s1n2) at (5.730,-4.050) {10};
+  \node[hn] (s1n10) at (6.290,-5.250) {27};
+  \node[hn] (s1n9) at (6.290,-4.650) {11};
+  \node[hn] (s1n11) at (6.850,-4.650) {17};
+  \node[hn] (s1n8) at (6.850,-4.050) {8};
+  \node[hn] (s1n13) at (7.410,-4.650) {38};
+  \node[hn] (s1n12) at (7.410,-4.050) {14};
+  \node[hn] (s1n14) at (7.970,-4.050) {29};
+  \node[hn] (s1n7) at (7.970,-3.450) {6};
+  \draw (s1n0) -- (s1n1);
+  \draw (s1n19) -- (s1n0);
+  \draw (s1n19) -- (s1n20);
+  \draw (s1n16) -- (s1n17);
+  \draw (s1n15) -- (s1n16);
+  \draw (s1n15) -- (s1n18);
+  \draw (s1n2) -- (s1n15);
+  \draw (s1n3) -- (s1n4);
+  \draw (s1n2) -- (s1n3);
+  \draw (s1n2) -- (s1n5);
+  \draw (s1n7) -- (s1n2);
+  \draw (s1n9) -- (s1n10);
+  \draw (s1n8) -- (s1n9);
+  \draw (s1n8) -- (s1n11);
+  \draw (s1n7) -- (s1n8);
+  \draw (s1n12) -- (s1n13);
+  \draw (s1n7) -- (s1n12);
+  \draw (s1n7) -- (s1n14);
+  \draw[->] (s1n21) -- (s1n19);
+  \draw[->] (s1n19) -- (s1n7);
+  \node[head, anchor=east] (s1h0) at (1.094,-3.450) {$\mathit{head}[H]$};
+  \draw[->] (s1h0) -- (s1n21);
+  \node[ptr, anchor=east] at (s1n15.west) {\textit{y}};
+  \node[ptr, anchor=east] at (s1n2.west) {\textit{z}};
+  % (c) 
+  \node[lab, anchor=west] at (-1.05,-6.900) {(c)};
+  \node[hn] (s2n21) at (1.530,-6.900) {25};
+  \node[hn] (s2n1) at (2.510,-8.100) {41};
+  \node[hn] (s2n0) at (2.510,-7.500) {37};
+  \node[hn] (s2n20) at (3.070,-7.500) {18};
+  \node[hn] (s2n19) at (3.070,-6.900) {12};
+  \node[hn] (s2n17) at (4.050,-9.300) {42};
+  \node[hn] (s2n16) at (4.050,-8.700) {16};
+  \node[hn] (s2n18) at (4.610,-8.700) {23};
+  \node[hn] (s2n15) at (4.610,-8.100) {10};
+  \node[hn] (s2n4) at (5.170,-8.700) {77};
+  \node[hn] (s2n3) at (5.170,-8.100) {28};
+  \node[hn] (s2n5) at (5.730,-8.100) {13};
+  \node[hl] (s2n2) at (5.730,-7.500) {7};
+  \node[hn] (s2n10) at (6.290,-8.700) {27};
+  \node[hn] (s2n9) at (6.290,-8.100) {11};
+  \node[hn] (s2n11) at (6.850,-8.100) {17};
+  \node[hn] (s2n8) at (6.850,-7.500) {8};
+  \node[hn] (s2n13) at (7.410,-8.100) {38};
+  \node[hn] (s2n12) at (7.410,-7.500) {14};
+  \node[hn] (s2n14) at (7.970,-7.500) {29};
+  \node[hn] (s2n7) at (7.970,-6.900) {6};
+  \draw (s2n0) -- (s2n1);
+  \draw (s2n19) -- (s2n0);
+  \draw (s2n19) -- (s2n20);
+  \draw (s2n16) -- (s2n17);
+  \draw (s2n15) -- (s2n16);
+  \draw (s2n15) -- (s2n18);
+  \draw (s2n2) -- (s2n15);
+  \draw (s2n3) -- (s2n4);
+  \draw (s2n2) -- (s2n3);
+  \draw (s2n2) -- (s2n5);
+  \draw (s2n7) -- (s2n2);
+  \draw (s2n9) -- (s2n10);
+  \draw (s2n8) -- (s2n9);
+  \draw (s2n8) -- (s2n11);
+  \draw (s2n7) -- (s2n8);
+  \draw (s2n12) -- (s2n13);
+  \draw (s2n7) -- (s2n12);
+  \draw (s2n7) -- (s2n14);
+  \draw[->] (s2n21) -- (s2n19);
+  \draw[->] (s2n19) -- (s2n7);
+  \node[head, anchor=east] (s2h0) at (1.094,-6.900) {$\mathit{head}[H]$};
+  \draw[->] (s2h0) -- (s2n21);
+  \node[ptr, anchor=east] at (s2n2.west) {\textit{y}};
+  \node[ptr, anchor=south] at (s2n7.north) {\textit{z}};
+\end{tikzpicture}
+\end{widget}
+\caption{Il decremento della chiave 26 a 7. (a) La nuova chiave è minore di quella del padre $z$. (b) Dopo il primo scambio la chiave 7 è salita di un livello, ed è ancora minore di quella del padre. (c) Dopo il secondo scambio $\mathit{key}[y] \ge \mathit{key}[z]$, e il ciclo termina.}
+\label{fig:hb-decremento}
+\end{figure}
+
+\subsection{Cancellazione}\label{sec:hb-delete}
+Per cancellare un nodo $x$ si riutilizzano le due operazioni precedenti (algoritmo~\ref{alg:hb-delete}): prima si porta la chiave di $x$ a $-\infty$, poi si estrae il minimo.
+
+\begin{algorithm}[htbp]
+\caption{La cancellazione del nodo $x$: con la chiave $-\infty$, $x$ diventa il minimo dell'heap.}\label{alg:hb-delete}
+\begin{algorithmic}[1]
+\Procedure{Binomial-Heap-Delete}{$H,x$}
+  \State \Call{Binomial-Heap-Decrease-Key}{$H,x,-\infty$}
+  \State \Call{Binomial-Heap-Extract-Min}{$H$}
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+La chiave $-\infty$ è minore di tutte le altre, quindi risale fino alla radice del suo albero e diventa il minimo dell'heap. \BinomialHeapExtractMin{} rimuove quindi proprio il nodo che la contiene. Entrambe le operazioni costano $O(\lg n)$, e quindi anche la cancellazione.
+
+\paragraph{Esempio.}
+Nella figura~\ref{fig:hb-cancellazione} si cancella il nodo con chiave 77 dall'heap ottenuto nell'esempio precedente. La chiave $-\infty$ risale fino alla radice del $B_4$ (b), che viene estratta. I suoi figli in ordine inverso formano $H'$ (c), e l'unione produce un heap con $20 = (10100)_2$ nodi, ovvero con $B_2$ e $B_4$ (d).
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{binomial-heap}[heap={(25) (12 (37 (41)) (18)) (6 (7 (10 (16 (42)) (23)) (28 (77)) (13)) (8 (11 (27)) (17)) (14 (38)) (29))}, ops={delete 77}, actions={delete, decrease-key}]
+\begin{tikzpicture}[binheap, >=Stealth]
+  % (a) 
+  \node[lab, anchor=west] at (-1.05,0.000) {(a)};
+  \node[hn] (s0n21) at (1.530,0.000) {25};
+  \node[hn] (s0n1) at (2.510,-1.200) {41};
+  \node[hn] (s0n0) at (2.510,-0.600) {37};
+  \node[hn] (s0n20) at (3.070,-0.600) {18};
+  \node[hn] (s0n19) at (3.070,0.000) {12};
+  \node[hn] (s0n17) at (4.050,-2.400) {42};
+  \node[hn] (s0n16) at (4.050,-1.800) {16};
+  \node[hn] (s0n18) at (4.610,-1.800) {23};
+  \node[hn] (s0n15) at (4.610,-1.200) {10};
+  \node[hl] (s0n4) at (5.170,-1.800) {77};
+  \node[hn] (s0n3) at (5.170,-1.200) {28};
+  \node[hn] (s0n5) at (5.730,-1.200) {13};
+  \node[hn] (s0n2) at (5.730,-0.600) {7};
+  \node[hn] (s0n10) at (6.290,-1.800) {27};
+  \node[hn] (s0n9) at (6.290,-1.200) {11};
+  \node[hn] (s0n11) at (6.850,-1.200) {17};
+  \node[hn] (s0n8) at (6.850,-0.600) {8};
+  \node[hn] (s0n13) at (7.410,-1.200) {38};
+  \node[hn] (s0n12) at (7.410,-0.600) {14};
+  \node[hn] (s0n14) at (7.970,-0.600) {29};
+  \node[hn] (s0n7) at (7.970,0.000) {6};
+  \draw (s0n0) -- (s0n1);
+  \draw (s0n19) -- (s0n0);
+  \draw (s0n19) -- (s0n20);
+  \draw (s0n16) -- (s0n17);
+  \draw (s0n15) -- (s0n16);
+  \draw (s0n15) -- (s0n18);
+  \draw (s0n2) -- (s0n15);
+  \draw (s0n3) -- (s0n4);
+  \draw (s0n2) -- (s0n3);
+  \draw (s0n2) -- (s0n5);
+  \draw (s0n7) -- (s0n2);
+  \draw (s0n9) -- (s0n10);
+  \draw (s0n8) -- (s0n9);
+  \draw (s0n8) -- (s0n11);
+  \draw (s0n7) -- (s0n8);
+  \draw (s0n12) -- (s0n13);
+  \draw (s0n7) -- (s0n12);
+  \draw (s0n7) -- (s0n14);
+  \draw[->] (s0n21) -- (s0n19);
+  \draw[->] (s0n19) -- (s0n7);
+  \node[head, anchor=east] (s0h0) at (1.094,0.000) {$\mathit{head}[H]$};
+  \draw[->] (s0h0) -- (s0n21);
+  % (b) 
+  \node[lab, anchor=west] at (-1.05,-3.150) {(b)};
+  \node[hn] (s1n21) at (1.530,-3.150) {25};
+  \node[hn] (s1n1) at (2.510,-4.350) {41};
+  \node[hn] (s1n0) at (2.510,-3.750) {37};
+  \node[hn] (s1n20) at (3.070,-3.750) {18};
+  \node[hn] (s1n19) at (3.070,-3.150) {12};
+  \node[hn] (s1n17) at (4.050,-5.550) {42};
+  \node[hn] (s1n16) at (4.050,-4.950) {16};
+  \node[hn] (s1n18) at (4.610,-4.950) {23};
+  \node[hn] (s1n15) at (4.610,-4.350) {10};
+  \node[hn] (s1n4) at (5.170,-4.950) {28};
+  \node[hn] (s1n3) at (5.170,-4.350) {7};
+  \node[hn] (s1n5) at (5.730,-4.350) {13};
+  \node[hn] (s1n2) at (5.730,-3.750) {6};
+  \node[hn] (s1n10) at (6.290,-4.950) {27};
+  \node[hn] (s1n9) at (6.290,-4.350) {11};
+  \node[hn] (s1n11) at (6.850,-4.350) {17};
+  \node[hn] (s1n8) at (6.850,-3.750) {8};
+  \node[hn] (s1n13) at (7.410,-4.350) {38};
+  \node[hn] (s1n12) at (7.410,-3.750) {14};
+  \node[hn] (s1n14) at (7.970,-3.750) {29};
+  \node[hl] (s1n7) at (7.970,-3.150) {$-\infty$};
+  \draw (s1n0) -- (s1n1);
+  \draw (s1n19) -- (s1n0);
+  \draw (s1n19) -- (s1n20);
+  \draw (s1n16) -- (s1n17);
+  \draw (s1n15) -- (s1n16);
+  \draw (s1n15) -- (s1n18);
+  \draw (s1n2) -- (s1n15);
+  \draw (s1n3) -- (s1n4);
+  \draw (s1n2) -- (s1n3);
+  \draw (s1n2) -- (s1n5);
+  \draw (s1n7) -- (s1n2);
+  \draw (s1n9) -- (s1n10);
+  \draw (s1n8) -- (s1n9);
+  \draw (s1n8) -- (s1n11);
+  \draw (s1n7) -- (s1n8);
+  \draw (s1n12) -- (s1n13);
+  \draw (s1n7) -- (s1n12);
+  \draw (s1n7) -- (s1n14);
+  \draw[->] (s1n21) -- (s1n19);
+  \draw[->] (s1n19) -- (s1n7);
+  \node[head, anchor=east] (s1h0) at (1.094,-3.150) {$\mathit{head}[H]$};
+  \draw[->] (s1h0) -- (s1n21);
+  % (c) 
+  \node[lab, anchor=west] at (-1.05,-6.300) {(c)};
+  \node[hn] (s2n21) at (1.530,-6.300) {25};
+  \node[hn] (s2n1) at (2.510,-7.500) {41};
+  \node[hn] (s2n0) at (2.510,-6.900) {37};
+  \node[hn] (s2n20) at (3.070,-6.900) {18};
+  \node[hn] (s2n19) at (3.070,-6.300) {12};
+  \node[hn] (s2n14) at (5.248,-6.300) {29};
+  \node[hn] (s2n13) at (6.228,-6.900) {38};
+  \node[hn] (s2n12) at (6.228,-6.300) {14};
+  \node[hn] (s2n10) at (7.208,-7.500) {27};
+  \node[hn] (s2n9) at (7.208,-6.900) {11};
+  \node[hn] (s2n11) at (7.768,-6.900) {17};
+  \node[hn] (s2n8) at (7.768,-6.300) {8};
+  \node[hn] (s2n17) at (8.748,-8.100) {42};
+  \node[hn] (s2n16) at (8.748,-7.500) {16};
+  \node[hn] (s2n18) at (9.308,-7.500) {23};
+  \node[hn] (s2n15) at (9.308,-6.900) {10};
+  \node[hn] (s2n4) at (9.868,-7.500) {28};
+  \node[hn] (s2n3) at (9.868,-6.900) {7};
+  \node[hn] (s2n5) at (10.428,-6.900) {13};
+  \node[hn] (s2n2) at (10.428,-6.300) {6};
+  \draw (s2n0) -- (s2n1);
+  \draw (s2n19) -- (s2n0);
+  \draw (s2n19) -- (s2n20);
+  \draw (s2n12) -- (s2n13);
+  \draw (s2n9) -- (s2n10);
+  \draw (s2n8) -- (s2n9);
+  \draw (s2n8) -- (s2n11);
+  \draw (s2n16) -- (s2n17);
+  \draw (s2n15) -- (s2n16);
+  \draw (s2n15) -- (s2n18);
+  \draw (s2n2) -- (s2n15);
+  \draw (s2n3) -- (s2n4);
+  \draw (s2n2) -- (s2n3);
+  \draw (s2n2) -- (s2n5);
+  \draw[->] (s2n21) -- (s2n19);
+  \draw[->] (s2n14) -- (s2n12);
+  \draw[->] (s2n12) -- (s2n8);
+  \draw[->] (s2n8) -- (s2n2);
+  \node[head, anchor=east] (s2h0) at (1.094,-6.300) {$\mathit{head}[H]$};
+  \draw[->] (s2h0) -- (s2n21);
+  \node[head, anchor=east] (s2h1) at (4.812,-6.300) {$\mathit{head}[H']$};
+  \draw[->] (s2h1) -- (s2n14);
+  % (d) 
+  \node[lab, anchor=west] at (-1.05,-8.850) {(d)};
+  \node[hn] (s3n14) at (1.530,-10.050) {29};
+  \node[hn] (s3n21) at (1.530,-9.450) {25};
+  \node[hn] (s3n13) at (2.090,-9.450) {38};
+  \node[hn] (s3n12) at (2.090,-8.850) {14};
+  \node[hn] (s3n1) at (3.070,-11.250) {41};
+  \node[hn] (s3n0) at (3.070,-10.650) {37};
+  \node[hn] (s3n20) at (3.630,-10.650) {18};
+  \node[hn] (s3n19) at (3.630,-10.050) {12};
+  \node[hn] (s3n10) at (4.190,-10.650) {27};
+  \node[hn] (s3n9) at (4.190,-10.050) {11};
+  \node[hn] (s3n11) at (4.750,-10.050) {17};
+  \node[hn] (s3n8) at (4.750,-9.450) {8};
+  \node[hn] (s3n17) at (5.310,-10.650) {42};
+  \node[hn] (s3n16) at (5.310,-10.050) {16};
+  \node[hn] (s3n18) at (5.870,-10.050) {23};
+  \node[hn] (s3n15) at (5.870,-9.450) {10};
+  \node[hn] (s3n4) at (6.430,-10.050) {28};
+  \node[hn] (s3n3) at (6.430,-9.450) {7};
+  \node[hn] (s3n5) at (6.990,-9.450) {13};
+  \node[hn] (s3n2) at (6.990,-8.850) {6};
+  \draw (s3n21) -- (s3n14);
+  \draw (s3n12) -- (s3n21);
+  \draw (s3n12) -- (s3n13);
+  \draw (s3n0) -- (s3n1);
+  \draw (s3n19) -- (s3n0);
+  \draw (s3n19) -- (s3n20);
+  \draw (s3n8) -- (s3n19);
+  \draw (s3n9) -- (s3n10);
+  \draw (s3n8) -- (s3n9);
+  \draw (s3n8) -- (s3n11);
+  \draw (s3n2) -- (s3n8);
+  \draw (s3n16) -- (s3n17);
+  \draw (s3n15) -- (s3n16);
+  \draw (s3n15) -- (s3n18);
+  \draw (s3n2) -- (s3n15);
+  \draw (s3n3) -- (s3n4);
+  \draw (s3n2) -- (s3n3);
+  \draw (s3n2) -- (s3n5);
+  \draw[->] (s3n12) -- (s3n2);
+  \node[head, anchor=east] (s3h0) at (1.094,-8.850) {$\mathit{head}[H]$};
+  \draw[->] (s3h0) -- (s3n12);
+\end{tikzpicture}
+\end{widget}
+\caption{La cancellazione del nodo con chiave 77. (a) L'heap di partenza. (b) Dopo il decremento a $-\infty$, la chiave è salita fino alla radice del $B_4$. (c) Estratto il minimo, i figli della radice tolta formano $H'$. (d) L'heap ottenuto dall'unione, con $20$ nodi.}
+\label{fig:hb-cancellazione}
+\end{figure}
+
+\section{Analisi ammortizzata degli inserimenti}\label{sec:hb-ammortizzata}
+Analizziamo ora il costo di $n$ inserimenti in un heap binomiale inizialmente vuoto.
+
+Come costo effettivo dell'$i$-esimo inserimento consideriamo il numero di chiamate a \MakeBinomialHeap{} e a \BinomialLink{}, che costano entrambe $O(1)$:
+\[
+c_i = \#\MakeBinomialHeap + \#\BinomialLink = 2 + L_i,
+\]
+dove $2$ conta le due chiamate a \MakeBinomialHeap{}, una in \BinomialHeapInsert{} e una all'inizio di \BinomialHeapUnion{}, e $L_i$ è il numero di collegamenti eseguiti dall'$i$-esimo inserimento.
+
+\paragraph{Metodo del potenziale.}
+Definiamo come potenziale il numero di alberi binomiali dell'heap:
+\[
+\Phi(H) = \text{numero di alberi binomiali in } H.
+\]
+Indicando con $H_0$ l'heap iniziale vuoto, si ha $\Phi(H_0) = 0$ e $\Phi(H) \ge 0$ per ogni heap $H$. Per il lemma~\ref{lem:potenziale}, quindi, la somma dei costi ammortizzati è un limite superiore alla somma dei costi effettivi.
+
+Calcoliamo il costo ammortizzato $\hat c = c + \Delta\Phi$ delle due parti dell'inserimento. La chiamata a \MakeBinomialHeap{} in \BinomialHeapInsert{} non cambia gli alberi di $H$, quindi:
+\[
+\hat c = c + \Delta\Phi = 1 + 0 = 1.
+\]
+L'unione, invece, esegue una chiamata a \MakeBinomialHeap{} e $L_i$ collegamenti. Il numero di alberi aumenta di uno per il nuovo $B_0$, e diminuisce di uno per ogni collegamento. Indicando con $T_i$ il numero di alberi dopo l'$i$-esimo inserimento si ha $T_i = T_{i-1} + 1 - L_i$, quindi:
+\[
+\begin{aligned}
+\hat c &= c + \Delta\Phi = (1 + L_i) + (T_i - T_{i-1}) \\
+&= (1 + L_i) + \big((T_{i-1} + 1 - L_i) - T_{i-1}\big) \\
+&= 2.
+\end{aligned}
+\]
+Il costo ammortizzato di un inserimento è quindi $\hat c_i = 1 + 2 = 3$, e $n$ inserimenti in un heap binomiale inizialmente vuoto costano:
+\[
+\sum_{i=1}^{n} c_i \le \sum_{i=1}^{n} \hat c_i = 3n = O(n).
+\]
+La figura~\ref{fig:hb-inserimenti} riporta i costi di otto inserimenti in un heap vuoto: il costo effettivo cambia da un inserimento all'altro, mentre quello ammortizzato vale sempre $3$.
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{binomial-heap}[ops={insert 5, insert 3, insert 8, insert 1, insert 9, insert 2, insert 7, insert 4}, actions={insert}, potential, interval=1500]
+\small
+\begin{tabular}{cccccccc}
+\toprule
+$i$ & chiave & $n_i$ & $L_i$ & $c_i = 2 + L_i$ & $\Phi_i$ & $\Delta\Phi_i$ & $\hat c_i$ \\
+\midrule
+$1$ & 5 & $(0001)_2$ & $0$ & $2$ & $1$ & $+1$ & $3$ \\
+$2$ & 3 & $(0010)_2$ & $1$ & $3$ & $1$ & $0$ & $3$ \\
+$3$ & 8 & $(0011)_2$ & $0$ & $2$ & $2$ & $+1$ & $3$ \\
+$4$ & 1 & $(0100)_2$ & $2$ & $4$ & $1$ & $-1$ & $3$ \\
+$5$ & 9 & $(0101)_2$ & $0$ & $2$ & $2$ & $+1$ & $3$ \\
+$6$ & 2 & $(0110)_2$ & $1$ & $3$ & $2$ & $0$ & $3$ \\
+$7$ & 7 & $(0111)_2$ & $0$ & $2$ & $3$ & $+1$ & $3$ \\
+$8$ & 4 & $(1000)_2$ & $3$ & $5$ & $1$ & $-2$ & $3$ \\
+% totale c_i = 23
+\midrule
+ & & & & $\sum c_i = 23$ & & & $\sum \hat c_i = 24$ \\
+\bottomrule
+\end{tabular}
+\end{widget}
+\caption{Otto inserimenti in un heap binomiale inizialmente vuoto. Per ogni inserimento sono riportati la chiave, il numero di nodi $n_i$ in binario, i collegamenti $L_i$, il costo effettivo $c_i$, il potenziale $\Phi_i$ con la sua variazione, e il costo ammortizzato $\hat c_i$.}
+\label{fig:hb-inserimenti}
+\end{figure}
+
+\paragraph{Metodo degli accantonamenti.}
+Lo stesso risultato si ottiene con gli accantonamenti. Assegniamo alla chiamata a \MakeBinomialHeap{} in \BinomialHeapInsert{} un costo ammortizzato di $1$, che ne paga il costo, e all'unione un costo ammortizzato di $2$:
+\begin{itemize}
+    \item Un'unità paga la chiamata a \MakeBinomialHeap{} all'inizio dell'unione.
+    \item L'altra unità viene assegnata al nuovo nodo, come credito per pagare il suo futuro collegamento.
+\end{itemize}
+Per induzione si verifica che la radice di ogni albero binomiale ha un'unità di credito. Il nuovo $B_0$ ha il credito appena assegnato. Quando due alberi vengono collegati, la radice che diventa figlio usa il suo credito per pagare \BinomialLink{}, mentre l'altra resta radice e conserva il proprio. In ogni istante, quindi, il credito totale è uguale al numero di alberi binomiali dell'heap, e non è mai negativo.
+
+\section{Riepilogo dei costi}\label{sec:hb-costi}
+La tabella~\ref{tab:hb-costi} riassume il costo nel caso peggiore delle procedure viste, e indica da dove nasce.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lcl}
+\toprule
+Procedura & Costo & Da dove nasce il costo \\
+\midrule
+\MakeBinomialHeap{} & $O(1)$ & allocazione dell'heap vuoto \\
+\BinomialHeapMinimum{} & $O(\lg n)$ & scansione delle radici, al più $\lfloor \lg n \rfloor + 1$ \\
+\BinomialLink{} & $O(1)$ & aggiornamento di quattro campi \\
+\BinomialHeapMerge{} & $O(\lg n)$ & scansione delle due liste delle radici \\
+\BinomialHeapUnion{} & $O(\lg n)$ & al più $2\lfloor \lg n \rfloor + 2$ radici nella lista fusa \\
+\BinomialHeapInsert{} & $O(\lg n)$ & unione con un heap di un solo nodo \\
+\BinomialHeapExtractMin{} & $O(\lg n)$ & ricerca del minimo, inversione dei figli e unione \\
+\BinomialHeapDecreaseKey{} & $O(\lg n)$ & altezza degli alberi, al più $\lfloor \lg n \rfloor$ \\
+\BinomialHeapDelete{} & $O(\lg n)$ & decremento della chiave ed estrazione del minimo \\
+\bottomrule
+\end{tabular}
+\caption{Il costo nel caso peggiore delle procedure sugli heap binomiali, dove $n$ è il numero di nodi dell'heap. Su una sequenza di inserimenti in un heap vuoto, il numero di collegamenti per inserimento è costante in senso ammortizzato.}
+\label{tab:hb-costi}
+\end{table}
+
+Rispetto agli heap binari, quindi, l'unione passa da $\Theta(n)$ a $O(\lg n)$, al prezzo di un minimo che costa $O(\lg n)$ invece di $\Theta(1)$. Tutte le operazioni restano logaritmiche, e su una sequenza di inserimenti in un heap vuoto il numero di collegamenti per inserimento è costante in senso ammortizzato.
+
+\section*{Riferimenti}
+Il materiale visto in questo capitolo comprende:
+\begin{itemize}
+    \item Materiale visto a lezione.
+    \item Capitolo 19 (\emph{Binomial Heaps}) del libro T.\,H.~Cormen, C.\,E.~Leiserson, R.\,L.~Rivest, C.~Stein, \emph{Introduction to Algorithms}, seconda edizione.
+    \item Introduzione del capitolo 19 (\emph{Fibonacci Heaps}) e problema 19-2 (\emph{Binomial trees and binomial heaps}) dello stesso libro, terza edizione.
+\end{itemize}

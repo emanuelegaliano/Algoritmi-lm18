@@ -1,0 +1,25 @@
+/* foreste disegnate con forest-view.js (widget binomial-tree e binomial-heap) */
+.w-forest .fv-edge { stroke: var(--ink-soft); stroke-width: 1.4; animation: fv-in calc(0.45s / var(--speed, 1)) ease; }
+.w-forest .fv-arrow { stroke: var(--ink-soft); stroke-width: 1.4; animation: fv-in calc(0.45s / var(--speed, 1)) ease; }
+.w-forest .fv-arrowhead { fill: var(--ink-soft); }
+@keyframes fv-in { from { opacity: 0; } to { opacity: 1; } }
+.w-forest .fv-node, .w-forest .fv-text { transition: opacity calc(0.45s / var(--speed, 1)); }
+.w-forest .fv-new, .w-forest .fv-gone { opacity: 0; }
+.w-forest .fv-gone { pointer-events: none; }
+.w-forest .fv-circle {
+  fill: color-mix(in oklab, var(--accent) 8%, var(--surface)); stroke: var(--accent); stroke-width: 1.5;
+  transition: fill calc(0.3s / var(--speed, 1)), stroke calc(0.3s / var(--speed, 1));
+}
+.w-forest .fv-label {
+  text-anchor: middle; dominant-baseline: central; font-family: var(--font-serif); font-size: 13px;
+  fill: var(--ink); pointer-events: none;
+}
+.w-forest .fv-hl .fv-circle { fill: color-mix(in oklab, var(--fig) 28%, var(--surface)); stroke: var(--fig); stroke-width: 2.4; }
+.w-forest .fv-sel .fv-circle { stroke: var(--obs); stroke-width: 3; stroke-dasharray: 4 2.5; }
+.w-forest .fv-click { cursor: pointer; }
+.w-forest .fv-click:hover .fv-circle { stroke-width: 2.8; }
+/* il contorno del colore dello sfondo tiene leggibili le scritte anche sopra un arco */
+.w-forest .fv-text {
+  font-family: var(--font-serif); font-size: 13px; fill: var(--ink-soft); dominant-baseline: central;
+  paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round;
+}

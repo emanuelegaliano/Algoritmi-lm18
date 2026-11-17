@@ -1,0 +1,17 @@
+/* le due copie di B_{k-1}: quella che scende di un livello e quella che resta radice */
+.w-bintree .c-a .fv-circle { fill: color-mix(in oklab, var(--fig) 30%, var(--surface)); stroke: var(--fig); }
+.w-bintree .c-b .fv-circle { fill: color-mix(in oklab, var(--accent) 14%, var(--surface)); stroke: var(--accent); }
+.w-bintree .c-a-t { fill: var(--fig); font-weight: 600; }
+.w-bintree .c-b-t { fill: var(--accent); font-weight: 600; }
+/* i sottoalberi dei figli della radice, un colore per grado */
+.w-bintree .c-root .fv-circle { fill: var(--ink-soft); stroke: var(--ink); }
+.w-bintree .c-d0 .fv-circle { fill: color-mix(in oklab, var(--c1) 40%, var(--surface)); stroke: var(--c1); }
+.w-bintree .c-d1 .fv-circle { fill: color-mix(in oklab, var(--c2) 40%, var(--surface)); stroke: var(--c2); }
+.w-bintree .c-d2 .fv-circle { fill: color-mix(in oklab, var(--c3) 40%, var(--surface)); stroke: var(--c3); }
+.w-bintree .c-d3 .fv-circle { fill: color-mix(in oklab, var(--c4) 40%, var(--surface)); stroke: var(--c4); }
+.w-bintree .c-d4 .fv-circle { fill: color-mix(in oklab, var(--c5) 40%, var(--surface)); stroke: var(--c5); }
+.w-bintree .c-d0-t { fill: var(--c1); } .w-bintree .c-d1-t { fill: var(--c2); } .w-bintree .c-d2-t { fill: var(--c3); }
+.w-bintree .c-d3-t { fill: var(--c4); } .w-bintree .c-d4-t { fill: var(--c5); }
+.w-bintree .bt-head { font-family: var(--font-sans); font-size: 11px; letter-spacing: 0.04em; fill: var(--ink-soft); }
+.w-bintree .bt-num { font-family: var(--font-mono); font-size: 12px; fill: var(--ink); }
+.w-bintree .bt-sub { font-style: italic; font-size: 14px; font-weight: 600; }
