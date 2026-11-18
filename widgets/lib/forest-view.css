@@ -3,7 +3,7 @@
 .w-forest .fv-arrow { stroke: var(--ink-soft); stroke-width: 1.4; animation: fv-in calc(0.45s / var(--speed, 1)) ease; }
 .w-forest .fv-arrowhead { fill: var(--ink-soft); }
 @keyframes fv-in { from { opacity: 0; } to { opacity: 1; } }
-.w-forest .fv-node, .w-forest .fv-text { transition: opacity calc(0.45s / var(--speed, 1)); }
+.w-forest .fv-node, .w-forest .fv-text, .w-forest .fv-shape { transition: opacity calc(0.45s / var(--speed, 1)); }
 .w-forest .fv-new, .w-forest .fv-gone { opacity: 0; }
 .w-forest .fv-gone { pointer-events: none; }
 .w-forest .fv-circle {

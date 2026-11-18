@@ -1,0 +1,19 @@
+/* nei riquadri dei casi dell'unione la figura animata è larga: il testo va sopra e la figura sotto,
+   invece che affiancati */
+.tw-box-split:has(.tw-widget[data-widget="union-case"]) { grid-template-columns: 1fr; }
+
+.w-ucase .fv-label { font-style: italic; }
+/* i sottoalberi delle radici, come triangoli; quello della radice che esce dalla lista è evidenziato */
+.w-ucase .uc-tri {
+  fill: color-mix(in oklab, var(--accent) 6%, var(--surface)); stroke: var(--accent); stroke-width: 1.2; stroke-linejoin: round;
+  transition: fill calc(0.3s / var(--speed, 1)), stroke calc(0.3s / var(--speed, 1)), opacity calc(0.45s / var(--speed, 1));
+}
+.w-ucase .uc-tri-hl { fill: color-mix(in oklab, var(--fig) 12%, var(--surface)); stroke: var(--fig); }
+.w-ucase .uc-brace { fill: none; stroke: var(--ink-soft); stroke-width: 1.2; }
+.w-ucase .uc-sub { font-style: italic; }
+.w-ucase .uc-ptr { font-style: italic; font-weight: 600; fill: var(--fig); }
+.w-ucase .uc-dots { font-size: 15px; fill: var(--ink-soft); }
+/* il puntatore sibling di una radice tolta dalla lista, che nessuna radice raggiunge più */
+.w-ucase .uc-stale { stroke-dasharray: 4 3; }
+.w-ucase .eq-line { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.15rem 1.6rem; }
+.w-ucase .uc-math { white-space: nowrap; }

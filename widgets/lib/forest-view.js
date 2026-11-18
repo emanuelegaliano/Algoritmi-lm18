@@ -8,7 +8,8 @@ import './forest-view.css';
 //   items:  le cose che si vedono e si spostano. Un nodo { id, x, y, label, cls, r } è un cerchio con
 //           un'etichetta, un testo { id, kind: 'text', x, y, text, cls, anchor } è una scritta (al posto
 //           di text si possono dare dei pezzi parts: [{ text, cls, sub }] con stili diversi, dove sub
-//           indica un pedice), e un punto
+//           indica un pedice), una forma { id, kind: 'shape', x, y, d, cls } è un tracciato SVG d con
+//           l'origine nel punto (x, y), ad esempio il triangolo di un sottoalbero, e un punto
 //           { id, kind: 'point', x, y } non si vede ma può essere l'estremo di un arco o di una freccia;
 //   edges:  segmenti tra i centri di due elementi { a, b, cls }, disegnati sotto i nodi;
 //   arrows: frecce tra due elementi { a, b, ra, rb, cls }, accorciate di ra all'inizio e di rb alla fine.
@@ -24,11 +25,12 @@ export function createForestView(svg, { radius = 14, onClick } = {}) {
   svg.append(s('defs', {}, s('marker', {
     id: markerId, viewBox: '0 0 10 10', refX: 9.5, refY: 5, markerWidth: 6.5, markerHeight: 6.5, orient: 'auto-start-reverse',
   }, s('path', { d: 'M0,0.6 L10,5 L0,9.4 z', class: 'fv-arrowhead' }))));
+  const shapesG = s('g', { class: 'fv-shapes' });
   const edgesG = s('g', { class: 'fv-edges' });
   const arrowsG = s('g', { class: 'fv-arrows' });
   const nodesG = s('g', { class: 'fv-nodes' });
   const textsG = s('g', { class: 'fv-texts' });
-  svg.append(edgesG, arrowsG, nodesG, textsG);
+  svg.append(shapesG, edgesG, arrowsG, nodesG, textsG);
 
   const items = new Map(); // id -> { kind, g, label, pos, from, to, fresh }
   const edges = new Map(); // 'a>b' -> { line, a, b }
@@ -46,6 +48,9 @@ export function createForestView(svg, { radius = 14, onClick } = {}) {
     } else if (kind === 'text') {
       g = label = s('text', { class: 'fv-text fv-new' });
       textsG.append(g);
+    } else if (kind === 'shape') {
+      g = s('path', { class: 'fv-shape fv-new' });
+      shapesG.append(g);
     }
     const it = { kind, g, label, pos: null, fresh: g != null };
     items.set(spec.id, it);
@@ -110,6 +115,9 @@ export function createForestView(svg, { radius = 14, onClick } = {}) {
         } else it.g.textContent = spec.text ?? '';
         it.g.setAttribute('class', ['fv-text', spec.cls, it.fresh && 'fv-new'].filter(Boolean).join(' '));
         it.g.setAttribute('text-anchor', spec.anchor ?? 'middle');
+      } else if (it.kind === 'shape') {
+        it.g.setAttribute('d', spec.d);
+        it.g.setAttribute('class', ['fv-shape', spec.cls, it.fresh && 'fv-new'].filter(Boolean).join(' '));
       }
       it.to = [spec.x, spec.y];
       it.from = it.pos ?? it.to;

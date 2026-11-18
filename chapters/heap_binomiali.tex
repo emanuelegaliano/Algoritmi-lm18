@@ -726,6 +726,7 @@ A ogni iterazione si guardano i gradi di $x$, di $\nextx$ e di $\mathit{sibling}
   \begin{casofig}[1]
   I puntatori avanzano di una posizione, e la lista non cambia. Lo stesso accade quando $\nextx$ è l'ultima radice della lista: dopo l'avanzamento $\nextx$ diventa \Nil{}, e il ciclo termina.
   \tcblower
+  \begin{widget}{union-case}[case=1]
   \begin{tikzpicture}[binheap, >=Stealth]
     % \rad{nome}{etichetta}{x}{y}{puntatore}{albero}: una radice con il suo sottoalbero
     \newcommand{\rad}[6]{%
@@ -745,6 +746,7 @@ A ogni iterazione si guardano i gradi di $x$, di $\nextx$ e di $\mathit{sibling}
     \rad{d2}{d}{4.2}{-2.2}{\textit{next-x}}{}
     \draw[->] (a2) -- (b2); \draw[->] (b2) -- (c2); \draw[->] (c2) -- (d2);
   \end{tikzpicture}
+  \end{widget}
   \end{casofig}
 
   \item[{Caso 2: tre radici consecutive dello stesso grado.}] Le radici $x$, $\nextx$ e $\mathit{sibling}[\nextx]$ hanno tutte grado $k$: la prima è il riporto prodotto dall'ultimo collegamento, le altre due vengono dai due heap. Si avanza di una posizione, e alla prossima iterazione si collegano le ultime due, con il caso 3 o 4. In binario è la colonna con tre bit uguali a $1$: un bit resta nel risultato, e uno va in riporto.
@@ -752,6 +754,7 @@ A ogni iterazione si guardano i gradi di $x$, di $\nextx$ e di $\mathit{sibling}
   \begin{casofig}[2]
   Come nel caso 1, i puntatori avanzano di una posizione e la lista non cambia. La radice $b$ resta nel risultato come unico $B_k$, mentre $c$ e $d$ verranno collegate.
   \tcblower
+  \begin{widget}{union-case}[case=2]
   \begin{tikzpicture}[binheap, >=Stealth]
     \newcommand{\rad}[6]{%
       \draw[Accent, fill=Accent!6] (#3,#4) -- ({#3-0.24},{#4-0.62}) -- ({#3+0.24},{#4-0.62}) -- cycle;
@@ -770,6 +773,7 @@ A ogni iterazione si guardano i gradi di $x$, di $\nextx$ e di $\mathit{sibling}
     \rad{d2}{d}{4.2}{-2.2}{\textit{next-x}}{B_k}
     \draw[->] (a2) -- (b2); \draw[->] (b2) -- (c2); \draw[->] (c2) -- (d2);
   \end{tikzpicture}
+  \end{widget}
   \end{casofig}
 
   \item[{Caso 3: due radici dello stesso grado, con $\mathit{key}[x] \le \mathit{key}[\nextx]$.}] Le radici $x$ e $\nextx$ hanno grado $k$, mentre $\mathit{sibling}[\nextx]$ ha un grado diverso oppure è \Nil{}. Sono quindi le uniche due radici di grado $k$, e vanno collegate. Poiché $x$ ha la chiave minore, $\nextx$ viene tolta dalla lista e diventa il primo figlio di $x$, che ora è la radice di un $B_{k+1}$.
@@ -777,6 +781,7 @@ A ogni iterazione si guardano i gradi di $x$, di $\nextx$ e di $\mathit{sibling}
   \begin{casofig}[3]
   Si pone $\mathit{sibling}[x] \gets \mathit{sibling}[\nextx]$, che toglie $c$ dalla lista, e si chiama \BinomialLink$(\nextx, x)$. La radice corrente resta $x$: alla prossima iterazione il nuovo $B_{k+1}$ si confronta con la radice successiva, che potrebbe avere anch'essa grado $k+1$.
   \tcblower
+  \begin{widget}{union-case}[case=3]
   \begin{tikzpicture}[binheap, >=Stealth]
     \newcommand{\rad}[6]{%
       \draw[Accent, fill=Accent!6] (#3,#4) -- ({#3-0.24},{#4-0.62}) -- ({#3+0.24},{#4-0.62}) -- cycle;
@@ -798,13 +803,15 @@ A ogni iterazione si guardano i gradi di $x$, di $\nextx$ e di $\mathit{sibling}
     \draw[->] (a2) -- (b2); \draw[->] (b2) -- (d2);
     \draw[decorate, decoration={brace, mirror, amplitude=3pt}, TextGray] (0.75,-4.05) -- node[font=\scriptsize, below=3pt] {$B_{k+1}$} (1.9,-4.05);
   \end{tikzpicture}
+  \end{widget}
   \end{casofig}
 
   \item[{Caso 4: due radici dello stesso grado, con $\mathit{key}[x] > \mathit{key}[\nextx]$.}] Questa volta è $\nextx$ ad avere la chiave minore, quindi $x$ viene tolta dalla lista e diventa il primo figlio di $\nextx$. Se $x$ era la prima radice si aggiorna $\mathit{head}[H]$, altrimenti il fratello destro di $\prevx$.
 
   \begin{casofig}[4]
-  Si collega $x$ alla lista precedente con $\mathit{head}[H] \gets \nextx$ oppure con $\mathit{sibling}[\prevx] \gets \nextx$, si chiama \BinomialLink$(x, \nextx)$, e infine $x$ avanza sulla radice del nuovo $B_{k+1}$.
+  Si toglie $x$ dalla lista con $\mathit{head}[H] \gets \nextx$ oppure con $\mathit{sibling}[\prevx] \gets \nextx$, si chiama \BinomialLink$(x, \nextx)$, e infine $x$ avanza sulla radice del nuovo $B_{k+1}$.
   \tcblower
+  \begin{widget}{union-case}[case=4]
   \begin{tikzpicture}[binheap, >=Stealth]
     \newcommand{\rad}[6]{%
       \draw[Accent, fill=Accent!6] (#3,#4) -- ({#3-0.24},{#4-0.62}) -- ({#3+0.24},{#4-0.62}) -- cycle;
@@ -826,6 +833,7 @@ A ogni iterazione si guardano i gradi di $x$, di $\nextx$ e di $\mathit{sibling}
     \draw[->] (a2) -- (c2); \draw[->] (c2) -- (d2);
     \draw[decorate, decoration={brace, mirror, amplitude=3pt}, TextGray] (0.75,-4.05) -- node[font=\scriptsize, below=3pt] {$B_{k+1}$} (1.9,-4.05);
   \end{tikzpicture}
+  \end{widget}
   \end{casofig}
 \end{description}
 
