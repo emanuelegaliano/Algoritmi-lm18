@@ -201,7 +201,7 @@ Per ogni $k = 0, 1, 2, \ldots$ valgono le seguenti proprietà:
 \paragraph{Dimostrazione.}
 Procediamo per induzione su $k$. Nel caso base, $k = 0$, l'albero $B_0$ è formato da un solo nodo, quindi le quattro proprietà sono immediate. $B_0$ ha $1 = 2^0$ nodi e altezza $0$, ha $1 = \binom{0}{0}$ nodi a profondità $0$, e la sua radice, l'unico nodo, ha grado $0$.
 
-Per il passo induttivo supponiamo che il lemma valga per $k-1$, con $k \ge 1$, e consideriamo le due copie di $B_{k-1}$ che formano $B_k$. Chiamiamo \textbf{copia di destra} quella che conserva la radice, e \textbf{copia di sinistra} quella la cui radice diventa il primo figlio della radice di $B_k$ (figura~\ref{fig:hb-dimostrazione}).
+Per il passo induttivo supponiamo che il lemma valga per $k-1$, con $k \ge 1$, e consideriamo le due copie di $B_{k-1}$ che formano $B_k$. Chiamiamo \textbf{copia di destra} quella che conserva la radice, e \textbf{copia di sinistra} quella la cui radice diventa il primo figlio della radice di $B_k$ (figura~\ref{fig:hb-dimostrazione}). Dimostriamo le quattro proprietà nell'ordine del lemma:
 
 \begin{enumerate}
     \item Il numero di nodi di $B_k$ è la somma dei nodi delle due copie. Indicando con $|B_k|$ il numero di nodi di $B_k$, per l'ipotesi induttiva si ha:
@@ -313,6 +313,12 @@ La figura~\ref{fig:hb-esempio} mostra un heap binomiale con $13$ nodi, formato d
 \caption{Un heap binomiale con $13$ nodi, formato dagli alberi binomiali $B_0$, $B_2$ e $B_3$. Le radici sono collegate nella lista delle radici, ordinata per grado crescente, e $\mathit{head}[H]$ punta alla prima.}
 \label{fig:hb-esempio}
 \end{figure}
+
+\begin{osservazione}[Dove si trova il minimo]
+Un heap binomiale non ha un'unica radice: è una foresta, e ogni albero ha la sua. La proprietà di min-heap vale all'interno di ciascun albero, quindi ogni radice contiene il minimo del proprio albero. Il minimo dell'intero heap è la più piccola delle radici: nella figura~\ref{fig:hb-esempio} le radici sono 10, 1 e 6, e il minimo è 1, la radice del $B_2$.
+
+Il puntatore $\mathit{head}[H]$, invece, non indica il minimo, ma la prima radice della lista, che è ordinata per grado e non per chiave. A differenza di un heap binario, in cui il minimo si trova nell'unica radice, per trovarlo bisogna quindi scorrere tutta la lista delle radici.
+\end{osservazione}
 
 \paragraph{Conseguenze.}
 Dalla definizione seguono subito due fatti:

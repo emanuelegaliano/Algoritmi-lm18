@@ -14,4 +14,10 @@
 .w-bintree .c-d3-t { fill: var(--c4); } .w-bintree .c-d4-t { fill: var(--c5); }
 .w-bintree .bt-head { font-family: var(--font-sans); font-size: 11px; letter-spacing: 0.04em; fill: var(--ink-soft); }
 .w-bintree .bt-num { font-family: var(--font-mono); font-size: 12px; fill: var(--ink); }
-.w-bintree .bt-sub { font-style: italic; font-size: 14px; font-weight: 600; }
+.w-bintree .bt-sub { font-style: italic; font-size: 15px; font-weight: 600; }
+/* la legenda delle due copie, sotto la figura */
+.w-bintree .bt-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.3rem 1.4rem; margin-top: 0.3rem; font-size: 0.85rem; color: var(--ink-soft); }
+.w-bintree .bt-key { display: inline-flex; align-items: center; gap: 0.45rem; }
+.w-bintree .bt-dot { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 50%; border: 1.5px solid; }
+.w-bintree .c-a-dot { background: color-mix(in oklab, var(--fig) 30%, var(--surface)); border-color: var(--fig); }
+.w-bintree .c-b-dot { background: color-mix(in oklab, var(--accent) 14%, var(--surface)); border-color: var(--accent); }

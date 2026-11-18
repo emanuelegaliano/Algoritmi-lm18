@@ -10,7 +10,10 @@ import './style.css';
 // sottoalberi dei figli della radice, che sono B_{k-1}, ..., B_0.
 
 const SUB = '₀₁₂₃₄₅₆₇₈₉';
+// B_k con il pedice: nelle note (HTML) con le cifre Unicode, nella figura (SVG) con un pedice vero,
+// perché il font delle etichette non ha le cifre a pedice e le disegnerebbe a grandezza normale
 const Bname = (k) => `B${String(k).replace(/\d/g, (d) => SUB[d])}`;
+const Bparts = (k) => [{ text: 'B' }, { text: String(k), sub: true }];
 const COL = 30, LEVEL = 42, R = 8.5, TOP = 34, LEFT = 86, RIGHT = 128, GAP = 1;
 
 export default defineWidget({
@@ -32,6 +35,10 @@ export default defineWidget({
     const fv = createForestView(svg, { radius: R });
     const eq = h('div', { class: 'eq-line', 'aria-live': 'polite' });
     const note = h('p', { class: 'widget-note' });
+    const legend = h('div', { class: 'bt-legend' }, [
+      h('span', { class: 'bt-key' }, [h('span', { class: 'bt-dot c-a-dot' }), 'copia di sinistra, che scende di un livello']),
+      h('span', { class: 'bt-key' }, [h('span', { class: 'bt-dot c-b-dot' }), 'copia di destra, che conserva la radice']),
+    ]);
     const X = (col) => LEFT + (col + 0.5) * COL, Y = (d) => TOP + d * LEVEL;
 
     function draw(n) {
@@ -62,20 +69,22 @@ export default defineWidget({
       }
       // i nomi dei sottoalberi: le due copie, oppure i figli della radice
       if (view === 'copie') {
-        if (k === 0) items.push({ id: 'lab:R', kind: 'text', x: X(0), y: yLab, text: Bname(0), cls: 'bt-sub c-b-t' });
+        if (k === 0) items.push({ id: 'lab:R', kind: 'text', x: X(0), y: yLab, parts: Bparts(0), cls: 'bt-sub c-b-t' });
         else {
           const w = width(k - 1);
           const right = isTree ? (k === 1 ? 0 : w) : w + GAP;
-          items.push({ id: 'lab:L', kind: 'text', x: X((w - 1) / 2), y: yLab, text: Bname(k - 1), cls: 'bt-sub c-a-t' });
-          items.push({ id: 'lab:R', kind: 'text', x: X(right + (w - 1) / 2) + (isTree && k === 1 ? 26 : 0), y: yLab, text: Bname(k - 1), cls: 'bt-sub c-b-t' });
+          items.push({ id: 'lab:L', kind: 'text', x: X((w - 1) / 2), y: yLab, parts: Bparts(k - 1), cls: 'bt-sub c-a-t' });
+          items.push({ id: 'lab:R', kind: 'text', x: X(right + (w - 1) / 2) + (isTree && k === 1 ? 26 : 0), y: yLab, parts: Bparts(k - 1), cls: 'bt-sub c-b-t' });
         }
       } else {
         for (const v of A.nodes) {
           if (v.local === '' || !/^1*01*$/.test(v.local)) continue; // solo i figli della radice
           const d = (v.local.length - 1) - v.local.indexOf('0');
-          items.push({ id: `lab:${canon(v.s)}`, kind: 'text', x: X(v.col - (width(d) - 1) / 2), y: yLab, text: Bname(d), cls: `bt-sub c-d${d % 5}-t` });
+          items.push({ id: `lab:${canon(v.s)}`, kind: 'text', x: X(v.col - (width(d) - 1) / 2), y: yLab, parts: Bparts(d), cls: `bt-sub c-d${d % 5}-t` });
         }
       }
+      // la legenda dà un nome alle due copie, con i nomi usati nella dimostrazione del capitolo
+      legend.style.visibility = view === 'copie' && k > 0 ? 'visible' : 'hidden';
       fv.render({ items, edges });
 
       const tex = isTree
@@ -99,6 +108,6 @@ export default defineWidget({
       } }, label);
       return b;
     }));
-    el.append(h('div', { class: 'controls' }, [h('span', { class: 'ctl-label' }, 'Colora'), seg]), svg, eq, note, player.el);
+    el.append(h('div', { class: 'controls' }, [h('span', { class: 'ctl-label' }, 'Colora'), seg]), svg, legend, eq, note, player.el);
   },
 });

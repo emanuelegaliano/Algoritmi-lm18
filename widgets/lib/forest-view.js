@@ -7,7 +7,8 @@ import './forest-view.css';
 // render() riceve lo stato da mostrare, con le coordinate già in pixel:
 //   items:  le cose che si vedono e si spostano. Un nodo { id, x, y, label, cls, r } è un cerchio con
 //           un'etichetta, un testo { id, kind: 'text', x, y, text, cls, anchor } è una scritta (al posto
-//           di text si possono dare dei pezzi parts: [{ text, cls }] con stili diversi), e un punto
+//           di text si possono dare dei pezzi parts: [{ text, cls, sub }] con stili diversi, dove sub
+//           indica un pedice), e un punto
 //           { id, kind: 'point', x, y } non si vede ma può essere l'estremo di un arco o di una freccia;
 //   edges:  segmenti tra i centri di due elementi { a, b, cls }, disegnati sotto i nodi;
 //   arrows: frecce tra due elementi { a, b, ra, rb, cls }, accorciate di ra all'inizio e di rb alla fine.
@@ -95,9 +96,18 @@ export function createForestView(svg, { radius = 14, onClick } = {}) {
         it.label.textContent = spec.label ?? '';
         it.g.setAttribute('class', ['fv-node', spec.cls, onClick && 'fv-click', it.fresh && 'fv-new'].filter(Boolean).join(' '));
       } else if (it.kind === 'text') {
-        // un testo può essere fatto di pezzi { text, cls } con stili diversi
-        if (spec.parts) it.g.replaceChildren(...spec.parts.map((p) => s('tspan', { class: p.cls }, p.text)));
-        else it.g.textContent = spec.text ?? '';
+        // un testo può essere fatto di pezzi { text, cls, sub } con stili diversi; un pezzo con sub è
+        // un pedice, più piccolo e più in basso, e il pezzo che lo segue torna sulla linea di base
+        if (spec.parts) {
+          let afterSub = false;
+          it.g.replaceChildren(...spec.parts.map((p) => {
+            const attrs = { class: p.cls };
+            if (p.sub) Object.assign(attrs, { 'font-size': '72%', dy: '0.3em' });
+            else if (afterSub) attrs.dy = '-0.216em';
+            afterSub = !!p.sub;
+            return s('tspan', attrs, p.text);
+          }));
+        } else it.g.textContent = spec.text ?? '';
         it.g.setAttribute('class', ['fv-text', spec.cls, it.fresh && 'fv-new'].filter(Boolean).join(' '));
         it.g.setAttribute('text-anchor', spec.anchor ?? 'middle');
       }

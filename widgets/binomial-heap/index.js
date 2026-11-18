@@ -11,6 +11,21 @@ import './style.css';
 // grado: durante l'unione un grado con due o tre alberi è un riporto della somma binaria.
 
 const OPS = { insert: 'Insert', minimum: 'Minimum', 'extract-min': 'Extract-Min', 'decrease-key': 'Decrease-Key', delete: 'Delete', union: 'Union' };
+
+// un testo con le cifre Unicode a pedice (head[H₁]) diventa una sequenza di pezzi con un pedice vero,
+// perché il font delle etichette non ha le cifre a pedice e le disegnerebbe a grandezza normale
+const SUBD = '₀₁₂₃₄₅₆₇₈₉';
+function subParts(str) {
+  const parts = [];
+  for (const ch of str) {
+    const d = SUBD.indexOf(ch);
+    const text = d >= 0 ? String(d) : ch;
+    const last = parts[parts.length - 1];
+    if (last && last.sub === d >= 0) last.text += text;
+    else parts.push({ text, sub: d >= 0 });
+  }
+  return parts;
+}
 const SUBS = { 'H₁': 'H_1', 'H₂': 'H_2', 'H′': "H'", H: 'H' };
 
 function opTex(op) {
@@ -90,7 +105,7 @@ export default defineWidget({
       for (const e of L.edges) edges.push({ a: `n${e.a}`, b: `n${e.b}` });
       for (const a of L.arrows) arrows.push({ a: `n${a.a}`, b: `n${a.b}` });
       L.heads.forEach((hd, i) => {
-        items.push({ id: `head${i}`, kind: 'text', x: hd.x, y: hd.y, text: `head[${hd.name}]`, anchor: 'end', cls: 'bh-head' });
+        items.push({ id: `head${i}`, kind: 'text', x: hd.x, y: hd.y, parts: subParts(`head[${hd.name}]`), anchor: 'end', cls: 'bh-head' });
         if (hd.first == null) {
           items.push({ id: `nil${i}`, kind: 'text', x: hd.x + 6, y: hd.y, text: '= NIL', anchor: 'start', cls: 'bh-head' });
           return;
