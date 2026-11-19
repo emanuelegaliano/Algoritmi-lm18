@@ -2285,6 +2285,807 @@ Dopo l'inserimento di 28 la foglia è piena, ma l'albero resta valido. Lo split 
 \paragraph{Il limite superiore all'altezza.}
 È il limite del teorema~\ref{thm:btree-altezza}, già visto nell'esercizio~\ref{es:btree-2018}, con la dimostrazione della sezione~\ref{sec:btree-altezza}.
 
+\begin{esercizio}[Valori possibili del grado minimo]\label{es:btree-2023}
+\begin{itemize}
+    \item[(a)] Si definisca la struttura dati dei B-tree.
+    \item[(b)] Sia $\mathcal{T}$ l'insieme dei valori $t \in \mathbb{N}$ per i quali l'albero $T$ seguente possa essere considerato un B-tree di grado minimo $t$, e si ponga $m = \min \mathcal{T}$ e $M = \max \mathcal{T}$.
+    \begin{itemize}
+        \item[(b.1)] Quanto valgono $m$ ed $M$? (Motivare la risposta.)
+        \item[(b.2)] Si illustri l'inserimento delle chiavi 54, 52 e 53 in $T$, considerato come B-tree di grado minimo $m$.
+        \item[(b.3)] Si illustri la cancellazione delle chiavi 37, 43 e 57 da $T$, considerato come B-tree di grado minimo $M$.
+    \end{itemize}
+\end{itemize}
+\begin{center}
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=2] (tr) at (0.00,0.00) {25 \nodepart{two} 43};
+  \node[bn, rectangle split parts=2] (t0) at (-1.27,-1.00) {5 \nodepart{two} 19};
+  \node[bn, rectangle split parts=2] (t1) at (-0.16,-1.00) {31 \nodepart{two} 37};
+  \node[bn, rectangle split parts=3] (t2) at (1.27,-1.00) {51 \nodepart{two} 57 \nodepart{three} 63};
+  \draw (tr.south west) -- (t0.north);
+  \draw (tr.one split south) -- (t1.north);
+  \draw (tr.south east) -- (t2.north);
+\end{tikzpicture}
+\end{center}
+\end{esercizio}
+
+\subsubsection*{Soluzione}
+
+\paragraph{La definizione.}
+La definizione è quella data nella soluzione dell'esercizio~\ref{es:btree-definizione}.
+
+\paragraph{I valori di $m$ ed $M$.}
+I valori possibili di $t$ formano l'intervallo della sezione~\ref{par:btree-grado-forma}.\footnote{Nella sezione~\ref{par:btree-grado-forma} le lettere $M$ e $m$ indicano il massimo e il minimo numero di chiavi in un nodo. Qui, come nel testo dell'esercizio, indicano invece il più grande e il più piccolo grado minimo possibile.} Il nodo con più chiavi è la foglia [51, 57, 63], con $3$ chiavi, quindi $3 \le 2t-1$, ovvero $t \ge 2$. I nodi diversi dalla radice con meno chiavi, come [5, 19], ne contengono $2$, quindi $t-1 \le 2$, ovvero $t \le 3$. Ne segue $\mathcal{T} = \{2, 3\}$, e quindi $m = 2$ e $M = 3$.
+
+A differenza degli esercizi precedenti, l'intervallo contiene due valori, e lo stesso albero si comporta in modo diverso nelle due domande successive. Con $t = 2$ un nodo è pieno già con $3$ chiavi, quindi la foglia [51, 57, 63] è piena. Con $t = 3$, invece, un nodo è pieno solo con $5$ chiavi, mentre con $2$ chiavi è magro. Entrambe le domande partono dall'albero $T$ originale.
+
+\paragraph{$\Insert(54)$ con $t = m = 2$.}
+Gli inserimenti seguono la strategia top-down della sezione~\ref{sec:btree-insert}. Con $t = 2$ un nodo è pieno quando contiene $3$ chiavi, la sua mediana è la seconda chiave, e dopo uno split ogni metà contiene una sola chiave.
+
+La radice [25, 43] non è piena. Vale $54 > 43$, quindi 54 deve finire nel terzo figlio, [51, 57, 63], che è pieno. Lo si divide prima di scendere: la mediana 57 sale nella radice, che diventa [25, 43, 57], e restano [51] e [63]. Poiché $54 < 57$, si scende in [51] e si ottiene [51, 54] (figura~\ref{fig:es-btree23-I54}). Dopo l'inserimento la radice contiene $3$ chiavi, e quindi è piena.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=2] (ar) at (0.00,0.00) {25 \nodepart{two} 43};
+  \node[bn, rectangle split parts=2] (a0) at (-1.27,-1.00) {5 \nodepart{two} 19};
+  \node[bn, rectangle split parts=2] (a1) at (-0.16,-1.00) {31 \nodepart{two} 37};
+  \node[hl, rectangle split parts=3] (a2) at (1.27,-1.00) {51 \nodepart{two} 57 \nodepart{three} 63};
+  \draw (ar.south west) -- (a0.north);
+  \draw (ar.one split south) -- (a1.north);
+  \draw[path] (ar.south east) -- (a2.north);
+  \node[lab] at (0,-1.60) {(a)};
+  \node[hl, rectangle split parts=3] (br) at (0.00,-2.25) {25 \nodepart{two} 43 \nodepart{three} 57};
+  \node[bn, rectangle split parts=2] (b0) at (-1.38,-3.25) {5 \nodepart{two} 19};
+  \node[bn, rectangle split parts=2] (b1) at (-0.27,-3.25) {31 \nodepart{two} 37};
+  \node[hl, rectangle split parts=1] (b2) at (0.68,-3.25) {51};
+  \node[hl, rectangle split parts=1] (b3) at (1.38,-3.25) {63};
+  \draw (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw[path] (br.two split south) -- (b2.north);
+  \draw (br.south east) -- (b3.north);
+  \node[lab] at (0,-3.85) {(b)};
+  \node[bn, rectangle split parts=3] (cr) at (0.00,-4.50) {25 \nodepart{two} 43 \nodepart{three} 57};
+  \node[bn, rectangle split parts=2] (c0) at (-1.62,-5.50) {5 \nodepart{two} 19};
+  \node[bn, rectangle split parts=2] (c1) at (-0.51,-5.50) {31 \nodepart{two} 37};
+  \node[hl, rectangle split parts=2] (c2) at (0.67,-5.50) {51 \nodepart{two} 54};
+  \node[bn, rectangle split parts=1] (c3) at (1.62,-5.50) {63};
+  \draw (cr.south west) -- (c0.north);
+  \draw (cr.one split south) -- (c1.north);
+  \draw (cr.two split south) -- (c2.north);
+  \draw (cr.south east) -- (c3.north);
+  \node[lab] at (0,-6.10) {(c)};
+\end{tikzpicture}
+\caption{$\Insert(54)$ con $t = m = 2$. Il figlio [51, 57, 63] in cui deve scendere 54 è pieno (a). Lo split porta la mediana 57 nella radice e lascia [51] e [63]. Poiché $54 < 57$, si scende in [51] (b). Nella foglia si inserisce 54 (c).}
+\label{fig:es-btree23-I54}
+\end{figure}
+
+\paragraph{$\Insert(52)$.}
+Questa volta è la radice [25, 43, 57] a essere piena, e si divide prima di tutto, anche se la foglia in cui finirà 52 ha ancora posto. La mediana 43 diventa la nuova radice, con figli [25] e [57], e l'altezza passa da $1$ a $2$. Dalla nuova radice vale $52 > 43$, quindi si scende in [57], che non è pieno. Poi vale $52 < 57$, quindi si scende in [51, 54], che è una foglia non piena, e si inserisce 52 (figura~\ref{fig:es-btree23-I52}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[hl, rectangle split parts=3] (ar) at (0.00,0.00) {25 \nodepart{two} 43 \nodepart{three} 57};
+  \node[bn, rectangle split parts=2] (a0) at (-1.62,-1.00) {5 \nodepart{two} 19};
+  \node[bn, rectangle split parts=2] (a1) at (-0.51,-1.00) {31 \nodepart{two} 37};
+  \node[bn, rectangle split parts=2] (a2) at (0.67,-1.00) {51 \nodepart{two} 54};
+  \node[bn, rectangle split parts=1] (a3) at (1.62,-1.00) {63};
+  \draw (ar.south west) -- (a0.north);
+  \draw (ar.one split south) -- (a1.north);
+  \draw (ar.two split south) -- (a2.north);
+  \draw (ar.south east) -- (a3.north);
+  \node[lab] at (0,-1.60) {(a)};
+  \node[hl, rectangle split parts=1] (br) at (0.00,-2.25) {43};
+  \node[hl, rectangle split parts=1] (b0) at (-1.27,-3.25) {25};
+  \node[bn, rectangle split parts=2] (b0x0) at (-1.82,-4.25) {5 \nodepart{two} 19};
+  \node[bn, rectangle split parts=2] (b0x1) at (-0.71,-4.25) {31 \nodepart{two} 37};
+  \node[hl, rectangle split parts=1] (b1) at (1.27,-3.25) {57};
+  \node[bn, rectangle split parts=2] (b1x0) at (0.80,-4.25) {51 \nodepart{two} 54};
+  \node[bn, rectangle split parts=1] (b1x1) at (1.74,-4.25) {63};
+  \draw (br.south west) -- (b0.north);
+  \draw (b0.south west) -- (b0x0.north);
+  \draw (b0.south east) -- (b0x1.north);
+  \draw[path] (br.south east) -- (b1.north);
+  \draw[path] (b1.south west) -- (b1x0.north);
+  \draw (b1.south east) -- (b1x1.north);
+  \node[lab] at (0,-4.85) {(b)};
+  \node[bn, rectangle split parts=1] (cr) at (0.00,-5.50) {43};
+  \node[bn, rectangle split parts=1] (c0) at (-1.45,-6.50) {25};
+  \node[bn, rectangle split parts=2] (c0x0) at (-2.00,-7.50) {5 \nodepart{two} 19};
+  \node[bn, rectangle split parts=2] (c0x1) at (-0.89,-7.50) {31 \nodepart{two} 37};
+  \node[bn, rectangle split parts=1] (c1) at (1.45,-6.50) {57};
+  \node[hl, rectangle split parts=3] (c1x0) at (0.86,-7.50) {51 \nodepart{two} 52 \nodepart{three} 54};
+  \node[bn, rectangle split parts=1] (c1x1) at (2.04,-7.50) {63};
+  \draw (cr.south west) -- (c0.north);
+  \draw (c0.south west) -- (c0x0.north);
+  \draw (c0.south east) -- (c0x1.north);
+  \draw (cr.south east) -- (c1.north);
+  \draw (c1.south west) -- (c1x0.north);
+  \draw (c1.south east) -- (c1x1.north);
+  \node[lab] at (0,-8.10) {(c)};
+\end{tikzpicture}
+\caption{$\Insert(52)$ con $t = 2$. La radice [25, 43, 57] è piena (a), quindi si divide prima di tutto: la mediana 43 diventa la nuova radice e l'altezza passa da $1$ a $2$. La discesa prosegue in [57] e poi in [51, 54], che non sono pieni (b). Nella foglia si inserisce 52 (c).}
+\label{fig:es-btree23-I52}
+\end{figure}
+
+\paragraph{$\Insert(53)$.}
+La radice [43] e il nodo [57] non sono pieni. In [57] vale $53 < 57$, e il figlio in cui scendere, [51, 52, 54], è pieno. Lo si divide: la mediana 52 sale in [57], che diventa [52, 57], e restano [51] e [54]. Poiché $53 > 52$, si scende in [54] e si ottiene [53, 54] (figura~\ref{fig:es-btree23-I53}).
+
+La radice, quindi, si divide in $\Insert(52)$, e non nell'ultimo inserimento. Con la versione che divide i nodi soltanto quando una foglia trabocca, la radice si dividerebbe invece in $\Insert(53)$, risalendo dalla foglia. L'albero finale sarebbe lo stesso, ma quello dopo $\Insert(52)$ avrebbe ancora altezza $1$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=1] (ar) at (0.00,0.00) {43};
+  \node[bn, rectangle split parts=1] (a0) at (-1.45,-1.00) {25};
+  \node[bn, rectangle split parts=2] (a0x0) at (-2.00,-2.00) {5 \nodepart{two} 19};
+  \node[bn, rectangle split parts=2] (a0x1) at (-0.89,-2.00) {31 \nodepart{two} 37};
+  \node[bn, rectangle split parts=1] (a1) at (1.45,-1.00) {57};
+  \node[hl, rectangle split parts=3] (a1x0) at (0.86,-2.00) {51 \nodepart{two} 52 \nodepart{three} 54};
+  \node[bn, rectangle split parts=1] (a1x1) at (2.04,-2.00) {63};
+  \draw (ar.south west) -- (a0.north);
+  \draw (a0.south west) -- (a0x0.north);
+  \draw (a0.south east) -- (a0x1.north);
+  \draw[path] (ar.south east) -- (a1.north);
+  \draw[path] (a1.south west) -- (a1x0.north);
+  \draw (a1.south east) -- (a1x1.north);
+  \node[lab] at (0,-2.60) {(a)};
+  \node[bn, rectangle split parts=1] (br) at (0.00,-3.25) {43};
+  \node[bn, rectangle split parts=1] (b0) at (-1.26,-4.25) {25};
+  \node[bn, rectangle split parts=2] (b0x0) at (-1.82,-5.25) {5 \nodepart{two} 19};
+  \node[bn, rectangle split parts=2] (b0x1) at (-0.71,-5.25) {31 \nodepart{two} 37};
+  \node[hl, rectangle split parts=2] (b1) at (1.26,-4.25) {52 \nodepart{two} 57};
+  \node[hl, rectangle split parts=1] (b1x0) at (0.56,-5.25) {51};
+  \node[hl, rectangle split parts=1] (b1x1) at (1.26,-5.25) {54};
+  \node[bn, rectangle split parts=1] (b1x2) at (1.96,-5.25) {63};
+  \draw (br.south west) -- (b0.north);
+  \draw (b0.south west) -- (b0x0.north);
+  \draw (b0.south east) -- (b0x1.north);
+  \draw[path] (br.south east) -- (b1.north);
+  \draw (b1.south west) -- (b1x0.north);
+  \draw[path] (b1.one split south) -- (b1x1.north);
+  \draw (b1.south east) -- (b1x2.north);
+  \node[lab] at (0,-5.85) {(b)};
+  \node[bn, rectangle split parts=1] (cr) at (0.00,-6.50) {43};
+  \node[bn, rectangle split parts=1] (c0) at (-1.38,-7.50) {25};
+  \node[bn, rectangle split parts=2] (c0x0) at (-1.94,-8.50) {5 \nodepart{two} 19};
+  \node[bn, rectangle split parts=2] (c0x1) at (-0.83,-8.50) {31 \nodepart{two} 37};
+  \node[bn, rectangle split parts=2] (c1) at (1.38,-7.50) {52 \nodepart{two} 57};
+  \node[bn, rectangle split parts=1] (c1x0) at (0.44,-8.50) {51};
+  \node[hl, rectangle split parts=2] (c1x1) at (1.38,-8.50) {53 \nodepart{two} 54};
+  \node[bn, rectangle split parts=1] (c1x2) at (2.32,-8.50) {63};
+  \draw (cr.south west) -- (c0.north);
+  \draw (c0.south west) -- (c0x0.north);
+  \draw (c0.south east) -- (c0x1.north);
+  \draw (cr.south east) -- (c1.north);
+  \draw (c1.south west) -- (c1x0.north);
+  \draw (c1.one split south) -- (c1x1.north);
+  \draw (c1.south east) -- (c1x2.north);
+  \node[lab] at (0,-9.10) {(c)};
+\end{tikzpicture}
+\caption{$\Insert(53)$ con $t = 2$. La radice e il nodo [57] non sono pieni, ma la foglia [51, 52, 54] lo è (a). Lo split porta la mediana 52 in [57], che diventa [52, 57], e lascia [51] e [54]. Poiché $53 > 52$, si scende in [54] (b). Nella foglia si inserisce 53 (c).}
+\label{fig:es-btree23-I53}
+\end{figure}
+
+\paragraph{$\Delete(37)$ con $t = M = 3$.}
+Le cancellazioni partono di nuovo dall'albero $T$ originale e seguono l'algoritmo della sezione~\ref{sec:btree-delete}. Con $t = 3$ un nodo diverso dalla radice contiene da $2$ a $5$ chiavi.
+
+Nella radice [25, 43] vale $25 < 37 < 43$, quindi si deve scendere in [31, 37], che è magro. Il fratello sinistro [5, 19] è anch'esso magro, mentre il fratello destro [51, 57, 63] ha $3 \ge t$ chiavi. Si esegue quindi un prestito (caso 3a), come in $\Delete(25)$ dell'esercizio~\ref{es:btree-2025}: 43 scende in [31, 37], e il minimo del fratello, 51, sale nella radice. Infine si scende nella foglia [31, 37, 43] e si elimina 37 (figura~\ref{fig:es-btree23-D37}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=2] (ar) at (0.00,0.00) {25 \nodepart{two} 43};
+  \node[bn, rectangle split parts=2] (a0) at (-1.27,-1.00) {5 \nodepart{two} 19};
+  \node[hl, rectangle split parts=2] (a1) at (-0.16,-1.00) {31 \nodepart{two} 37};
+  \node[bn, rectangle split parts=3] (a2) at (1.27,-1.00) {51 \nodepart{two} 57 \nodepart{three} 63};
+  \draw (ar.south west) -- (a0.north);
+  \draw[path] (ar.one split south) -- (a1.north);
+  \draw (ar.south east) -- (a2.north);
+  \node[lab] at (0,-1.60) {(a)};
+  \node[hl, rectangle split parts=2] (br) at (0.00,-2.25) {25 \nodepart{two} 51};
+  \node[bn, rectangle split parts=2] (b0) at (-1.15,-3.25) {5 \nodepart{two} 19};
+  \node[hl, rectangle split parts=2] (b1) at (-0.04,-3.25) {31 \nodepart{two} 43};
+  \node[hl, rectangle split parts=2] (b2) at (1.15,-3.25) {57 \nodepart{two} 63};
+  \draw (br.south west) -- (b0.north);
+  \draw[path] (br.one split south) -- (b1.north);
+  \draw (br.south east) -- (b2.north);
+  \node[lab] at (0,-3.85) {(b)};
+\end{tikzpicture}
+\caption{$\Delete(37)$ con $t = M = 3$. Il figlio [31, 37] ha $t-1$ chiavi, come il fratello sinistro, mentre il fratello destro [51, 57, 63] ne ha $t$ (a). Caso 3a: 43 scende in [31, 37] e 51 sale nella radice. Poi si elimina 37 dalla foglia (b).}
+\label{fig:es-btree23-D37}
+\end{figure}
+
+\paragraph{$\Delete(43)$.}
+Nella radice [25, 51] vale $25 < 43 < 51$, quindi si deve scendere in [31, 43], che è magro. Questa volta entrambi i fratelli, [5, 19] e [57, 63], sono magri, e si esegue una fusione (caso 3b) con il fratello destro. [31, 43], la chiave separatrice 51 e [57, 63] formano il nodo [31, 43, 51, 57, 63], e la radice, che perde 51, diventa [25]. Infine si scende nel nodo fuso e si elimina 43 (figura~\ref{fig:es-btree23-D43}). Fondendo con il fratello sinistro sarebbe scesa 25, e si otterrebbe un albero diverso.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=2] (ar) at (0.00,0.00) {25 \nodepart{two} 51};
+  \node[bn, rectangle split parts=2] (a0) at (-1.15,-1.00) {5 \nodepart{two} 19};
+  \node[hl, rectangle split parts=2] (a1) at (-0.04,-1.00) {31 \nodepart{two} 43};
+  \node[bn, rectangle split parts=2] (a2) at (1.15,-1.00) {57 \nodepart{two} 63};
+  \draw (ar.south west) -- (a0.north);
+  \draw[path] (ar.one split south) -- (a1.north);
+  \draw (ar.south east) -- (a2.north);
+  \node[lab] at (0,-1.60) {(a)};
+  \node[hl, rectangle split parts=1] (br) at (0.00,-2.25) {25};
+  \node[bn, rectangle split parts=2] (b0) at (-0.92,-3.25) {5 \nodepart{two} 19};
+  \node[hl, rectangle split parts=5] (b1) at (0.92,-3.25) {31 \nodepart{two} 43 \nodepart{three} 51 \nodepart{four} 57 \nodepart{five} 63};
+  \draw (br.south west) -- (b0.north);
+  \draw[path] (br.south east) -- (b1.north);
+  \node[lab] at (0,-3.85) {(b)};
+  \node[bn, rectangle split parts=1] (cr) at (0.00,-4.50) {25};
+  \node[bn, rectangle split parts=2] (c0) at (-0.80,-5.50) {5 \nodepart{two} 19};
+  \node[hl, rectangle split parts=4] (c1) at (0.79,-5.50) {31 \nodepart{two} 51 \nodepart{three} 57 \nodepart{four} 63};
+  \draw (cr.south west) -- (c0.north);
+  \draw (cr.south east) -- (c1.north);
+  \node[lab] at (0,-6.10) {(c)};
+\end{tikzpicture}
+\caption{$\Delete(43)$ con $t = 3$. Il figlio [31, 43] e i suoi due fratelli hanno $t-1$ chiavi (a). Caso 3b: [31, 43] si fonde con il fratello destro e con 51 in [31, 43, 51, 57, 63], e la radice diventa [25] (b). Nel nodo fuso si elimina 43 (c).}
+\label{fig:es-btree23-D43}
+\end{figure}
+
+\paragraph{$\Delete(57)$.}
+Nella radice [25] vale $57 > 25$, e il figlio [31, 51, 57, 63] ha $4 \ge t$ chiavi, quindi si scende senza riparazioni. Nella foglia si elimina 57 (caso 1), e resta [31, 51, 63] (figura~\ref{fig:es-btree23-D57}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=1] (ar) at (0.00,0.00) {25};
+  \node[bn, rectangle split parts=2] (a0) at (-0.80,-1.00) {5 \nodepart{two} 19};
+  \node[hl, rectangle split parts=4] (a1) at (0.79,-1.00) {31 \nodepart{two} 51 \nodepart{three} 57 \nodepart{four} 63};
+  \draw (ar.south west) -- (a0.north);
+  \draw[path] (ar.south east) -- (a1.north);
+  \node[lab] at (0,-1.60) {(a)};
+  \node[bn, rectangle split parts=1] (br) at (0.00,-2.25) {25};
+  \node[bn, rectangle split parts=2] (b0) at (-0.68,-3.25) {5 \nodepart{two} 19};
+  \node[hl, rectangle split parts=3] (b1) at (0.68,-3.25) {31 \nodepart{two} 51 \nodepart{three} 63};
+  \draw (br.south west) -- (b0.north);
+  \draw (br.south east) -- (b1.north);
+  \node[lab] at (0,-3.85) {(b)};
+\end{tikzpicture}
+\caption{$\Delete(57)$ con $t = 3$. Il figlio [31, 51, 57, 63] ha $4 \ge t$ chiavi, quindi si scende senza riparazioni (a). Nella foglia si elimina 57 (b).}
+\label{fig:es-btree23-D57}
+\end{figure}
+
+\begin{esercizio}[Ricostruzione dell'albero e altezze possibili]\label{es:btree-2020}
+\begin{itemize}
+    \item[(1)] Si definisca la struttura dati dei B-tree.
+    \item[(2)] Sia $T$ un B-tree contenente esattamente le chiavi in $\{3i \mid 1 \le i \le 11\}$ e tale che la sua radice contenga le chiavi 9 e 18. Si determini il grado minimo di $T$ e si illustri l'esecuzione su $T$ delle operazioni $\Insert(34)$, $\Delete(21)$, $\Delete(3)$, $\Insert(35)$, $\Insert(36)$, $\Insert(37)$, $\Delete(9)$ e $\Delete(12)$, nell'ordine dato.
+    \item[(3)] Sia $T'$ un B-tree con $999$ chiavi, il cui grado minimo è uguale a quello di $T$. Quali sono i possibili valori per l'altezza di $T'$?
+\end{itemize}
+\end{esercizio}
+
+\subsubsection*{Soluzione}
+
+\paragraph{La definizione.}
+La definizione è quella data nella soluzione dell'esercizio~\ref{es:btree-definizione}.
+
+\paragraph{La forma dell'albero.}
+Questa volta l'albero non è disegnato, e bisogna ricostruirlo. Le chiavi sono $3, 6, \ldots, 33$, e le due chiavi della radice le dividono in tre gruppi, uno per ogni figlio:
+\begin{itemize}
+    \item Le chiavi minori di 9: soltanto 3 e 6.
+    \item Le chiavi comprese tra 9 e 18: soltanto 12 e 15.
+    \item Le chiavi maggiori di 18: 21, 24, 27, 30 e 33.
+\end{itemize}
+
+Il primo sottoalbero contiene soltanto $2$ chiavi, e quindi è una foglia. Se non lo fosse, infatti, la sua radice avrebbe almeno una chiave e almeno due figli, ognuno con almeno una chiave, ovvero almeno $3$ chiavi in tutto. Per la proprietà P3 tutte le foglie hanno la stessa profondità, quindi anche gli altri due figli della radice sono foglie, e $T$ ha altezza $1$:
+
+\begin{center}
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=2] (tr) at (0.00,0.00) {9 \nodepart{two} 18};
+  \node[bn, rectangle split parts=2] (t0) at (-1.47,-1.00) {3 \nodepart{two} 6};
+  \node[bn, rectangle split parts=2] (t1) at (-0.43,-1.00) {12 \nodepart{two} 15};
+  \node[bn, rectangle split parts=5] (t2) at (1.47,-1.00) {21 \nodepart{two} 24 \nodepart{three} 27 \nodepart{four} 30 \nodepart{five} 33};
+  \draw (tr.south west) -- (t0.north);
+  \draw (tr.one split south) -- (t1.north);
+  \draw (tr.south east) -- (t2.north);
+\end{tikzpicture}
+\end{center}
+
+\paragraph{Il grado minimo.}
+Come nell'esercizio~\ref{es:btree-2018}, il grado minimo si ricava con l'intervallo della sezione~\ref{par:btree-grado-forma}:
+\begin{itemize}
+    \item La foglia [21, 24, 27, 30, 33] contiene $5$ chiavi, quindi $5 \le 2t-1$, ovvero $t \ge 3$.
+    \item Le foglie [3, 6] e [12, 15] contengono $2$ chiavi, quindi $t-1 \le 2$, ovvero $t \le 3$.
+\end{itemize}
+
+Ne segue $t = 3$: ogni nodo diverso dalla radice contiene da $2$ a $5$ chiavi.
+
+\paragraph{$\Insert(34)$.}
+Come in $\Insert(\mathrm{U})$ dell'esercizio~\ref{es:btree-2018}, si controlla per prima cosa la radice: [9, 18] non è piena. Vale $34 > 18$, quindi 34 deve finire nel terzo figlio, [21, 24, 27, 30, 33], che invece è pieno. Lo si divide prima di scendere: la mediana 27 sale nella radice, che diventa [9, 18, 27], e restano [21, 24] e [30, 33]. Poiché $34 > 27$, si scende in [30, 33] e si ottiene [30, 33, 34] (figura~\ref{fig:es-btree20-I34}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=2] (ar) at (0.00,0.00) {9 \nodepart{two} 18};
+  \node[bn, rectangle split parts=2] (a0) at (-1.47,-1.00) {3 \nodepart{two} 6};
+  \node[bn, rectangle split parts=2] (a1) at (-0.43,-1.00) {12 \nodepart{two} 15};
+  \node[hl, rectangle split parts=5] (a2) at (1.47,-1.00) {21 \nodepart{two} 24 \nodepart{three} 27 \nodepart{four} 30 \nodepart{five} 33};
+  \draw (ar.south west) -- (a0.north);
+  \draw (ar.one split south) -- (a1.north);
+  \draw[path] (ar.south east) -- (a2.north);
+  \node[lab] at (0,-1.60) {(a)};
+  \node[hl, rectangle split parts=3] (br) at (0.00,-2.25) {9 \nodepart{two} 18 \nodepart{three} 27};
+  \node[bn, rectangle split parts=2] (b0) at (-1.70,-3.25) {3 \nodepart{two} 6};
+  \node[bn, rectangle split parts=2] (b1) at (-0.66,-3.25) {12 \nodepart{two} 15};
+  \node[hl, rectangle split parts=2] (b2) at (0.52,-3.25) {21 \nodepart{two} 24};
+  \node[hl, rectangle split parts=2] (b3) at (1.70,-3.25) {30 \nodepart{two} 33};
+  \draw (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw (br.two split south) -- (b2.north);
+  \draw[path] (br.south east) -- (b3.north);
+  \node[lab] at (0,-3.85) {(b)};
+  \node[bn, rectangle split parts=3] (cr) at (0.00,-4.50) {9 \nodepart{two} 18 \nodepart{three} 27};
+  \node[bn, rectangle split parts=2] (c0) at (-1.82,-5.50) {3 \nodepart{two} 6};
+  \node[bn, rectangle split parts=2] (c1) at (-0.78,-5.50) {12 \nodepart{two} 15};
+  \node[bn, rectangle split parts=2] (c2) at (0.40,-5.50) {21 \nodepart{two} 24};
+  \node[hl, rectangle split parts=3] (c3) at (1.82,-5.50) {30 \nodepart{two} 33 \nodepart{three} 34};
+  \draw (cr.south west) -- (c0.north);
+  \draw (cr.one split south) -- (c1.north);
+  \draw (cr.two split south) -- (c2.north);
+  \draw (cr.south east) -- (c3.north);
+  \node[lab] at (0,-6.10) {(c)};
+\end{tikzpicture}
+\caption{$\Insert(34)$. Il figlio [21, 24, 27, 30, 33] in cui deve scendere 34 è pieno (a). Lo split porta la mediana 27 nella radice e lascia [21, 24] e [30, 33]. Poiché $34 > 27$, si scende in [30, 33] (b). Nella foglia si inserisce 34 (c).}
+\label{fig:es-btree20-I34}
+\end{figure}
+
+\paragraph{$\Delete(21)$.}
+Nella radice [9, 18, 27] vale $18 < 21 < 27$, quindi si deve scendere in [21, 24], che è magro. Il fratello sinistro [12, 15] è anch'esso magro, mentre il fratello destro [30, 33, 34] ha $3 \ge t$ chiavi. Si esegue quindi un prestito (caso 3a): 27 scende in [21, 24], e il minimo del fratello, 30, sale nella radice. Infine si scende nella foglia [21, 24, 27] e si elimina 21 (figura~\ref{fig:es-btree20-D21}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=3] (ar) at (0.00,0.00) {9 \nodepart{two} 18 \nodepart{three} 27};
+  \node[bn, rectangle split parts=2] (a0) at (-1.82,-1.00) {3 \nodepart{two} 6};
+  \node[bn, rectangle split parts=2] (a1) at (-0.78,-1.00) {12 \nodepart{two} 15};
+  \node[hl, rectangle split parts=2] (a2) at (0.40,-1.00) {21 \nodepart{two} 24};
+  \node[bn, rectangle split parts=3] (a3) at (1.82,-1.00) {30 \nodepart{two} 33 \nodepart{three} 34};
+  \draw (ar.south west) -- (a0.north);
+  \draw (ar.one split south) -- (a1.north);
+  \draw[path] (ar.two split south) -- (a2.north);
+  \draw (ar.south east) -- (a3.north);
+  \node[lab] at (0,-1.60) {(a)};
+  \node[hl, rectangle split parts=3] (br) at (0.00,-2.25) {9 \nodepart{two} 18 \nodepart{three} 30};
+  \node[bn, rectangle split parts=2] (b0) at (-1.70,-3.25) {3 \nodepart{two} 6};
+  \node[bn, rectangle split parts=2] (b1) at (-0.66,-3.25) {12 \nodepart{two} 15};
+  \node[hl, rectangle split parts=2] (b2) at (0.52,-3.25) {24 \nodepart{two} 27};
+  \node[hl, rectangle split parts=2] (b3) at (1.70,-3.25) {33 \nodepart{two} 34};
+  \draw (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw[path] (br.two split south) -- (b2.north);
+  \draw (br.south east) -- (b3.north);
+  \node[lab] at (0,-3.85) {(b)};
+\end{tikzpicture}
+\caption{$\Delete(21)$. Il figlio [21, 24] ha $t-1$ chiavi, come il fratello sinistro, mentre il fratello destro [30, 33, 34] ne ha $t$ (a). Caso 3a: 27 scende in [21, 24] e 30 sale nella radice. Poi si elimina 21 dalla foglia (b).}
+\label{fig:es-btree20-D21}
+\end{figure}
+
+\paragraph{$\Delete(3)$.}
+Vale $3 < 9$, quindi si deve scendere nel primo figlio, [3, 6], che è magro. Essendo il primo figlio, ha un solo fratello immediato, [12, 15], anch'esso magro, e non c'è alcuna scelta da fare: si esegue una fusione (caso 3b). [3, 6], la chiave separatrice 9 e [12, 15] formano il nodo [3, 6, 9, 12, 15], e la radice, che perde 9, diventa [18, 30]. Infine si scende nel nodo fuso e si elimina 3 (figura~\ref{fig:es-btree20-D3}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=3] (ar) at (0.00,0.00) {9 \nodepart{two} 18 \nodepart{three} 30};
+  \node[hl, rectangle split parts=2] (a0) at (-1.70,-1.00) {3 \nodepart{two} 6};
+  \node[bn, rectangle split parts=2] (a1) at (-0.66,-1.00) {12 \nodepart{two} 15};
+  \node[bn, rectangle split parts=2] (a2) at (0.52,-1.00) {24 \nodepart{two} 27};
+  \node[bn, rectangle split parts=2] (a3) at (1.70,-1.00) {33 \nodepart{two} 34};
+  \draw[path] (ar.south west) -- (a0.north);
+  \draw (ar.one split south) -- (a1.north);
+  \draw (ar.two split south) -- (a2.north);
+  \draw (ar.south east) -- (a3.north);
+  \node[lab] at (0,-1.60) {(a)};
+  \node[hl, rectangle split parts=2] (br) at (0.00,-2.25) {18 \nodepart{two} 30};
+  \node[hl, rectangle split parts=5] (b0) at (-1.44,-3.25) {3 \nodepart{two} 6 \nodepart{three} 9 \nodepart{four} 12 \nodepart{five} 15};
+  \node[bn, rectangle split parts=2] (b1) at (0.25,-3.25) {24 \nodepart{two} 27};
+  \node[bn, rectangle split parts=2] (b2) at (1.44,-3.25) {33 \nodepart{two} 34};
+  \draw[path] (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw (br.south east) -- (b2.north);
+  \node[lab] at (0,-3.85) {(b)};
+  \node[bn, rectangle split parts=2] (cr) at (0.00,-4.50) {18 \nodepart{two} 30};
+  \node[hl, rectangle split parts=4] (c0) at (-1.35,-5.50) {6 \nodepart{two} 9 \nodepart{three} 12 \nodepart{four} 15};
+  \node[bn, rectangle split parts=2] (c1) at (0.17,-5.50) {24 \nodepart{two} 27};
+  \node[bn, rectangle split parts=2] (c2) at (1.35,-5.50) {33 \nodepart{two} 34};
+  \draw (cr.south west) -- (c0.north);
+  \draw (cr.one split south) -- (c1.north);
+  \draw (cr.south east) -- (c2.north);
+  \node[lab] at (0,-6.10) {(c)};
+\end{tikzpicture}
+\caption{$\Delete(3)$. Il figlio [3, 6] e il suo unico fratello [12, 15] hanno $t-1$ chiavi (a). Caso 3b: i due nodi si fondono con 9 in [3, 6, 9, 12, 15], e la radice diventa [18, 30] (b). Nel nodo fuso si elimina 3 (c).}
+\label{fig:es-btree20-D3}
+\end{figure}
+
+\paragraph{$\Insert(35)$, $\Insert(36)$ e $\Insert(37)$.}
+La radice [18, 30] non è piena, e le tre chiavi devono finire nel terzo figlio, [33, 34]. Questo figlio ha $2$, poi $3$ e poi $4$ chiavi, quindi non è mai pieno al momento dell'inserimento, e ogni chiave si inserisce direttamente nella foglia. Alla fine la foglia è [33, 34, 35, 36, 37], piena ma valida, come in $\Insert(28)$ dell'esercizio~\ref{es:btree-2025} (figura~\ref{fig:es-btree20-I3537}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=2] (ar) at (0.00,0.00) {18 \nodepart{two} 30};
+  \node[bn, rectangle split parts=4] (a0) at (-1.35,-1.00) {6 \nodepart{two} 9 \nodepart{three} 12 \nodepart{four} 15};
+  \node[bn, rectangle split parts=2] (a1) at (0.17,-1.00) {24 \nodepart{two} 27};
+  \node[hl, rectangle split parts=2] (a2) at (1.35,-1.00) {33 \nodepart{two} 34};
+  \draw (ar.south west) -- (a0.north);
+  \draw (ar.one split south) -- (a1.north);
+  \draw[path] (ar.south east) -- (a2.north);
+  \node[lab] at (0,-1.60) {(a)};
+  \node[bn, rectangle split parts=2] (br) at (0.00,-2.25) {18 \nodepart{two} 30};
+  \node[bn, rectangle split parts=4] (b0) at (-1.47,-3.25) {6 \nodepart{two} 9 \nodepart{three} 12 \nodepart{four} 15};
+  \node[bn, rectangle split parts=2] (b1) at (0.05,-3.25) {24 \nodepart{two} 27};
+  \node[hl, rectangle split parts=3] (b2) at (1.47,-3.25) {33 \nodepart{two} 34 \nodepart{three} 35};
+  \draw (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw (br.south east) -- (b2.north);
+  \node[lab] at (0,-3.85) {(b)};
+  \node[bn, rectangle split parts=2] (cr) at (0.00,-4.50) {18 \nodepart{two} 30};
+  \node[bn, rectangle split parts=4] (c0) at (-1.59,-5.50) {6 \nodepart{two} 9 \nodepart{three} 12 \nodepart{four} 15};
+  \node[bn, rectangle split parts=2] (c1) at (-0.07,-5.50) {24 \nodepart{two} 27};
+  \node[hl, rectangle split parts=4] (c2) at (1.59,-5.50) {33 \nodepart{two} 34 \nodepart{three} 35 \nodepart{four} 36};
+  \draw (cr.south west) -- (c0.north);
+  \draw (cr.one split south) -- (c1.north);
+  \draw (cr.south east) -- (c2.north);
+  \node[lab] at (0,-6.10) {(c)};
+  \node[bn, rectangle split parts=2] (dr) at (0.00,-6.75) {18 \nodepart{two} 30};
+  \node[bn, rectangle split parts=4] (d0) at (-1.71,-7.75) {6 \nodepart{two} 9 \nodepart{three} 12 \nodepart{four} 15};
+  \node[bn, rectangle split parts=2] (d1) at (-0.19,-7.75) {24 \nodepart{two} 27};
+  \node[hl, rectangle split parts=5] (d2) at (1.71,-7.75) {33 \nodepart{two} 34 \nodepart{three} 35 \nodepart{four} 36 \nodepart{five} 37};
+  \draw (dr.south west) -- (d0.north);
+  \draw (dr.one split south) -- (d1.north);
+  \draw (dr.south east) -- (d2.north);
+  \node[lab] at (0,-8.35) {(d)};
+\end{tikzpicture}
+\caption{$\Insert(35)$, $\Insert(36)$ e $\Insert(37)$. Le tre chiavi finiscono nella foglia [33, 34], e nessun nodo lungo il cammino è pieno (a). Dopo i tre inserimenti la foglia contiene $5 = 2t-1$ chiavi (b, c, d).}
+\label{fig:es-btree20-I3537}
+\end{figure}
+
+\paragraph{$\Delete(9)$ e $\Delete(12)$.}
+Le due chiavi si trovano nel primo figlio, [6, 9, 12, 15]. Per $\Delete(9)$ il figlio ha $4 \ge t$ chiavi, quindi si scende senza riparazioni e si elimina 9 dalla foglia (caso 1). Per $\Delete(12)$ il figlio, ora [6, 12, 15], ha esattamente $t$ chiavi, e anche in questo caso non va rinforzato. Si elimina 12, e resta [6, 15] (figura~\ref{fig:es-btree20-D912}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=2] (ar) at (0.00,0.00) {18 \nodepart{two} 30};
+  \node[hl, rectangle split parts=4] (a0) at (-1.71,-1.00) {6 \nodepart{two} 9 \nodepart{three} 12 \nodepart{four} 15};
+  \node[bn, rectangle split parts=2] (a1) at (-0.19,-1.00) {24 \nodepart{two} 27};
+  \node[bn, rectangle split parts=5] (a2) at (1.71,-1.00) {33 \nodepart{two} 34 \nodepart{three} 35 \nodepart{four} 36 \nodepart{five} 37};
+  \draw[path] (ar.south west) -- (a0.north);
+  \draw (ar.one split south) -- (a1.north);
+  \draw (ar.south east) -- (a2.north);
+  \node[lab] at (0,-1.60) {(a)};
+  \node[bn, rectangle split parts=2] (br) at (0.00,-2.25) {18 \nodepart{two} 30};
+  \node[hl, rectangle split parts=3] (b0) at (-1.63,-3.25) {6 \nodepart{two} 12 \nodepart{three} 15};
+  \node[bn, rectangle split parts=2] (b1) at (-0.28,-3.25) {24 \nodepart{two} 27};
+  \node[bn, rectangle split parts=5] (b2) at (1.62,-3.25) {33 \nodepart{two} 34 \nodepart{three} 35 \nodepart{four} 36 \nodepart{five} 37};
+  \draw[path] (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw (br.south east) -- (b2.north);
+  \node[lab] at (0,-3.85) {(b)};
+  \node[bn, rectangle split parts=2] (cr) at (0.00,-4.50) {18 \nodepart{two} 30};
+  \node[hl, rectangle split parts=2] (c0) at (-1.51,-5.50) {6 \nodepart{two} 15};
+  \node[bn, rectangle split parts=2] (c1) at (-0.40,-5.50) {24 \nodepart{two} 27};
+  \node[bn, rectangle split parts=5] (c2) at (1.51,-5.50) {33 \nodepart{two} 34 \nodepart{three} 35 \nodepart{four} 36 \nodepart{five} 37};
+  \draw (cr.south west) -- (c0.north);
+  \draw (cr.one split south) -- (c1.north);
+  \draw (cr.south east) -- (c2.north);
+  \node[lab] at (0,-6.10) {(c)};
+\end{tikzpicture}
+\caption{$\Delete(9)$ e $\Delete(12)$. Il figlio [6, 9, 12, 15] ha $4 \ge t$ chiavi (a), e dopo la cancellazione di 9 ne ha ancora $t$ (b). In entrambi i casi si scende senza riparazioni e si elimina la chiave dalla foglia (c).}
+\label{fig:es-btree20-D912}
+\end{figure}
+
+\paragraph{Le altezze possibili.}
+Per il teorema~\ref{thm:btree-altezza}, con $n = 999$ e $t = 3$ l'altezza di $T'$ soddisfa:
+\[
+\log_6 \frac{1000}{6} \le h \le \log_3 \frac{1000}{2},
+\]
+dove $\log_6 \frac{1000}{6} \approx 2.86$ e $\log_3 500 \approx 5.66$. Come visto nella sezione~\ref{sec:btree-altezza}, il limite inferiore va arrotondato per eccesso e quello superiore per difetto, quindi $3 \le h \le 5$.
+
+Lo stesso risultato si ottiene controllando, per ogni altezza $h$, se $999$ è compreso tra il numero di chiavi dell'albero più vuoto, $2 \cdot 3^h - 1$, e quello dell'albero più pieno, $6^{h+1} - 1$ (tabella~\ref{tab:es-btree20-altezze}). Le altezze possibili per $T'$ sono quindi $3$, $4$ e $5$.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{cccc}
+\toprule
+$h$ & $2 \cdot 3^h - 1$ & $6^{h+1} - 1$ & $999$ compreso? \\
+\midrule
+$2$ & $17$ & $215$ & no \\
+$3$ & $53$ & $1295$ & sì \\
+$4$ & $161$ & $7775$ & sì \\
+$5$ & $485$ & $46655$ & sì \\
+$6$ & $1457$ & $279935$ & no \\
+\bottomrule
+\end{tabular}
+\caption{Il minimo e il massimo numero di chiavi di un B-tree con grado minimo $t = 3$ e altezza $h$.}
+\label{tab:es-btree20-altezze}
+\end{table}
+
+\begin{esercizio}[Costruzione di un albero 2-3-4]\label{es:btree-2021-09}
+\begin{itemize}
+    \item[(a)] Si definisca in maniera precisa la struttura dati B-tree e se ne illustri sinteticamente un'applicazione.
+    \item[(b)] Si effettui l'inserimento delle chiavi D, G, R, F, M, H, P, Q, I, L, A, B, C (nell'ordine dato) in un B-tree di grado minimo $2$, inizialmente vuoto, e quindi si cancellino le chiavi F, L e D.
+    \item[(c)] Si forniscano una minorazione ed una maggiorazione dell'altezza $h$ di un B-tree di grado minimo $2$ in funzione del numero $n \ge 1$ di chiavi in esso contenute.
+\end{itemize}
+\end{esercizio}
+
+\subsubsection*{Soluzione}
+
+\paragraph{La definizione.}
+È l'esercizio~\ref{es:btree-definizione}, che riporta proprio la parte (a) di questa traccia.
+
+\paragraph{Gli inserimenti con $t = 2$.}
+Il B-tree è un albero 2-3-4 (sezione~\ref{sec:btree-def}), e gli inserimenti seguono la strategia top-down della sezione~\ref{sec:btree-insert}. Con $t = 2$ un nodo è pieno quando contiene $3$ chiavi, la sua mediana è la seconda chiave, e dopo uno split ogni metà contiene una sola chiave. Gli split, quindi, sono molto frequenti.
+
+\paragraph{$\Insert(\mathrm{D})$, $\Insert(\mathrm{G})$, $\Insert(\mathrm{R})$ e $\Insert(\mathrm{F})$.}
+All'inizio l'albero è formato dalla sola radice, che è anche una foglia. D, G e R vi entrano direttamente, e la radice diventa [D, G, R], piena. In $\Insert(\mathrm{F})$, quindi, la radice si divide prima di tutto: la mediana G diventa la nuova radice, con figli [D] e [R], e l'altezza passa da $0$ a $1$. Poiché F $<$ G, si scende in [D] e si ottiene [D, F] (figura~\ref{fig:es-btree21-DGRF}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[hl, rectangle split parts=3] (ar) at (0.00,0.00) {D \nodepart{two} G \nodepart{three} R};
+  \node[lab] at (0,-0.60) {(a)};
+  \node[hl, rectangle split parts=1] (br) at (0.00,-1.25) {G};
+  \node[hl, rectangle split parts=1] (b0) at (-0.32,-2.25) {D};
+  \node[hl, rectangle split parts=1] (b1) at (0.32,-2.25) {R};
+  \draw[path] (br.south west) -- (b0.north);
+  \draw (br.south east) -- (b1.north);
+  \node[lab] at (0,-2.85) {(b)};
+  \node[bn, rectangle split parts=1] (cr) at (0.00,-3.50) {G};
+  \node[hl, rectangle split parts=2] (c0) at (-0.42,-4.50) {D \nodepart{two} F};
+  \node[bn, rectangle split parts=1] (c1) at (0.43,-4.50) {R};
+  \draw (cr.south west) -- (c0.north);
+  \draw (cr.south east) -- (c1.north);
+  \node[lab] at (0,-5.10) {(c)};
+\end{tikzpicture}
+\caption{$\Insert(\mathrm{D})$, $\Insert(\mathrm{G})$, $\Insert(\mathrm{R})$ e $\Insert(\mathrm{F})$. Le prime tre chiavi entrano nella radice, che è ancora una foglia e diventa piena (a). In $\Insert(\mathrm{F})$ la radice si divide: G diventa la nuova radice e l'altezza passa da $0$ a $1$ (b). Poi F si inserisce in [D] (c).}
+\label{fig:es-btree21-DGRF}
+\end{figure}
+
+\paragraph{$\Insert(\mathrm{M})$, $\Insert(\mathrm{H})$ e $\Insert(\mathrm{P})$.}
+M e H sono maggiori di G, e finiscono nella foglia [R], che diventa [H, M, R], piena. Anche P deve scendere in quella foglia, che quindi si divide prima di scendere: la mediana M sale nella radice, che diventa [G, M], e restano [H] e [R]. Poiché P $>$ M, si scende in [R] e si ottiene [P, R] (figura~\ref{fig:es-btree21-MHP}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=1] (ar) at (0.00,0.00) {G};
+  \node[bn, rectangle split parts=2] (a0) at (-0.64,-1.00) {D \nodepart{two} F};
+  \node[hl, rectangle split parts=3] (a1) at (0.64,-1.00) {H \nodepart{two} M \nodepart{three} R};
+  \draw (ar.south west) -- (a0.north);
+  \draw[path] (ar.south east) -- (a1.north);
+  \node[lab] at (0,-1.60) {(a)};
+  \node[hl, rectangle split parts=2] (br) at (0.00,-2.25) {G \nodepart{two} M};
+  \node[bn, rectangle split parts=2] (b0) at (-0.75,-3.25) {D \nodepart{two} F};
+  \node[hl, rectangle split parts=1] (b1) at (0.10,-3.25) {H};
+  \node[hl, rectangle split parts=1] (b2) at (0.74,-3.25) {R};
+  \draw (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw[path] (br.south east) -- (b2.north);
+  \node[lab] at (0,-3.85) {(b)};
+  \node[bn, rectangle split parts=2] (cr) at (0.00,-4.50) {G \nodepart{two} M};
+  \node[bn, rectangle split parts=2] (c0) at (-0.85,-5.50) {D \nodepart{two} F};
+  \node[bn, rectangle split parts=1] (c1) at (0.00,-5.50) {H};
+  \node[hl, rectangle split parts=2] (c2) at (0.85,-5.50) {P \nodepart{two} R};
+  \draw (cr.south west) -- (c0.north);
+  \draw (cr.one split south) -- (c1.north);
+  \draw (cr.south east) -- (c2.north);
+  \node[lab] at (0,-6.10) {(c)};
+\end{tikzpicture}
+\caption{$\Insert(\mathrm{M})$, $\Insert(\mathrm{H})$ e $\Insert(\mathrm{P})$. Dopo M e H la foglia [H, M, R] è piena, e P deve scendere proprio lì (a). Lo split porta la mediana M nella radice e lascia [H] e [R]. Poiché P $>$ M, si scende in [R] (b). Nella foglia si inserisce P (c).}
+\label{fig:es-btree21-MHP}
+\end{figure}
+
+\paragraph{Da $\Insert(\mathrm{Q})$ a $\Insert(\mathrm{B})$.}
+Q, I, L e A trovano sempre posto nella foglia in cui scendono: Q va in [P, R], I e L vanno in [H], e A va in [D, F]. Alla fine le tre foglie, [A, D, F], [H, I, L] e [P, Q, R], sono tutte piene.
+
+In $\Insert(\mathrm{B})$ la radice [G, M] non è piena, ma la foglia [A, D, F] sì, e va divisa: D sale nella radice, che diventa [D, G, M], e restano [A] e [F]. Poiché B $<$ D, si scende in [A] e si ottiene [A, B] (figura~\ref{fig:es-btree21-QB}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=2] (ar) at (0.00,0.00) {G \nodepart{two} M};
+  \node[hl, rectangle split parts=3] (a0) at (-1.48,-1.00) {A \nodepart{two} D \nodepart{three} F};
+  \node[bn, rectangle split parts=3] (a1) at (-0.00,-1.00) {H \nodepart{two} I \nodepart{three} L};
+  \node[bn, rectangle split parts=3] (a2) at (1.48,-1.00) {P \nodepart{two} Q \nodepart{three} R};
+  \draw[path] (ar.south west) -- (a0.north);
+  \draw (ar.one split south) -- (a1.north);
+  \draw (ar.south east) -- (a2.north);
+  \node[lab] at (0,-1.60) {(a)};
+  \node[hl, rectangle split parts=3] (br) at (0.00,-2.25) {D \nodepart{two} G \nodepart{three} M};
+  \node[hl, rectangle split parts=1] (b0) at (-1.59,-3.25) {A};
+  \node[hl, rectangle split parts=1] (b1) at (-0.95,-3.25) {F};
+  \node[bn, rectangle split parts=3] (b2) at (0.11,-3.25) {H \nodepart{two} I \nodepart{three} L};
+  \node[bn, rectangle split parts=3] (b3) at (1.59,-3.25) {P \nodepart{two} Q \nodepart{three} R};
+  \draw[path] (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw (br.two split south) -- (b2.north);
+  \draw (br.south east) -- (b3.north);
+  \node[lab] at (0,-3.85) {(b)};
+  \node[bn, rectangle split parts=3] (cr) at (0.00,-4.50) {D \nodepart{two} G \nodepart{three} M};
+  \node[hl, rectangle split parts=2] (c0) at (-1.70,-5.50) {A \nodepart{two} B};
+  \node[bn, rectangle split parts=1] (c1) at (-0.85,-5.50) {F};
+  \node[bn, rectangle split parts=3] (c2) at (0.21,-5.50) {H \nodepart{two} I \nodepart{three} L};
+  \node[bn, rectangle split parts=3] (c3) at (1.69,-5.50) {P \nodepart{two} Q \nodepart{three} R};
+  \draw (cr.south west) -- (c0.north);
+  \draw (cr.one split south) -- (c1.north);
+  \draw (cr.two split south) -- (c2.north);
+  \draw (cr.south east) -- (c3.north);
+  \node[lab] at (0,-6.10) {(c)};
+\end{tikzpicture}
+\caption{Da $\Insert(\mathrm{Q})$ a $\Insert(\mathrm{B})$. Q, I, L e A si inseriscono direttamente, e alla fine tutte e tre le foglie sono piene (a). In $\Insert(\mathrm{B})$ la foglia [A, D, F] si divide: D sale nella radice e restano [A] e [F] (b). Poiché B $<$ D, B si inserisce in [A] (c).}
+\label{fig:es-btree21-QB}
+\end{figure}
+
+\paragraph{$\Insert(\mathrm{C})$.}
+Questa volta è la radice [D, G, M] a essere piena, e si divide prima di tutto, anche se la foglia [A, B] in cui finirà C ha ancora posto. La mediana G diventa la nuova radice, con figli [D] e [M], e l'altezza passa da $1$ a $2$.
+
+Insieme alle chiavi si dividono anche i figli: [A, B] e [F] restano sotto [D], mentre [H, I, L] e [P, Q, R] passano sotto [M]. Poi la discesa passa per [D] e per [A, B], che non sono pieni, e si ottiene [A, B, C] (figura~\ref{fig:es-btree21-C}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[hl, rectangle split parts=3] (ar) at (0.00,0.00) {D \nodepart{two} G \nodepart{three} M};
+  \node[bn, rectangle split parts=2] (a0) at (-1.70,-1.00) {A \nodepart{two} B};
+  \node[bn, rectangle split parts=1] (a1) at (-0.85,-1.00) {F};
+  \node[bn, rectangle split parts=3] (a2) at (0.21,-1.00) {H \nodepart{two} I \nodepart{three} L};
+  \node[bn, rectangle split parts=3] (a3) at (1.69,-1.00) {P \nodepart{two} Q \nodepart{three} R};
+  \draw (ar.south west) -- (a0.north);
+  \draw (ar.one split south) -- (a1.north);
+  \draw (ar.two split south) -- (a2.north);
+  \draw (ar.south east) -- (a3.north);
+  \node[lab] at (0,-1.60) {(a)};
+  \node[hl, rectangle split parts=1] (br) at (0.00,-2.25) {G};
+  \node[hl, rectangle split parts=1] (b0) at (-1.28,-3.25) {D};
+  \node[bn, rectangle split parts=2] (b0x0) at (-1.70,-4.25) {A \nodepart{two} B};
+  \node[bn, rectangle split parts=1] (b0x1) at (-0.85,-4.25) {F};
+  \node[hl, rectangle split parts=1] (b1) at (1.28,-3.25) {M};
+  \node[bn, rectangle split parts=3] (b1x0) at (0.54,-4.25) {H \nodepart{two} I \nodepart{three} L};
+  \node[bn, rectangle split parts=3] (b1x1) at (2.02,-4.25) {P \nodepart{two} Q \nodepart{three} R};
+  \draw[path] (br.south west) -- (b0.north);
+  \draw[path] (b0.south west) -- (b0x0.north);
+  \draw (b0.south east) -- (b0x1.north);
+  \draw (br.south east) -- (b1.north);
+  \draw (b1.south west) -- (b1x0.north);
+  \draw (b1.south east) -- (b1x1.north);
+  \node[lab] at (0,-4.85) {(b)};
+  \node[bn, rectangle split parts=1] (cr) at (0.00,-5.50) {G};
+  \node[bn, rectangle split parts=1] (c0) at (-1.33,-6.50) {D};
+  \node[hl, rectangle split parts=3] (c0x0) at (-1.86,-7.50) {A \nodepart{two} B \nodepart{three} C};
+  \node[bn, rectangle split parts=1] (c0x1) at (-0.80,-7.50) {F};
+  \node[bn, rectangle split parts=1] (c1) at (1.33,-6.50) {M};
+  \node[bn, rectangle split parts=3] (c1x0) at (0.59,-7.50) {H \nodepart{two} I \nodepart{three} L};
+  \node[bn, rectangle split parts=3] (c1x1) at (2.07,-7.50) {P \nodepart{two} Q \nodepart{three} R};
+  \draw (cr.south west) -- (c0.north);
+  \draw (c0.south west) -- (c0x0.north);
+  \draw (c0.south east) -- (c0x1.north);
+  \draw (cr.south east) -- (c1.north);
+  \draw (c1.south west) -- (c1x0.north);
+  \draw (c1.south east) -- (c1x1.north);
+  \node[lab] at (0,-8.10) {(c)};
+\end{tikzpicture}
+\caption{$\Insert(\mathrm{C})$. La radice [D, G, M] è piena (a), quindi si divide prima di tutto: la mediana G diventa la nuova radice e l'altezza passa da $1$ a $2$. La discesa prosegue in [D] e poi in [A, B], che non sono pieni (b). Nella foglia si inserisce C (c).}
+\label{fig:es-btree21-C}
+\end{figure}
+
+\paragraph{$\Delete(\mathrm{F})$.}
+Le cancellazioni seguono l'algoritmo della sezione~\ref{sec:btree-delete}. Con $t = 2$ un nodo diverso dalla radice è magro quando contiene una sola chiave.
+
+Nella radice [G] vale F $<$ G, quindi si deve scendere in [D], che è magro. Il suo unico fratello, [M], è anch'esso magro, e si esegue una fusione (caso 3b): [D], G e [M] formano il nodo [D, G, M]. La radice resta senza chiavi, e viene sostituita dal nodo fuso: l'altezza torna da $2$ a $1$.
+
+Si prosegue da [D, G, M]. Vale D $<$ F $<$ G, quindi si deve scendere in [F], che è di nuovo magro. Questa volta però entrambi i fratelli, [A, B, C] e [H, I, L], hanno $3$ chiavi e possono prestarne una. Come nell'esempio del caso 3a della sezione~\ref{sec:btree-delete}, si sceglie il fratello destro: G scende in [F], e il minimo del fratello, H, sale al suo posto. Infine si elimina F dalla foglia [F, G] (figura~\ref{fig:es-btree21-DF}). Con il fratello sinistro sarebbe scesa D e salita C, e si otterrebbe un albero diverso.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=1] (ar) at (0.00,0.00) {G};
+  \node[hl, rectangle split parts=1] (a0) at (-1.33,-1.00) {D};
+  \node[bn, rectangle split parts=3] (a0x0) at (-1.86,-2.00) {A \nodepart{two} B \nodepart{three} C};
+  \node[bn, rectangle split parts=1] (a0x1) at (-0.80,-2.00) {F};
+  \node[hl, rectangle split parts=1] (a1) at (1.33,-1.00) {M};
+  \node[bn, rectangle split parts=3] (a1x0) at (0.59,-2.00) {H \nodepart{two} I \nodepart{three} L};
+  \node[bn, rectangle split parts=3] (a1x1) at (2.07,-2.00) {P \nodepart{two} Q \nodepart{three} R};
+  \draw[path] (ar.south west) -- (a0.north);
+  \draw (a0.south west) -- (a0x0.north);
+  \draw (a0.south east) -- (a0x1.north);
+  \draw (ar.south east) -- (a1.north);
+  \draw (a1.south west) -- (a1x0.north);
+  \draw (a1.south east) -- (a1x1.north);
+  \node[lab] at (0,-2.60) {(a)};
+  \node[hl, rectangle split parts=3] (br) at (0.00,-3.25) {D \nodepart{two} G \nodepart{three} M};
+  \node[bn, rectangle split parts=3] (b0) at (-1.80,-4.25) {A \nodepart{two} B \nodepart{three} C};
+  \node[bn, rectangle split parts=1] (b1) at (-0.74,-4.25) {F};
+  \node[bn, rectangle split parts=3] (b2) at (0.32,-4.25) {H \nodepart{two} I \nodepart{three} L};
+  \node[bn, rectangle split parts=3] (b3) at (1.80,-4.25) {P \nodepart{two} Q \nodepart{three} R};
+  \draw (br.south west) -- (b0.north);
+  \draw[path] (br.one split south) -- (b1.north);
+  \draw (br.two split south) -- (b2.north);
+  \draw (br.south east) -- (b3.north);
+  \node[lab] at (0,-4.85) {(b)};
+  \node[hl, rectangle split parts=3] (cr) at (0.00,-5.50) {D \nodepart{two} H \nodepart{three} M};
+  \node[bn, rectangle split parts=3] (c0) at (-1.80,-6.50) {A \nodepart{two} B \nodepart{three} C};
+  \node[hl, rectangle split parts=2] (c1) at (-0.53,-6.50) {F \nodepart{two} G};
+  \node[hl, rectangle split parts=2] (c2) at (0.53,-6.50) {I \nodepart{two} L};
+  \node[bn, rectangle split parts=3] (c3) at (1.80,-6.50) {P \nodepart{two} Q \nodepart{three} R};
+  \draw (cr.south west) -- (c0.north);
+  \draw[path] (cr.one split south) -- (c1.north);
+  \draw (cr.two split south) -- (c2.north);
+  \draw (cr.south east) -- (c3.north);
+  \node[lab] at (0,-7.10) {(c)};
+  \node[bn, rectangle split parts=3] (dr) at (0.00,-7.75) {D \nodepart{two} H \nodepart{three} M};
+  \node[bn, rectangle split parts=3] (d0) at (-1.59,-8.75) {A \nodepart{two} B \nodepart{three} C};
+  \node[hl, rectangle split parts=1] (d1) at (-0.53,-8.75) {G};
+  \node[bn, rectangle split parts=2] (d2) at (0.32,-8.75) {I \nodepart{two} L};
+  \node[bn, rectangle split parts=3] (d3) at (1.59,-8.75) {P \nodepart{two} Q \nodepart{three} R};
+  \draw (dr.south west) -- (d0.north);
+  \draw (dr.one split south) -- (d1.north);
+  \draw (dr.two split south) -- (d2.north);
+  \draw (dr.south east) -- (d3.north);
+  \node[lab] at (0,-9.35) {(d)};
+\end{tikzpicture}
+\caption{$\Delete(\mathrm{F})$. Il figlio [D] e il suo unico fratello [M] hanno $t-1 = 1$ chiave (a). Caso 3b: si fondono con G in [D, G, M], e la radice, rimasta vuota, viene sostituita dal nodo fuso (b). In [D, G, M] il figlio [F] è di nuovo magro, mentre entrambi i fratelli hanno $3$ chiavi. Caso 3a con il fratello destro: G scende in [F] e H sale (c). Infine si elimina F dalla foglia (d).}
+\label{fig:es-btree21-DF}
+\end{figure}
+
+\paragraph{$\Delete(\mathrm{L})$ e $\Delete(\mathrm{D})$.}
+In $\Delete(\mathrm{L})$ vale H $<$ L $<$ M, e il figlio [I, L] ha $2 \ge t$ chiavi, quindi si scende senza riparazioni e si elimina L dalla foglia (caso 1). In $\Delete(\mathrm{D})$, invece, D si trova nella radice [D, H, M], che è un nodo interno (caso 2). Il figlio che precede D, [A, B, C], ha $3 \ge t$ chiavi, quindi si applica il caso 2a: D viene sostituita dal predecessore C, che si elimina dalla foglia (figura~\ref{fig:es-btree21-DLD}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[btree, bn/.append style={font=\footnotesize, inner xsep=2.5pt}]
+  \node[bn, rectangle split parts=3] (ar) at (0.00,0.00) {D \nodepart{two} H \nodepart{three} M};
+  \node[bn, rectangle split parts=3] (a0) at (-1.59,-1.00) {A \nodepart{two} B \nodepart{three} C};
+  \node[bn, rectangle split parts=1] (a1) at (-0.53,-1.00) {G};
+  \node[hl, rectangle split parts=2] (a2) at (0.32,-1.00) {I \nodepart{two} L};
+  \node[bn, rectangle split parts=3] (a3) at (1.59,-1.00) {P \nodepart{two} Q \nodepart{three} R};
+  \draw (ar.south west) -- (a0.north);
+  \draw (ar.one split south) -- (a1.north);
+  \draw[path] (ar.two split south) -- (a2.north);
+  \draw (ar.south east) -- (a3.north);
+  \node[lab] at (0,-1.60) {(a)};
+  \node[hl, rectangle split parts=3] (br) at (0.00,-2.25) {D \nodepart{two} H \nodepart{three} M};
+  \node[bn, rectangle split parts=3] (b0) at (-1.38,-3.25) {A \nodepart{two} B \nodepart{three} C};
+  \node[bn, rectangle split parts=1] (b1) at (-0.32,-3.25) {G};
+  \node[hl, rectangle split parts=1] (b2) at (0.32,-3.25) {I};
+  \node[bn, rectangle split parts=3] (b3) at (1.38,-3.25) {P \nodepart{two} Q \nodepart{three} R};
+  \draw[path] (br.south west) -- (b0.north);
+  \draw (br.one split south) -- (b1.north);
+  \draw (br.two split south) -- (b2.north);
+  \draw (br.south east) -- (b3.north);
+  \node[lab] at (0,-3.85) {(b)};
+  \node[hl, rectangle split parts=3] (cr) at (0.00,-4.50) {C \nodepart{two} H \nodepart{three} M};
+  \node[hl, rectangle split parts=2] (c0) at (-1.28,-5.50) {A \nodepart{two} B};
+  \node[bn, rectangle split parts=1] (c1) at (-0.43,-5.50) {G};
+  \node[bn, rectangle split parts=1] (c2) at (0.21,-5.50) {I};
+  \node[bn, rectangle split parts=3] (c3) at (1.28,-5.50) {P \nodepart{two} Q \nodepart{three} R};
+  \draw (cr.south west) -- (c0.north);
+  \draw (cr.one split south) -- (c1.north);
+  \draw (cr.two split south) -- (c2.north);
+  \draw (cr.south east) -- (c3.north);
+  \node[lab] at (0,-6.10) {(c)};
+\end{tikzpicture}
+\caption{$\Delete(\mathrm{L})$ e $\Delete(\mathrm{D})$. Il figlio [I, L] ha $2 \ge t$ chiavi, quindi si scende e si elimina L (a, b). In $\Delete(\mathrm{D})$ la chiave D si trova nella radice, e il figlio che la precede, [A, B, C], ha $3 \ge t$ chiavi: caso 2a, il predecessore C prende il posto di D e si elimina dalla foglia (c).}
+\label{fig:es-btree21-DLD}
+\end{figure}
+
+\paragraph{L'altezza per $t = 2$.}
+Basta porre $t = 2$ nel teorema~\ref{thm:btree-altezza}:
+\[
+\log_4 \frac{n+1}{4} \le h \le \log_2 \frac{n+1}{2}.
+\]
+Ricordando che $\log_4 x = \frac{1}{2}\log_2 x$, le due disuguaglianze si possono scrivere con la stessa base:
+\[
+\frac{1}{2}\log_2 (n+1) - 1 \le h \le \log_2 (n+1) - 1.
+\]
+Il limite superiore viene dall'albero più vuoto, che con $t = 2$ ha $2^{h+1} - 1$ chiavi, mentre quello inferiore viene dall'albero più pieno, che ne ha $4^{h+1} - 1$ (sezione~\ref{sec:btree-altezza}). Ad esempio, l'albero costruito al punto (b) contiene $n = 13$ chiavi e ha altezza $2$, e infatti $\frac{1}{2}\log_2 14 - 1 \approx 0.90 \le 2 \le \log_2 14 - 1 \approx 2.81$.
+
+% le figure dell'ultimo esercizio escono prima dei riferimenti
+\clearpage
+
 \section*{Riferimenti}
 Il materiale visto in questo capitolo comprende:
 \begin{itemize}
@@ -2294,4 +3095,7 @@ Il materiale visto in questo capitolo comprende:
     \item Esercizio~\ref{es:btree-2018}: prima prova in itinere del 12 dicembre 2018.
     \item Esercizio~\ref{es:btree-2019}: prima prova in itinere dell'11 dicembre 2019.
     \item Esercizio~\ref{es:btree-2025}: appello del 17 luglio 2025.
+    \item Esercizio~\ref{es:btree-2023}: prima prova in itinere del 20 dicembre 2023.
+    \item Esercizio~\ref{es:btree-2020}: prima prova in itinere del 22 dicembre 2020.
+    \item Esercizio~\ref{es:btree-2021-09}: appello del 23 settembre 2021.
 \end{itemize}
