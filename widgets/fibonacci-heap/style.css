@@ -1,0 +1,23 @@
+/* i nodi marcati sono neri, come nelle figure del libro */
+.w-fibheap .fh-mark .fv-circle { fill: var(--ink); stroke: var(--ink); }
+.w-fibheap .fh-mark .fv-label { fill: var(--surface); }
+.w-fibheap .fh-mark.fv-hl .fv-circle { stroke: var(--fig); stroke-width: 3; }
+/* la lista delle radici */
+.w-fibheap .fh-rl { stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 3 3; }
+.w-fibheap .fh-min { font-family: var(--font-serif); font-style: italic; font-size: 13px; fill: var(--ink); }
+.w-fibheap .fh-ptr { font-family: var(--font-serif); font-style: italic; font-size: 13px; fill: var(--fig); font-weight: 600; }
+/* l'array A di Consolidate */
+.w-fibheap .fh-cell { fill: var(--surface); stroke: var(--ink-soft); stroke-width: 1; transition: fill calc(0.3s / var(--speed, 1)), opacity calc(0.45s / var(--speed, 1)); }
+.w-fibheap .fh-cell-cur { fill: color-mix(in oklab, var(--fig) 22%, var(--surface)); stroke: var(--fig); }
+.w-fibheap .fh-aidx { font-family: var(--font-mono); font-size: 10px; fill: var(--ink-soft); }
+.w-fibheap .fh-aval { font-family: var(--font-serif); font-size: 12px; fill: var(--ink); }
+.w-fibheap .fh-alab { font-family: var(--font-serif); font-style: italic; font-size: 14px; fill: var(--ink); }
+
+.w-fibheap .key-in {
+  width: 6.2rem; border: 0; border-right: 1px solid var(--rule); background: transparent; color: var(--ink);
+  font: inherit; font-family: var(--font-mono); font-size: 0.88rem; padding: 0.35rem 0.6rem;
+}
+.w-fibheap .key-in:focus { outline: 2px solid var(--accent-soft); outline-offset: -2px; }
+.w-fibheap .sc { font-variant: small-caps; letter-spacing: 0.03em; }
+.w-fibheap .hint { font-size: 0.8rem; margin-top: 0.3rem; }
+.w-fibheap .eq-line { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.15rem 1.4rem; }

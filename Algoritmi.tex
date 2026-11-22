@@ -85,6 +85,15 @@
   ptrc/.style={FigColor}, ptrp/.style={TextGray}, ptrs/.style={Accent},
   lab/.style={font=\small, color=TextGray}}}
 
+% heap di Fibonacci: gli stili degli heap binomiali, più hm per un nodo marcato (nero, come nel libro),
+% rl per la lista delle radici e cell / cellc per le celle dell'array A di Consolidate (cellc è la cella
+% corrente); le coordinate delle figure con le chiavi vengono dal modello del widget fibonacci-heap
+\tikzset{fibheap/.style={binheap,
+  hm/.style={hn, draw=black, fill=black!82, text=white},
+  rl/.style={TextGray, densely dashed},
+  cell/.style={draw=TextGray, minimum size=4.2mm, inner sep=0pt, font=\scriptsize},
+  cellc/.style={cell, draw=FigColor, fill=FigColor!18}}}
+
 % figure interattive della versione web (texweb): nel PDF si stampa la figura statica
 \usepackage{texweb}
 
@@ -366,6 +375,17 @@
 \newcommand{\BinomialHeapExtractMin}{\textsc{Binomial-Heap-Extract-Min}}
 \newcommand{\BinomialHeapDecreaseKey}{\textsc{Binomial-Heap-Decrease-Key}}
 \newcommand{\BinomialHeapDelete}{\textsc{Binomial-Heap-Delete}}
+% heap di Fibonacci
+\newcommand{\MakeFibHeap}{\textsc{Make-Fib-Heap}}
+\newcommand{\FibHeapInsert}{\textsc{Fib-Heap-Insert}}
+\newcommand{\FibHeapUnion}{\textsc{Fib-Heap-Union}}
+\newcommand{\FibHeapExtractMin}{\textsc{Fib-Heap-Extract-Min}}
+\newcommand{\Consolidate}{\textsc{Consolidate}}
+\newcommand{\FibHeapLink}{\textsc{Fib-Heap-Link}}
+\newcommand{\FibHeapDecreaseKey}{\textsc{Fib-Heap-Decrease-Key}}
+\newcommand{\Cut}{\textsc{Cut}}
+\newcommand{\CascadingCut}{\textsc{Cascading-Cut}}
+\newcommand{\FibHeapDelete}{\textsc{Fib-Heap-Delete}}
 
 % =====================================================
 % METADATA
@@ -465,6 +485,7 @@ Versione: \today
 \input{chapters/B-trees}
 \input{chapters/move_to_front}
 \input{chapters/heap_binomiali}
+\input{chapters/heap_fibonacci}
 
 % =====================================================
 % BIBLIOGRAPHY
