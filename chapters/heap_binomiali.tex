@@ -347,7 +347,23 @@ Sia $H$ un heap binomiale con $n \ge 1$ nodi. Allora ogni nodo di $H$ ha grado a
 \end{corollario}
 
 \paragraph{Dimostrazione.}
-Sia $x$ un nodo di $H$, e sia $B_k$ l'albero binomiale di $H$ che lo contiene. Per le proprietà 4(a) e 4(b) ogni nodo di $B_k$ ha grado al più $k$, e in particolare $x$. Inoltre $B_k$ ha $2^k$ nodi, che non possono essere più di $n$: da $2^k \le n$ segue $k \le \lg n$, e quindi $k \le \lfloor \lg n \rfloor$, in quanto $k$ è un intero. Il grado di $x$, quindi, è al più $k \le \lfloor \lg n \rfloor$. \hfill $\square$
+Fissiamo un nodo $x$ di $H$, e sia $B_k$ l'albero binomiale di $H$ che lo contiene. Per le proprietà 4(a) e 4(b) del lemma~\ref{lem:hb-proprieta} ogni nodo di $B_k$ ha grado al più $k$, quindi, qualunque sia la posizione di $x$ in $B_k$:
+\[
+\deg(x) \le k.
+\]
+Per la proprietà 1 del lemma~\ref{lem:hb-proprieta}, $B_k$ ha $2^k$ nodi. I nodi di $B_k$ sono anche nodi di $H$, che in totale ne ha $n$, quindi $B_k$ non può averne di più:
+\[
+2^k \le n.
+\]
+Applicando $\lg$ a entrambi i lati, che è una funzione crescente, si ottiene
+\[
+k \le \lg n.
+\]
+Poiché $k \in \mathbb{N}$ e $\lfloor \lg n \rfloor$ è il più grande intero minore o uguale a $\lg n$, vale anche $k \le \lfloor \lg n \rfloor$. Unendo questa disuguaglianza con la prima:
+\[
+\deg(x) \le k \le \lfloor \lg n \rfloor.
+\]
+Poiché $x$ era un nodo qualunque di $H$, la tesi vale per ogni nodo. \hfill $\square$
 
 Rispetto al corollario~\ref{cor:hb-grado} compare la parte intera. In un albero binomiale con $n$ nodi si ha $n = 2^k$, quindi $\lg n$ è già un intero. In un heap binomiale, invece, $n$ è un intero qualsiasi, e l'albero che contiene $x$ ha soltanto $2^k \le n$ nodi.
 
