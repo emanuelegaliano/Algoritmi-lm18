@@ -14,8 +14,10 @@ Un \textbf{heap di Fibonacci} $H$ è una collezione di alberi radicati, ciascuno
 
 Gli alberi di un heap di Fibonacci, quindi, non devono essere alberi binomiali. Non si tratta però di alberi qualsiasi: vedremo che sono alberi binomiali non ordinati, eventualmente ``erosi'' dai tagli che esegue il decremento di una chiave.
 
+Con $D(n)$ indichiamo il \textbf{grado massimo} di un nodo in un heap di Fibonacci con $n$ nodi, dove il grado di un nodo è il numero dei suoi figli.
+
 \paragraph{Costi.}
-La tabella~\ref{tab:hb-confronto} confronta i costi degli heap di Fibonacci con quelli degli heap binari e binomiali. Per gli heap di Fibonacci si tratta di costi ammortizzati. In particolare, l'estrazione del minimo e la cancellazione costano $O(D(n))$, dove $D(n)$ è un limite superiore al \textbf{grado massimo} di un nodo in un heap di Fibonacci con $n$ nodi.
+La tabella~\ref{tab:hb-confronto} confronta i costi degli heap di Fibonacci con quelli degli heap binari e binomiali. Per gli heap di Fibonacci si tratta di costi ammortizzati. In particolare, l'estrazione del minimo e la cancellazione costano $O(D(n))$.
 
 Senza altre informazioni sappiamo soltanto che $D(n) \le n - 1$, il grado di una radice che ha come figli tutti gli altri nodi. Dimostreremo che in realtà:
 \[
@@ -65,6 +67,22 @@ I figli di un nodo formano una \textbf{lista circolare doppiamente concatenata},
     \item Un nodo si inserisce o si toglie in qualsiasi punto della lista in tempo $O(1)$.
     \item Due liste si concatenano in un'unica lista circolare in tempo $O(1)$.
 \end{itemize}
+
+Partendo da un nodo qualsiasi, la lista si può percorrere in due versi, seguendo i campi $\mathit{right}$ oppure i campi $\mathit{left}$. In pratica, è come scegliere tra la circolare destra e la circolare sinistra (figura~\ref{fig:hf-circolari}).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\sffamily]
+  \definecolor{circolare}{HTML}{C5A648}
+  \foreach \x/\linea/\verso in {0/431N/Destra, 6/431R/Sinistra} {
+    \fill[circolare] (\x,0) rectangle ++(4.2,1.03);
+    \node[font=\sffamily\bfseries\Large] at (\x+2.1,0.515) {\linea};
+    \node[anchor=north west, inner sep=0pt, font=\small\sffamily\fontseries{sb}\selectfont] at (\x,-0.3) {Circolare Interna \verso};
+  }
+\end{tikzpicture}
+\caption{La versione catanese di una lista circolare doppiamente concatenata: la 431N segue i puntatori $\mathit{right}$, la 431R i puntatori $\mathit{left}$. In entrambi i casi, prima o poi, si torna alla fermata di partenza. Su quel ``prima o poi'', però, nessuno ha ancora dimostrato un limite superiore.}
+\label{fig:hf-circolari}
+\end{figure}
 
 Anche le radici degli alberi sono collegate tramite i campi $\mathit{left}$ e $\mathit{right}$, e formano la \textbf{lista delle radici}, circolare e doppiamente concatenata, in cui gli alberi possono comparire in qualsiasi ordine. L'heap è individuato da un puntatore $\mathit{min}[H]$ alla radice con la chiave minima, che è il punto di accesso alla struttura e vale \Nil{} se l'heap è vuoto. Infine $n[H]$ è il numero di nodi di $H$.\footnote{Per i campi di un oggetto si trova anche la notazione con il punto: $H.\mathit{min}$ indica lo stesso campo di $\mathit{min}[H]$.}
 
@@ -275,7 +293,32 @@ Per ogni $k = 0, 1, 2, \ldots$ valgono le seguenti proprietà:
 \end{lemma}
 
 \paragraph{Dimostrazione.}
-È la stessa del lemma~\ref{lem:hb-proprieta}, per induzione su $k$. Le proprietà 1, 2, 3, 4(a) e 4(b) non dipendono dall'ordine dei figli. Nella 4(c), la radice della copia che scende di un livello è una radice di $U_{k-1}$, e per l'ipotesi induttiva gli altri figli sono le radici di $U_0, \ldots, U_{k-2}$. Questa volta, però, non si può dire in che ordine compaiano. \hfill $\square$
+Procediamo per induzione su $k$. Nel caso base, $k = 0$, l'albero $U_0$ è formato da un solo nodo, quindi le quattro proprietà sono immediate. $U_0$ ha $1 = 2^0$ nodi e altezza $0$, ha $1 = \binom{0}{0}$ nodi a profondità $0$, e la sua radice, l'unico nodo, ha grado $0$. Non ci sono altri nodi e la radice non ha figli, quindi i punti 4(b) e 4(c) valgono banalmente.
+
+Per il passo induttivo supponiamo che il lemma valga per $k-1$, con $k \ge 1$, e consideriamo le due copie di $U_{k-1}$ che formano $U_k$. Chiamiamo \textbf{copia superiore} quella che conserva la radice, e \textbf{copia inferiore} quella la cui radice diventa un figlio della radice di $U_k$ (figura~\ref{fig:hf-non-ordinati}a). A differenza di $B_k$, non ha senso parlare di copia di destra e di copia di sinistra, in quanto il nuovo figlio può occupare una posizione qualsiasi. Dimostriamo le quattro proprietà nell'ordine del lemma:
+
+\begin{enumerate}
+    \item Il numero di nodi di $U_k$ è la somma dei nodi delle due copie. Indicando con $|U_k|$ il numero di nodi di $U_k$, per l'ipotesi induttiva si ha:
+    \[
+    |U_k| = |U_{k-1}| + |U_{k-1}| = 2 \cdot 2^{k-1} = 2^k.
+    \]
+    \item I nodi della copia superiore mantengono la loro profondità, mentre quelli della copia inferiore scendono di un livello. Il nodo più profondo di $U_k$, quindi, è il nodo più profondo della copia inferiore, e l'altezza vale:
+    \[
+    h(U_k) = h(U_{k-1}) + 1 = (k-1) + 1 = k,
+    \]
+    dove $h(U)$ indica l'altezza dell'albero $U$.
+    \item Sia $N(k,i)$ il numero di nodi di $U_k$ a profondità $i$.\footnote{Nel lemma~\ref{lem:hb-proprieta} lo stesso numero si chiamava $D(k,i)$. Qui cambiamo nome, in quanto $D(n)$ indica già il grado massimo di un nodo.} Un nodo di $U_k$ a profondità $i$ è un nodo a profondità $i$ della copia superiore, oppure un nodo a profondità $i-1$ della copia inferiore, che è scesa di un livello. Per l'ipotesi induttiva, quindi, se $1 \le i \le k-1$ si ha:
+    \[
+    N(k,i) = N(k-1,i) + N(k-1,i-1) = \binom{k-1}{i} + \binom{k-1}{i-1} = \binom{k}{i},
+    \]
+    dove l'ultima uguaglianza è la regola con cui si costruisce il triangolo di Tartaglia. Restano i due estremi. A profondità $0$ c'è soltanto la radice, e $1 = \binom{k}{0}$. A profondità $k$ ci sono soltanto i nodi a profondità $k-1$ della copia inferiore, ovvero $\binom{k-1}{k-1} = 1 = \binom{k}{k}$.
+    \item Dimostriamo separatamente i tre punti.
+    \begin{enumerate}[label=(\alph*)]
+        \item La radice di $U_k$ è la radice della copia superiore, che riceve un figlio in più: il suo grado vale $(k-1) + 1 = k$.
+        \item Ogni altro nodo appartiene a una delle due copie, e il suo grado non cambia, in quanto l'unico nodo che riceve un nuovo figlio è la radice. Per l'ipotesi induttiva questo grado è al più $k-1$, ovvero minore di $k$.
+        \item Uno dei figli della radice di $U_k$ è la radice della copia inferiore, ovvero di un $U_{k-1}$. Gli altri sono i figli della radice della copia superiore, che per l'ipotesi induttiva sono le radici di $U_0, U_1, \ldots, U_{k-2}$. I figli della radice di $U_k$ sono quindi le radici di $U_0, U_1, \ldots, U_{k-1}$. Questa volta, però, non si può dire nulla sul loro ordine, in quanto la radice della copia inferiore occupa una posizione qualsiasi tra i figli. \hfill $\square$
+    \end{enumerate}
+\end{enumerate}
 
 \paragraph{Heap formati da alberi non ordinati.}
 Vedremo che, se su un heap di Fibonacci si eseguono soltanto le operazioni \MakeHeap{}, \Insert{}, \Minimum{}, \ExtractMin{} e \Union{}, ogni albero dell'heap è un albero binomiale non ordinato. Mancano \DecreaseKey{} e \Delete{}, che usa \DecreaseKey{}. Indichiamo con $D^*(n)$ il grado massimo di un nodo in un heap di Fibonacci con $n$ nodi costruito senza usare mai queste due operazioni.

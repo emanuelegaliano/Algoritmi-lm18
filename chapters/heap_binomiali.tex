@@ -367,7 +367,7 @@ Poiché $x$ era un nodo qualunque di $H$, la tesi vale per ogni nodo. \hfill $\s
 
 Rispetto al corollario~\ref{cor:hb-grado} compare la parte intera. In un albero binomiale con $n$ nodi si ha $n = 2^k$, quindi $\lg n$ è già un intero. In un heap binomiale, invece, $n$ è un intero qualsiasi, e l'albero che contiene $x$ ha soltanto $2^k \le n$ nodi.
 
-\begin{osservazione}[La maggiorazione è stretta]
+\begin{osservazione}[La maggiorazione è stretta]\label{oss:hb-stretta}
 Una maggiorazione si dice \textbf{stretta} se non si può migliorare, ovvero se esiste almeno un caso in cui vale l'uguaglianza. Nel corollario~\ref{cor:hb-grado-heap} l'uguaglianza vale addirittura per ogni heap: un heap binomiale con $n$ nodi contiene sempre un nodo di grado esattamente $\lfloor \lg n \rfloor$.
 
 Sia $B_m$ l'albero binomiale di grado massimo in $H$. Da una parte, come abbiamo visto, $2^m \le n$. Dall'altra, gli alberi di $H$ hanno gradi distinti compresi tra $0$ e $m$. Il numero di nodi, quindi, è massimo quando $H$ li contiene tutti:
@@ -1926,10 +1926,27 @@ Procedura & Costo & Da dove nasce il costo \\
 
 Rispetto agli heap binari, quindi, l'unione passa da $\Theta(n)$ a $O(\lg n)$, al prezzo di un minimo che costa $O(\lg n)$ invece di $\Theta(1)$. Tutte le operazioni restano logaritmiche, e su una sequenza di inserimenti in un heap vuoto il numero di collegamenti per inserimento è costante in senso ammortizzato.
 
+\section{Esercizi}\label{sec:hb-esercizi}
+Gli esercizi sugli heap binomiali sono di teoria. Chiedono quasi sempre di definire gli alberi binomiali e di dimostrarne le proprietà, e poi di definire gli heap binomiali e di limitare il grado massimo di un nodo, a volte anche il numero di alberi.
+
+\begin{esercizio}[Alberi binomiali e grado massimo in un heap binomiale]\label{es:hb-2024}
+\begin{itemize}
+    \item[(a)] Definire gli \emph{alberi binomiali} ed enunciarne le principali proprietà, dimostrandole in modo adeguato.
+    \item[(b)] Definire gli \emph{heap binomiali} e fornire un limite superiore al grado massimo di un nodo in un heap binomiale contenente $n$ nodi.
+\end{itemize}
+\end{esercizio}
+
+\subsubsection*{Soluzione}
+\begin{itemize}
+    \item[(a)] Definizione~\ref{def:albero-binomiale}, lemma~\ref{lem:hb-proprieta} e la sua dimostrazione (sezione~\ref{sec:hb-proprieta}).
+    \item[(b)] Definizione~\ref{def:heap-binomiale} e corollario~\ref{cor:hb-grado-heap} (sezione~\ref{sec:hb-heap}).
+\end{itemize}
+
 \section*{Riferimenti}
 Il materiale visto in questo capitolo comprende:
 \begin{itemize}
     \item Materiale visto a lezione.
     \item Capitolo 19 (\emph{Binomial Heaps}) del libro T.\,H.~Cormen, C.\,E.~Leiserson, R.\,L.~Rivest, C.~Stein, \emph{Introduction to Algorithms}, seconda edizione.
     \item Introduzione del capitolo 19 (\emph{Fibonacci Heaps}) e problema 19-2 (\emph{Binomial trees and binomial heaps}) dello stesso libro, terza edizione.
+    \item Esercizio~\ref{es:hb-2024}: prima prova in itinere del 4 dicembre 2024.
 \end{itemize}
