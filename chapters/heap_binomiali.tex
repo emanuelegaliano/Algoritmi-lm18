@@ -194,7 +194,12 @@ Per ogni $k = 0, 1, 2, \ldots$ valgono le seguenti proprietà:
     \item $B_k$ ha $2^k$ nodi.
     \item L'altezza di $B_k$ è $k$.
     \item $B_k$ ha esattamente $\binom{k}{i}$ nodi a profondità $i$, per $i = 0, 1, \ldots, k$.
-    \item La radice di $B_k$ ha grado $k$, e ogni altro nodo di $B_k$ ha grado minore di $k$. Inoltre i figli della radice di $B_k$ sono, nell'ordine, le radici di $B_{k-1}, B_{k-2}, \ldots, B_2, B_1, B_0$.
+    \item Per i gradi dei nodi e i figli della radice si ha:
+    \begin{enumerate}[label=(\alph*)]
+        \item la radice di $B_k$ ha grado $k$;
+        \item ogni altro nodo di $B_k$ ha grado minore di $k$;
+        \item i figli della radice di $B_k$ sono, nell'ordine, le radici di $B_{k-1}, \ldots, B_1, B_0$.
+    \end{enumerate}
 \end{enumerate}
 \end{lemma}
 
@@ -218,9 +223,12 @@ Per il passo induttivo supponiamo che il lemma valga per $k-1$, con $k \ge 1$, e
     D(k,i) = D(k-1,i) + D(k-1,i-1) = \binom{k-1}{i} + \binom{k-1}{i-1} = \binom{k}{i},
     \]
     dove l'ultima uguaglianza è la regola con cui si costruisce il triangolo di Tartaglia. Restano i due estremi. A profondità $0$ c'è soltanto la radice, e $1 = \binom{k}{0}$. A profondità $k$ ci sono soltanto i nodi a profondità $k-1$ della copia di sinistra, ovvero $\binom{k-1}{k-1} = 1 = \binom{k}{k}$.
-    \item La radice di $B_k$ è la radice della copia di destra, che riceve un figlio in più: il suo grado vale $(k-1) + 1 = k$. Ogni altro nodo appartiene a una delle due copie, e il suo grado non cambia, in quanto l'unico nodo che riceve un nuovo figlio è la radice. Per l'ipotesi induttiva questo grado è al più $k-1$, ovvero minore di $k$.
-
-    Infine, il primo figlio della radice di $B_k$ è la radice della copia di sinistra, ovvero di un $B_{k-1}$. I figli successivi sono quelli della radice della copia di destra, che per l'ipotesi induttiva sono le radici di $B_{k-2}, \ldots, B_1, B_0$, in quest'ordine. \hfill $\square$
+    \item Dimostriamo separatamente i tre punti.
+    \begin{enumerate}[label=(\alph*)]
+        \item La radice di $B_k$ è la radice della copia di destra, che riceve un figlio in più: il suo grado vale $(k-1) + 1 = k$.
+        \item Ogni altro nodo appartiene a una delle due copie, e il suo grado non cambia, in quanto l'unico nodo che riceve un nuovo figlio è la radice. Per l'ipotesi induttiva questo grado è al più $k-1$, ovvero minore di $k$.
+        \item Il primo figlio della radice di $B_k$ è la radice della copia di sinistra, ovvero di un $B_{k-1}$. I figli successivi sono quelli della radice della copia di destra, che per l'ipotesi induttiva sono le radici di $B_{k-2}, \ldots, B_1, B_0$, in quest'ordine. \hfill $\square$
+    \end{enumerate}
 \end{enumerate}
 
 \begin{figure}[htbp]
@@ -256,14 +264,14 @@ Per il passo induttivo supponiamo che il lemma valga per $k-1$, con $k \ge 1$, e
 La regola $\binom{k}{i} = \binom{k-1}{i} + \binom{k-1}{i-1}$ ha una lettura combinatoria che ricalca la costruzione di $B_k$. Fissato un elemento in un insieme di $k$ elementi, i sottoinsiemi di $i$ elementi si dividono in quelli che non lo contengono, che sono $\binom{k-1}{i}$, e in quelli che lo contengono, che sono $\binom{k-1}{i-1}$. Allo stesso modo, i nodi di $B_k$ a profondità $i$ si dividono tra la copia di destra e la copia di sinistra.
 \end{osservazione}
 
-Dalla proprietà 4 segue un limite al grado dei nodi, che useremo per stimare il costo delle operazioni.
+Dalle proprietà 4(a) e 4(b) segue un limite al grado dei nodi, che useremo per stimare il costo delle operazioni.
 
 \begin{corollario}[Grado massimo in un albero binomiale]\label{cor:hb-grado}
 Sia $B$ un albero binomiale con $n$ nodi. Allora ogni nodo di $B$ ha grado al più $\lg n$.
 \end{corollario}
 
 \paragraph{Dimostrazione.}
-Per qualche $k \in \mathbb{N}$ si ha $B = B_k$, quindi per la proprietà 1 vale $n = 2^k$, ovvero $k = \lg n$. Per la proprietà 4 ogni nodo di $B_k$ ha grado al più $k$, da cui la tesi. \hfill $\square$
+Per qualche $k \in \mathbb{N}$ si ha $B = B_k$, quindi per la proprietà 1 vale $n = 2^k$, ovvero $k = \lg n$. Per le proprietà 4(a) e 4(b) ogni nodo di $B_k$ ha grado al più $k$, da cui la tesi. \hfill $\square$
 
 \section{Heap binomiali}\label{sec:hb-heap}
 Possiamo ora definire gli heap binomiali, come collezioni di alberi binomiali con due vincoli.
@@ -339,7 +347,7 @@ Sia $H$ un heap binomiale con $n \ge 1$ nodi. Allora ogni nodo di $H$ ha grado a
 \end{corollario}
 
 \paragraph{Dimostrazione.}
-Sia $x$ un nodo di $H$, e sia $B_k$ l'albero binomiale di $H$ che lo contiene. Per la proprietà 4 ogni nodo di $B_k$ ha grado al più $k$, e in particolare $x$. Inoltre $B_k$ ha $2^k$ nodi, che non possono essere più di $n$: da $2^k \le n$ segue $k \le \lg n$, e quindi $k \le \lfloor \lg n \rfloor$, in quanto $k$ è un intero. Il grado di $x$, quindi, è al più $k \le \lfloor \lg n \rfloor$. \hfill $\square$
+Sia $x$ un nodo di $H$, e sia $B_k$ l'albero binomiale di $H$ che lo contiene. Per le proprietà 4(a) e 4(b) ogni nodo di $B_k$ ha grado al più $k$, e in particolare $x$. Inoltre $B_k$ ha $2^k$ nodi, che non possono essere più di $n$: da $2^k \le n$ segue $k \le \lg n$, e quindi $k \le \lfloor \lg n \rfloor$, in quanto $k$ è un intero. Il grado di $x$, quindi, è al più $k \le \lfloor \lg n \rfloor$. \hfill $\square$
 
 Rispetto al corollario~\ref{cor:hb-grado} compare la parte intera. In un albero binomiale con $n$ nodi si ha $n = 2^k$, quindi $\lg n$ è già un intero. In un heap binomiale, invece, $n$ è un intero qualsiasi, e l'albero che contiene $x$ ha soltanto $2^k \le n$ nodi.
 
@@ -350,7 +358,7 @@ Sia $B_m$ l'albero binomiale di grado massimo in $H$. Da una parte, come abbiamo
 \[
 n \le 2^0 + 2^1 + \cdots + 2^m = 2^{m+1} - 1 < 2^{m+1}.
 \]
-Dalle due disuguaglianze si ottiene $2^m \le n < 2^{m+1}$, ovvero $m \le \lg n < m + 1$, e quindi $m = \lfloor \lg n \rfloor$. Per la proprietà 4 la radice di $B_m$ ha grado $m$, quindi il grado massimo di un nodo di $H$ è esattamente $\lfloor \lg n \rfloor$.
+Dalle due disuguaglianze si ottiene $2^m \le n < 2^{m+1}$, ovvero $m \le \lg n < m + 1$, e quindi $m = \lfloor \lg n \rfloor$. Per la proprietà 4(a) la radice di $B_m$ ha grado $m$, quindi il grado massimo di un nodo di $H$ è esattamente $\lfloor \lg n \rfloor$.
 
 Ad esempio, l'heap della figura~\ref{fig:hb-esempio} ha $n = 13$ nodi, e $2^3 \le 13 < 2^4$. L'albero di grado massimo è infatti $B_3$, la cui radice $6$ ha tre figli, e $\lfloor \lg 13 \rfloor = 3$. In binario si ha $13 = 1101_2$: gli alberi $B_3$, $B_2$ e $B_0$ dell'heap corrispondono alle cifre uguali a $1$, e l'albero di grado massimo alla cifra più significativa.
 \end{osservazione}
@@ -1255,7 +1263,7 @@ Per inserire un nodo $x$ si costruisce un heap $H'$ che contiene soltanto $x$, o
 \end{algorithmic}
 \end{algorithm}
 
-Le prime due righe trovano e tolgono la radice $x$ con la chiave minima, che per la proprietà di min-heap è il minimo dell'intero heap. I figli di $x$, però, vanno rimessi nell'heap. Se $x$ è la radice di un $B_k$, per la proprietà 4 i suoi figli sono, da sinistra, le radici di $B_{k-1}, \ldots, B_1, B_0$, ovvero sono in ordine di grado decrescente. Invertendo la loro lista si ottiene quindi la lista delle radici, ordinata per grado crescente, di un nuovo heap binomiale $H'$, che si unisce a $H$.
+Le prime due righe trovano e tolgono la radice $x$ con la chiave minima, che per la proprietà di min-heap è il minimo dell'intero heap. I figli di $x$, però, vanno rimessi nell'heap. Se $x$ è la radice di un $B_k$, per la proprietà 4(c) i suoi figli sono, da sinistra, le radici di $B_{k-1}, \ldots, B_1, B_0$, ovvero sono in ordine di grado decrescente. Invertendo la loro lista si ottiene quindi la lista delle radici, ordinata per grado crescente, di un nuovo heap binomiale $H'$, che si unisce a $H$.
 
 \paragraph{Costo.}
 La ricerca di $x$ costa $O(\lg n)$, come \BinomialHeapMinimum{}, e la creazione di $H'$ costa $O(1)$. Per il corollario~\ref{cor:hb-grado-heap} la radice $x$ ha al più $\lfloor \lg n \rfloor$ figli, quindi anche l'inversione della lista dei figli costa $O(\lg n)$. Infine l'unione costa $O(\lg n)$, e il costo complessivo è:

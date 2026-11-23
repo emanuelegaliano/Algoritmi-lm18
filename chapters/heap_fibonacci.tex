@@ -265,17 +265,22 @@ Per ogni $k = 0, 1, 2, \ldots$ valgono le seguenti proprietà:
     \item $U_k$ ha $2^k$ nodi.
     \item L'altezza di $U_k$ è $k$.
     \item $U_k$ ha esattamente $\binom{k}{i}$ nodi a profondità $i$, per $i = 0, 1, \ldots, k$.
-    \item La radice di $U_k$ ha grado $k$, e ogni altro nodo di $U_k$ ha grado minore di $k$. Inoltre i figli della radice di $U_k$ sono le radici di $U_0, U_1, \ldots, U_{k-1}$, senza alcun ordine particolare.
+    \item Per i gradi dei nodi e i figli della radice si ha:
+    \begin{enumerate}[label=(\alph*)]
+        \item la radice di $U_k$ ha grado $k$;
+        \item ogni altro nodo di $U_k$ ha grado minore di $k$;
+        \item i figli della radice di $U_k$ sono le radici di $U_0, U_1, \ldots, U_{k-1}$, senza alcun ordine particolare.
+    \end{enumerate}
 \end{enumerate}
 \end{lemma}
 
 \paragraph{Dimostrazione.}
-È la stessa del lemma~\ref{lem:hb-proprieta}, per induzione su $k$. Le proprietà 1, 2 e 3 e la prima parte della 4 non dipendono dall'ordine dei figli. Nella seconda parte della 4, la radice della copia che scende di un livello è una radice di $U_{k-1}$, e per l'ipotesi induttiva gli altri figli sono le radici di $U_0, \ldots, U_{k-2}$. Questa volta, però, non si può dire in che ordine compaiano. \hfill $\square$
+È la stessa del lemma~\ref{lem:hb-proprieta}, per induzione su $k$. Le proprietà 1, 2, 3, 4(a) e 4(b) non dipendono dall'ordine dei figli. Nella 4(c), la radice della copia che scende di un livello è una radice di $U_{k-1}$, e per l'ipotesi induttiva gli altri figli sono le radici di $U_0, \ldots, U_{k-2}$. Questa volta, però, non si può dire in che ordine compaiano. \hfill $\square$
 
 \paragraph{Heap formati da alberi non ordinati.}
 Vedremo che, se su un heap di Fibonacci si eseguono soltanto le operazioni \MakeHeap{}, \Insert{}, \Minimum{}, \ExtractMin{} e \Union{}, ogni albero dell'heap è un albero binomiale non ordinato. Mancano \DecreaseKey{} e \Delete{}, che usa \DecreaseKey{}. Indichiamo con $D^*(n)$ il grado massimo di un nodo in un heap di Fibonacci con $n$ nodi costruito senza usare mai queste due operazioni.
 
-Dal lemma segue subito che $D^*(n) = O(\lg n)$. Un albero $U_k$ dell'heap ha $2^k \le n$ nodi, quindi $k \le \lfloor \lg n \rfloor$, e per la proprietà 4 nessun nodo di $U_k$ ha grado maggiore di $k$. Ovviamente vale anche $D^*(n) \le D(n)$, in quanto $D(n)$ è un limite per tutti gli heap di Fibonacci, compresi quelli costruiti con \DecreaseKey{} e \Delete{}.
+Dal lemma segue subito che $D^*(n) = O(\lg n)$. Un albero $U_k$ dell'heap ha $2^k \le n$ nodi, quindi $k \le \lfloor \lg n \rfloor$, e per le proprietà 4(a) e 4(b) nessun nodo di $U_k$ ha grado maggiore di $k$. Ovviamente vale anche $D^*(n) \le D(n)$, in quanto $D(n)$ è un limite per tutti gli heap di Fibonacci, compresi quelli costruiti con \DecreaseKey{} e \Delete{}.
 
 \section{Operazioni sugli heap di Fibonacci}\label{sec:hf-op}
 La strategia degli heap di Fibonacci è \textbf{ritardare il più possibile il lavoro di ristrutturazione}. L'inserimento e l'unione si limitano ad aggiungere alberi alla lista delle radici, senza riorganizzarla. Soltanto l'estrazione del minimo, che deve comunque scorrere tutta la lista delle radici per trovare il nuovo minimo, approfitta della scansione per fondere gli alberi.
