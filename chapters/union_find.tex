@@ -1524,7 +1524,7 @@ j + 1 & \text{se } k = 0, \\
 A_{k-1}^{(j+1)}(j) & \text{se } k \ge 1,
 \end{cases}
 \]
-dove $A_{k-1}^{(j+1)}$ indica la funzione $A_{k-1}$ applicata $j + 1$ volte di seguito. Si tratta dell'iterazione funzionale: $A_{k-1}^{(0)}(j) = j$, e $A_{k-1}^{(i)}(j) = A_{k-1}\bigl(A_{k-1}^{(i-1)}(j)\bigr)$ per $i \ge 1$. Il parametro $k$ si chiama \textbf{livello} della funzione.\footnote{La funzione definita da W.~Ackermann nel 1928 è diversa: questa è una delle sue varianti, che cresce in modo analogo.}
+dove $A_{k-1}^{(j+1)}$ indica la funzione $A_{k-1}$ applicata $j + 1$ volte di seguito. Si tratta dell'iterazione funzionale: $A_{k-1}^{(0)}(j) = j$, e $A_{k-1}^{(i)}(j) = A_{k-1}\bigl(A_{k-1}^{(i-1)}(j)\bigr)$ per $i \ge 1$. Il parametro $k$ si chiama \textbf{livello} della funzione.\footnote{La funzione definita da W.~Ackermann nel 1928 \cite{Ackermann1928} è diversa: questa è una delle sue varianti, che cresce in modo analogo.}
 
 La funzione $A_k(j)$ cresce strettamente sia in $j$ sia in $k$. Per vedere quanto velocemente, ricaviamo una forma chiusa per i primi due livelli:
 \[
@@ -1568,7 +1568,7 @@ Dai valori di $A_k(1)$ calcolati sopra si ottiene:
 Soltanto per valori di $n$ più grandi di $A_4(1)$ si ha $\alpha(n) > 4$. In pratica, quindi, $\alpha(n) \le 4$, sebbene $\alpha(n) \to +\infty$ per $n \to +\infty$.
 
 \subsection{Entrambe le euristiche}\label{sec:uf-entrambe}
-Il risultato seguente è dovuto a R.\,E.~Tarjan (1975), e lo enunciamo senza dimostrazione.
+Il risultato seguente è dovuto a R.\,E.~Tarjan (1975) \cite{Tarjan1975}, e lo enunciamo senza dimostrazione.
 
 \begin{teorema}\label{teo:uf-alpha}
 Con l'unione per ranghi e la compressione dei cammini, una sequenza di $m$ operazioni \MakeSet{}, \Union{} e \FindSet{}, di cui $n$ sono \MakeSet{}, costa $O(m\,\alpha(n))$.
@@ -1604,7 +1604,7 @@ Senza euristiche, con le liste concatenate ogni \Union{} costa al più $O(n)$, e
 Il materiale visto in questo capitolo comprende:
 \begin{itemize}
     \item Materiale visto a lezione.
-    \item Capitolo 19 (\emph{Data Structures for Disjoint Sets}) del libro T.\,H.~Cormen, C.\,E.~Leiserson, R.\,L.~Rivest, C.~Stein, \emph{Introduction to Algorithms}, quarta edizione.
-    \item R.\,E.~Tarjan, \emph{Efficiency of a Good But Not Linear Set Union Algorithm}, Journal of the ACM, 22(2), 1975, pp.~215--225.
-    \item R.~Sedgewick, K.~Wayne, lucidi della lezione \emph{Union-Find} del corso \emph{Algorithms}, Princeton University: l'esempio della percolazione.
+    \item Capitolo 19 (\emph{Data Structures for Disjoint Sets}) della quarta edizione del libro \citetitle{Cormen-et-al-2022} \cite{Cormen-et-al-2022}.
+    \item \citetitle{Tarjan1975} \cite{Tarjan1975}, per il costo con entrambe le euristiche.
+    \item Lucidi della lezione \citetitle{Sedgewick-Wayne-UnionFind} \cite{Sedgewick-Wayne-UnionFind} del corso \emph{Algorithms} di Princeton, per l'esempio della percolazione.
 \end{itemize}

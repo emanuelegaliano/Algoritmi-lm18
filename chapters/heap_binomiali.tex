@@ -1,5 +1,5 @@
 \chapter{Heap binomiali}\label{ch:heap-binomiali}
-Gli \textbf{heap binomiali} sono una struttura dati per gestire un insieme di elementi con priorità, come gli heap binari, ma permettono anche l'\textbf{unione} di due heap in tempo logaritmico. Sono stati introdotti da Jean Vuillemin nel 1978.
+Gli \textbf{heap binomiali} sono una struttura dati per gestire un insieme di elementi con priorità, come gli heap binari, ma permettono anche l'\textbf{unione} di due heap in tempo logaritmico. Sono stati introdotti da Jean Vuillemin nel 1978 \cite{Vuillemin1978}.
 
 Un heap binomiale è una collezione di alberi con una forma molto rigida, detti alberi binomiali. Due collezioni di questo tipo si fondono con un procedimento simile alla somma di due numeri binari.
 
@@ -18,8 +18,8 @@ Un \textbf{mergeable heap} (heap unificabile) è una struttura dati che contiene
 \end{itemize}
 Di queste operazioni considereremo due implementazioni:
 \begin{itemize}
-    \item \textbf{Heap binomiali} (J.~Vuillemin, 1978): tutte le operazioni costano $O(\lg n)$ nel caso peggiore, unione compresa.
-    \item \textbf{Heap di Fibonacci} (M.\,L.~Fredman e R.\,E.~Tarjan, 1984--1987): \Insert{}, \Minimum{}, \Union{} e \DecreaseKey{} costano $\Theta(1)$ in senso ammortizzato.
+    \item \textbf{Heap binomiali} (J.~Vuillemin, 1978 \cite{Vuillemin1978}): tutte le operazioni costano $O(\lg n)$ nel caso peggiore, unione compresa.
+    \item \textbf{Heap di Fibonacci} (M.\,L.~Fredman e R.\,E.~Tarjan, 1984--1987 \cite{Fredman1987}): \Insert{}, \Minimum{}, \Union{} e \DecreaseKey{} costano $\Theta(1)$ in senso ammortizzato.
 \end{itemize}
 La tabella~\ref{tab:hb-confronto} ne confronta i costi con quelli degli heap binari.
 
@@ -1944,7 +1944,7 @@ Rispetto agli heap binari, quindi, l'unione passa da $\Theta(n)$ a $O(\lg n)$, a
 Il materiale visto in questo capitolo comprende:
 \begin{itemize}
     \item Materiale visto a lezione.
-    \item Capitolo 19 (\emph{Binomial Heaps}) del libro T.\,H.~Cormen, C.\,E.~Leiserson, R.\,L.~Rivest, C.~Stein, \emph{Introduction to Algorithms}, seconda edizione.
-    \item Introduzione del capitolo 19 (\emph{Fibonacci Heaps}) e problema 19-2 (\emph{Binomial trees and binomial heaps}) dello stesso libro, terza edizione.
+    \item Capitolo 19 (\emph{Binomial Heaps}) della seconda edizione del libro \citetitle{Cormen-et-al-2001} \cite{Cormen-et-al-2001}.
+    \item Introduzione del capitolo 19 (\emph{Fibonacci Heaps}) e problema 19-2 (\emph{Binomial trees and binomial heaps}) della terza edizione dello stesso libro \cite{Cormen-et-al-2009}.
     \item Esercizio~\ref{es:hb-2024}: prima prova in itinere del 4 dicembre 2024.
 \end{itemize}

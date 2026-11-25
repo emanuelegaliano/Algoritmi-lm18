@@ -159,7 +159,7 @@ Consideriamo la lista $(a, b, c, d, e)$ e una richiesta all'elemento $d$. Nella 
 \end{figure}
 
 \subsection{Due modelli di costo}\label{sec:mtf-modelli}
-Il modello uniforme non è l'unico possibile. Nel \textbf{modello standard}, proposto da Sleator e Tarjan nel 1985, dopo un accesso l'elemento richiesto può essere spostato \emph{gratuitamente} verso la testa della lista, mentre gli altri scambi tra elementi contigui costano $1$. Nell'esempio precedente il costo sarebbe stato $4$ invece di $7$, perché lo spostamento in testa di $d$ è gratuito.
+Il modello uniforme non è l'unico possibile. Nel \textbf{modello standard}, proposto da Sleator e Tarjan nel 1985 \cite{Sleator1985-ListUpdate}, dopo un accesso l'elemento richiesto può essere spostato \emph{gratuitamente} verso la testa della lista, mentre gli altri scambi tra elementi contigui costano $1$. Nell'esempio precedente il costo sarebbe stato $4$ invece di $7$, perché lo spostamento in testa di $d$ è gratuito.
 
 \begin{center}
 \small
@@ -300,7 +300,7 @@ dove $\mathbf{1}\{P\}$ vale $1$ se la proprietà $P$ è vera, e $0$ altrimenti. 
 Il calcolo diretto esamina tutte le $\binom{n}{2}$ coppie, e costa quindi $O(n^2)$. Si può fare meglio con il \textbf{Merge Sort}, in tempo $O(n \log n)$. Durante la fusione di due metà già ordinate, ogni volta che un elemento della metà destra viene copiato prima di quelli rimasti nella metà sinistra, forma un'inversione con ciascuno di essi: basta sommare questi conteggi durante l'ordinamento. Per il lemma~\ref{lem:inversioni}, anche $d(L, L')$ è quindi calcolabile in tempo $O(n \log n)$.
 
 \section{MTF è 4-competitivo}\label{sec:mtf-4}
-Abbiamo ora tutti gli strumenti per dimostrare il risultato principale del capitolo. Riprendiamo il metodo del potenziale di Sleator e Tarjan, che dimostrano la 2-competitività di MTF nel modello standard, e lo adattiamo al modello uniforme, in cui il fattore diventa $4$.\footnote{Sleator e Tarjan considerano anche una misura alternativa (gross cost), che contabilizza anche gli scambi normalmente gratuiti, come nel modello uniforme.}
+Abbiamo ora tutti gli strumenti per dimostrare il risultato principale del capitolo. Riprendiamo il metodo del potenziale di Sleator e Tarjan \cite{Sleator1985-ListUpdate}, che dimostrano la 2-competitività di MTF nel modello standard, e lo adattiamo al modello uniforme, in cui il fattore diventa $4$.\footnote{Sleator e Tarjan considerano anche una misura alternativa (gross cost), che contabilizza anche gli scambi normalmente gratuiti, come nel modello uniforme.}
 
 Sia $L$ una lista di elementi distinti, e supponiamo di voler effettuare $m$ accessi $x_1, \dots, x_m$. Indichiamo con $L^M$ la lista mantenuta da MTF e con $L^F$ quella mantenuta da FORSEE, a partire dalla stessa configurazione $L$. Più precisamente:
 \begin{itemize}
@@ -499,13 +499,13 @@ Questa complessità, che si riferisce a un'implementazione diretta senza precalc
 \end{osservazione}
 
 \subsection{Algoritmi esatti e NP-hardness}\label{sec:mtf-np}
-Il calcolo esatto di FORSEE è stato studiato a lungo. Manasse, McGeoch e Sleator (1988) propongono un approccio generale di programmazione dinamica per i problemi online, applicabile anche al problema List Update. Reingold e Westbrook (1996) ottengono un algoritmo esatto per il calcolo del costo ottimo con
+Il calcolo esatto di FORSEE è stato studiato a lungo. Manasse, McGeoch e Sleator (1988) \cite{Manasse1988} propongono un approccio generale di programmazione dinamica per i problemi online, applicabile anche al problema List Update. Reingold e Westbrook (1996) \cite{Reingold1996} ottengono un algoritmo esatto per il calcolo del costo ottimo con
 \[
 T(n, m) = O\big(m\, 2^n (n-1)!\big), \qquad S(n) = O(n!),
 \]
 dove $T$ è il tempo e $S$ lo spazio. Il miglioramento deriva da una caratterizzazione delle riorganizzazioni che è sufficiente considerare nella ricerca di una strategia ottima.
 
-Ci si può chiedere se esista un algoritmo polinomiale. Ambühl (2000) ha dimostrato che il calcolo dell'ottimo offline nel modello standard è \textbf{NP-hard}. Il risultato si estende anche al nostro modello, grazie a due osservazioni:
+Ci si può chiedere se esista un algoritmo polinomiale. Ambühl (2000) \cite{Ambuhl2000} ha dimostrato che il calcolo dell'ottimo offline nel modello standard è \textbf{NP-hard}. Il risultato si estende anche al nostro modello, grazie a due osservazioni:
 \begin{itemize}
     \item \textbf{Modello P1}: Reingold e Westbrook dimostrano che il costo ottimo offline nel modello standard coincide con quello del modello uniforme P1, nel quale sono ammessi soltanto scambi a pagamento, anche prima degli accessi.
     \item \textbf{Scambi solo dopo gli accessi}: il nostro modello consente scambi soltanto dopo gli accessi, ma basta premettere alla sequenza una richiesta all'elemento inizialmente in testa, dopo la quale si possono effettuare gli scambi desiderati.
@@ -518,9 +518,9 @@ Ne consegue che l'ottimo offline è difficile da calcolare anche conoscendo l'in
 Il materiale visto in questo capitolo comprende:
 \begin{itemize}
     \item Materiale visto a lezione.
-    \item Capitolo 27 (\emph{Online Algorithms}, sezioni 27.1--27.3) del libro T.\,H.~Cormen, C.\,E.~Leiserson, R.\,L.~Rivest, C.~Stein, \emph{Introduction to Algorithms}, quarta edizione.
-    \item D.\,D.~Sleator, R.\,E.~Tarjan, \emph{Amortized Efficiency of List Update and Paging Rules}, Communications of the ACM, 28(2), 1985.
-    \item M.\,S.~Manasse, L.\,A.~McGeoch, D.\,D.~Sleator, \emph{Competitive Algorithms for On-Line Problems}, STOC 1988, pp.~322--333.
-    \item N.~Reingold, J.~Westbrook, \emph{Off-Line Algorithms for the List Update Problem}, Information Processing Letters, 60(2), 1996, pp.~75--80.
-    \item C.~Ambühl, \emph{Offline List Update is NP-Hard}, ESA 2000, pp.~42--51.
+    \item Capitolo 27 (\emph{Online Algorithms}, sezioni 27.1--27.3) della quarta edizione del libro \citetitle{Cormen-et-al-2022} \cite{Cormen-et-al-2022}.
+    \item \citetitle{Sleator1985-ListUpdate} \cite{Sleator1985-ListUpdate}, per il modello standard e il metodo del potenziale.
+    \item \citetitle{Manasse1988} \cite{Manasse1988}, per la programmazione dinamica sui problemi online.
+    \item \citetitle{Reingold1996} \cite{Reingold1996}, per l'algoritmo esatto e il modello P1.
+    \item \citetitle{Ambuhl2000} \cite{Ambuhl2000}, per la NP-hardness dell'ottimo offline.
 \end{itemize}
