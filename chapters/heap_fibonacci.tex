@@ -1263,9 +1263,7 @@ $F_k$ & 0 & 1 & 1 & 2 & 3 & 5 & 8 & 13 & 21 & 34 & 55 & 89 & 144 \\
 \label{tab:hf-fibonacci}
 \end{table}
 
-La successione era già nota nella matematica indiana, e fu resa celebre in Europa da Leonardo Pisano, detto Fibonacci, nel suo \emph{Liber Abaci} del 1202.
-
-Nel libro compare il \textbf{problema dei conigli}. Una coppia di conigli appena nati viene messa in un recinto, e ogni mese ogni coppia matura genera una nuova coppia, che a sua volta diventa fertile dopo un mese. Il numero di coppie, mese per mese, è $1, 1, 2, 3, 5, 8, \ldots$: in ogni mese ci sono le coppie del mese precedente, più una nuova coppia per ogni coppia fertile, ovvero per ogni coppia che esisteva già due mesi prima. Dopo un anno le coppie sono $F_{12} = 144$.
+La successione nasce dal \textbf{problema dei conigli}. Una coppia di conigli appena nati viene messa in un recinto, e ogni mese ogni coppia matura genera una nuova coppia, che a sua volta diventa fertile dopo un mese. Il numero di coppie, mese per mese, è $1, 1, 2, 3, 5, 8, \ldots$: in ogni mese ci sono le coppie del mese precedente, più una nuova coppia per ogni coppia fertile, ovvero per ogni coppia che esisteva già due mesi prima. Dopo un anno le coppie sono $F_{12} = 144$.
 
 \begin{osservazione}[Formula di Binet]
 I numeri di Fibonacci hanno anche un'espressione esplicita:
@@ -1329,11 +1327,11 @@ Sia $x$ un nodo di un heap di Fibonacci, con $\mathit{degree}[x] = k$, e siano $
 \end{lemma}
 
 \paragraph{Dimostrazione.}
-Sia $i \ge 3$, e sia $T$ l'istante in cui $y_i$ è stato collegato a $x$. In quell'istante $x$ aveva già tra i suoi figli $y_1, \ldots, y_{i-1}$, quindi il suo grado era almeno $i - 1$. Un nodo diventa figlio di un altro soltanto in \Consolidate{}, che collega due radici dello stesso grado. All'istante $T$, quindi:
+Sia $i \ge 3$, sia $T$ l'istante in cui $y_i$ è stato collegato a $x$, e sia $T-1$ l'istante subito precedente. In quell'istante $x$ aveva già tra i suoi figli $y_1, \ldots, y_{i-1}$: sono figli di $x$ anche adesso, e sono stati collegati prima di $y_i$. Il grado di $x$, quindi, era almeno $i - 1$. Un nodo diventa figlio di un altro soltanto in \Consolidate{} (sezione~\ref{sec:hf-extract}), che collega due radici dello stesso grado. All'istante $T-1$, quindi:
 \[
-\mathit{degree}_T[y_i] = \mathit{degree}_T[x] \ge i - 1,
+\mathit{degree}_{T-1}[y_i] = \mathit{degree}_{T-1}[x] \ge i - 1,
 \]
-dove $\mathit{degree}_T$ indica il grado all'istante $T$. Dall'istante $T$ in poi, $y_i$ può aver perso al più un figlio: se ne avesse persi due, \CascadingCut{} lo avrebbe tagliato da $x$. Si ha quindi $\mathit{degree}[y_i] \ge i - 2$. \hfill $\square$
+dove $\mathit{degree}_{T-1}$ indica il grado all'istante $T-1$. Al momento del collegamento \FibHeapLink{} azzera $\mathit{mark}[y_i]$, quindi dall'istante $T$ in poi $y_i$ può aver perso al più un figlio: se ne avesse persi due, \CascadingCut{} lo avrebbe tagliato da $x$ (sezione~\ref{sec:hf-decrease}). Si ha quindi $\mathit{degree}[y_i] \ge i - 2$. \hfill $\square$
 
 Per $i = 1$ e $i = 2$ il limite $i - 2 \le 0$ vale banalmente, quindi possiamo usarlo per tutti i figli di $x$.
 
@@ -1486,9 +1484,24 @@ Procedura & Costo & Da dove nasce il costo \\
 
 Rispetto agli heap binomiali, l'inserimento, la ricerca del minimo, l'unione e il decremento di una chiave passano da $O(\lg n)$ a $O(1)$. Si tratta però di costi ammortizzati, mentre quelli degli heap binomiali valgono nel caso peggiore. Una singola estrazione del minimo, ad esempio, può costare $\Theta(n)$, se arriva dopo $n$ inserimenti in un heap vuoto: la lista delle radici contiene $n$ alberi, e \Consolidate{} deve fonderli tutti.
 
+\section{Esercizi}\label{sec:hf-esercizi}
+\begin{esercizio}[Alberi non ordinati e grado dei figli]\label{es:hf-2025}
+\begin{itemize}
+    \item[(a)] Si definiscano gli alberi binomiali non ordinati, enunciando e dimostrando le loro più importanti proprietà.
+    \item[(b)] Sia $x$ un nodo di grado $k$ in un heap di Fibonacci e siano $y_1, \ldots, y_k$ i figli di $x$ nell'ordine in cui sono stati innestati in $x$. Si fornisca, dimostrandola, una limitazione inferiore per $\mathit{degree}[y_i]$.
+\end{itemize}
+\end{esercizio}
+
+\subsubsection*{Soluzione}
+\begin{itemize}
+    \item[(a)] Definizione~\ref{def:albero-non-ordinato}, lemma~\ref{lem:hf-non-ordinati} e la sua dimostrazione (sezione~\ref{sec:hf-non-ordinati}).
+    \item[(b)] Lemma~\ref{lem:hf-figli} e la sua dimostrazione (sezione~\ref{sec:hf-figli}), che usa \Consolidate{} (sezione~\ref{sec:hf-extract}) e \CascadingCut{} (sezione~\ref{sec:hf-decrease}).
+\end{itemize}
+
 \section*{Riferimenti}
 Il materiale visto in questo capitolo comprende:
 \begin{itemize}
     \item Materiale visto a lezione.
     \item Capitolo 19 (\emph{Fibonacci Heaps}) del libro T.\,H.~Cormen, C.\,E.~Leiserson, R.\,L.~Rivest, C.~Stein, \emph{Introduction to Algorithms}, terza edizione.
+    \item Esercizio~\ref{es:hf-2025}: appello del 25 giugno 2025.
 \end{itemize}
