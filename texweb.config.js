@@ -21,6 +21,7 @@ const operations = {
   MakeFibHeap: 'Make-Fib-Heap', FibHeapInsert: 'Fib-Heap-Insert', FibHeapUnion: 'Fib-Heap-Union',
   FibHeapExtractMin: 'Fib-Heap-Extract-Min', Consolidate: 'Consolidate', FibHeapLink: 'Fib-Heap-Link',
   FibHeapDecreaseKey: 'Fib-Heap-Decrease-Key', Cut: 'Cut', CascadingCut: 'Cascading-Cut', FibHeapDelete: 'Fib-Heap-Delete',
+  MakeSet: 'Make-Set', FindSet: 'Find-Set', Link: 'Link', ConnectedComponents: 'Connected-Components', SameComponent: 'Same-Component',
 };
 
 export default {

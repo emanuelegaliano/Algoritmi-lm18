@@ -1,0 +1,1610 @@
+\chapter{Union-Find}\label{ch:union-find}
+Le \textbf{strutture dati per insiemi disgiunti}, dette anche \textbf{union-find}, mantengono una famiglia di insiemi senza elementi in comune, che nel tempo possono soltanto unirsi tra loro. Il nome viene dalle due operazioni principali: l'unione di due insiemi (union) e la ricerca dell'insieme che contiene un dato elemento (find).
+
+Forniamo il seguente esempio: abbiamo una rete di $n$ computer, a cui vengono aggiunti dei collegamenti uno alla volta. Tra un collegamento e l'altro, vogliamo sapere se due computer possono comunicare, anche passando per altri computer della rete.
+
+Si potrebbe pensare di rispondere a ogni domanda con una visita della rete, e l'intuizione non sarebbe nemmeno totalmente sbagliata: una visita trova in tempo lineare tutti i computer raggiungibili. Il problema principale di questo approccio è che la visita va ripetuta a ogni domanda, anche quando nel frattempo la rete ha guadagnato un solo collegamento.
+
+Possiamo risolvere il problema tenendo traccia dei gruppi di computer che comunicano tra loro, ovvero di una famiglia di insiemi disgiunti. Aggiungere un collegamento, vuol dire unire gli insiemi dei due computer collegati, mentre per rispondere a una domanda basta controllare se i due computer stanno nello stesso insieme.
+
+Lo stesso schema si ritrova in molte altre applicazioni, come la generazione di labirinti e la percolazione\footnote{Per percolazione si intende il passaggio lento di un liquido attraverso un solido filtrante, come l'acqua che attraversa il caffè macinato in una macchina per l'espresso. Ne vedremo un modello nella sezione~\ref{sec:uf-percolazione}.}. Come per gli heap di Fibonacci (capitolo~\ref{ch:heap-fibonacci}), il costo delle operazioni si studia su intere sequenze, con l'analisi ammortizzata. Vedremo che, con due euristiche piuttosto semplici, il costo ammortizzato di ogni operazione diventa praticamente costante.
+
+\section{Insiemi disgiunti}\label{sec:uf-insiemi}
+In molte applicazioni è utile rappresentare in maniera efficiente una famiglia dinamica di insiemi disgiunti. Ogni insieme è identificato da uno dei suoi elementi, detto \textbf{rappresentante}. Non importa quale elemento si scelga: conta soltanto che, se l'insieme non cambia, due ricerche dello stesso insieme restituiscano lo stesso rappresentante.
+
+\begin{definizione}[Operazioni sugli insiemi disgiunti]\label{def:uf-operazioni}
+Una struttura dati per insiemi disgiunti supporta le seguenti operazioni:
+\begin{itemize}
+    \item \MakeSet$(x)$: introduce il singoletto $\{x\}$, dove $x$ non appartiene a nessun altro insieme.
+    \item \Union$(x,y)$: sostituisce gli insiemi disgiunti che contengono rispettivamente $x$ e $y$ con la loro unione.
+    \item \FindSet$(x)$: restituisce il rappresentante dell'insieme che contiene $x$.
+\end{itemize}
+\end{definizione}
+
+Poiché gli insiemi devono restare disgiunti, \Union{} distrugge i due insiemi di partenza, e i loro elementi finiscono tutti nel nuovo insieme. Il rappresentante dell'unione può essere un elemento qualsiasi, ma in genere si sceglie il rappresentante di uno dei due insiemi.
+
+\paragraph{Relazioni di equivalenza.}
+Una famiglia di insiemi disgiunti definisce una relazione di equivalenza: due elementi sono equivalenti se stanno nello stesso insieme, e gli insiemi sono le classi di equivalenza. Le tre operazioni consentono quindi la gestione di \textbf{relazioni di equivalenza dinamiche}.
+
+In particolare, si tratta di relazioni \textbf{monotone non decrescenti}. \Union{} aggiunge coppie di elementi equivalenti, ma nessuna operazione ne toglie: due elementi che stanno nello stesso insieme ci restano per sempre.
+
+\paragraph{Parametri dell'analisi.}
+Analizzeremo sequenze di $m$ operazioni \MakeSet{}, \Union{} e \FindSet{}, di cui $n$ sono operazioni \MakeSet{}, a partire da una configurazione vuota. Ovviamente si ha:
+\begin{itemize}
+    \item $n \le m$, in quanto le $m$ operazioni comprendono le $n$ operazioni \MakeSet{}.
+    \item Il numero di operazioni \Union{} è al più $n - 1$.
+\end{itemize}
+
+La seconda relazione segue dal fatto che in tutto vengono creati $n$ insiemi, e ogni \Union{} riduce di uno il numero degli insiemi presenti. Poiché resta sempre almeno un insieme, le unioni sono al più $n - 1$.
+
+\section{Applicazioni}\label{sec:uf-applicazioni}
+Le operazioni sugli insiemi disgiunti compaiono ogni volta che degli oggetti vengono raggruppati per collegamenti successivi. Vediamo tre esempi.
+
+\subsection{Componenti connesse di un grafo}\label{sec:uf-componenti}
+Un esempio di una semplice applicazione è il mantenimento delle componenti connesse di un grafo non orientato crescente, ovvero di un grafo a cui si aggiungono archi.
+
+\begin{definizione}[Componenti connesse]\label{def:uf-componenti}
+Sia $G = (V,E)$ un grafo non orientato. Per $u, v \in V$ poniamo $u \sim v$ se esiste un cammino da $u$ a $v$ in $G$. La relazione $\sim$ è una relazione di equivalenza su $V$, e le \textbf{componenti connesse} di $G$ sono le classi di equivalenza di $\sim$.
+\end{definizione}
+
+La relazione $\sim$ è riflessiva, in quanto ogni vertice raggiunge sé stesso con un cammino vuoto. È simmetrica, in quanto un cammino da $u$ a $v$, percorso al contrario, va da $v$ a $u$. Infine è transitiva: un cammino da $u$ a $v$ seguito da un cammino da $v$ a $w$ va da $u$ a $w$. Ad esempio, il grafo della figura~\ref{fig:uf-componenti} ha quattro componenti connesse.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[unionfind]
+  \node[vn] (a) at (0,1.1) {$a$};
+  \node[vn] (b) at (1.3,1.1) {$b$};
+  \node[vn] (c) at (0,0) {$c$};
+  \node[vn] (d) at (1.3,0) {$d$};
+  \node[vn] (e) at (2.9,1.1) {$e$};
+  \node[vn] (f) at (4.2,1.1) {$f$};
+  \node[vn] (g) at (2.9,0) {$g$};
+  \node[vn] (h) at (5.8,1.1) {$h$};
+  \node[vn] (i) at (5.8,0) {$i$};
+  \node[vn] (j) at (7.2,1.1) {$j$};
+  \draw (a) -- (b); \draw (a) -- (c); \draw (b) -- (c); \draw (b) -- (d);
+  \draw (e) -- (f); \draw (e) -- (g); \draw (h) -- (i);
+\end{tikzpicture}
+\caption{Un grafo non orientato con quattro componenti connesse: $\{a,b,c,d\}$, $\{e,f,g\}$, $\{h,i\}$ e $\{j\}$.}
+\label{fig:uf-componenti}
+\end{figure}
+
+La procedura \ConnectedComponents{} (algoritmo~\ref{alg:uf-componenti}) calcola le componenti connesse con le operazioni sugli insiemi disgiunti. All'inizio mette ogni vertice in un insieme a sé. Poi esamina gli archi uno alla volta, e per ogni arco $(u,v)$ unisce gli insiemi di $u$ e di $v$, se sono diversi. Alla fine due vertici stanno nello stesso insieme se e solo se appartengono alla stessa componente connessa, e \SameComponent{} lo verifica con due \FindSet{}.
+
+\begin{algorithm}[htbp]
+\caption{Il calcolo delle componenti connesse di un grafo $G$ con le operazioni sugli insiemi disgiunti, e la verifica che due vertici stiano nella stessa componente.}\label{alg:uf-componenti}
+\begin{algorithmic}[1]
+\Procedure{Connected-Components}{$G$}
+  \ForAll{$v \in V[G]$}
+    \State \Call{Make-Set}{$v$}
+  \EndFor
+  \ForAll{$(u,v) \in E[G]$}
+    \If{\FindSet$(u) \ne$ \FindSet$(v)$}
+      \State \Call{Union}{$u,v$}
+    \EndIf
+  \EndFor
+\EndProcedure
+\Statex
+\Procedure{Same-Component}{$u,v$}
+  \If{\FindSet$(u) =$ \FindSet$(v)$}
+    \State \Return \textsc{true}
+  \Else
+    \State \Return \textsc{false}
+  \EndIf
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+La tabella~\ref{tab:uf-componenti} mostra la collezione di insiemi dopo l'esame di ogni arco del grafo della figura~\ref{fig:uf-componenti}. L'arco $(b,c)$ arriva quando $b$ e $c$ sono già collegati, attraverso $a$: i due \FindSet{} restituiscono lo stesso rappresentante, e \Union{} non viene eseguita.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lcl}
+\toprule
+Arco esaminato & \Union{} & Collezione di insiemi disgiunti \\
+\midrule
+insiemi iniziali & & $\{a\}\ \{b\}\ \{c\}\ \{d\}\ \{e\}\ \{f\}\ \{g\}\ \{h\}\ \{i\}\ \{j\}$ \\
+$(a,b)$ & sì & $\{a,b\}\ \{c\}\ \{d\}\ \{e\}\ \{f\}\ \{g\}\ \{h\}\ \{i\}\ \{j\}$ \\
+$(a,c)$ & sì & $\{a,b,c\}\ \{d\}\ \{e\}\ \{f\}\ \{g\}\ \{h\}\ \{i\}\ \{j\}$ \\
+$(b,c)$ & no & $\{a,b,c\}\ \{d\}\ \{e\}\ \{f\}\ \{g\}\ \{h\}\ \{i\}\ \{j\}$ \\
+$(b,d)$ & sì & $\{a,b,c,d\}\ \{e\}\ \{f\}\ \{g\}\ \{h\}\ \{i\}\ \{j\}$ \\
+$(e,f)$ & sì & $\{a,b,c,d\}\ \{e,f\}\ \{g\}\ \{h\}\ \{i\}\ \{j\}$ \\
+$(e,g)$ & sì & $\{a,b,c,d\}\ \{e,f,g\}\ \{h\}\ \{i\}\ \{j\}$ \\
+$(h,i)$ & sì & $\{a,b,c,d\}\ \{e,f,g\}\ \{h,i\}\ \{j\}$ \\
+\bottomrule
+\end{tabular}
+\caption{La collezione di insiemi disgiunti durante l'esecuzione di \ConnectedComponents{} sul grafo della figura~\ref{fig:uf-componenti}, dopo l'esame di ogni arco. Quando si esamina l'arco $(b,c)$, i due vertici stanno già nello stesso insieme.}
+\label{tab:uf-componenti}
+\end{table}
+
+\begin{osservazione}[Numero di chiamate]
+Sia $G = (V,E)$ un grafo con $k$ componenti connesse. Durante l'esecuzione di \ConnectedComponents$(G)$ ci sono $2|E|$ chiamate a \FindSet{} e $|V| - k$ chiamate a \Union{}. Infatti la riga 6 chiama due volte \FindSet{} per ogni arco. Ogni \Union{}, invece, riduce di uno il numero degli insiemi, che passa da $|V|$, dopo le righe 2--4, a $k$, alla fine.
+\end{osservazione}
+
+\paragraph{Connettività incrementale.}
+Torniamo all'esempio della rete di computer. I computer sono i vertici di un grafo non orientato, e i collegamenti sono gli archi: ad ogni passo viene aggiunto un arco, e vogliamo stabilire se due nodi dati sono connessi. Quando il grafo non cambia, le componenti connesse si calcolano anche con una visita in profondità, in tempo lineare. In questo caso, tuttavia, il grafo cresce, e al posto di una visita dopo ogni nuovo arco basta un \Union{} per ogni arco e due \FindSet{} per ogni domanda.
+
+La figura~\ref{fig:uf-incrementale} mostra un grafo con $7$ vertici, e la tabella~\ref{tab:uf-incrementale} una sequenza di operazioni su di esso. Il vertice $6$ entra nella componente di $1$ soltanto con l'arco $(5,6)$: solo da quel momento la risposta alla domanda \FindSet$(1) =$ \FindSet$(6)$ diventa positiva.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[unionfind]
+  \tikzset{ord/.style={font=\scriptsize, color=FigColor, inner sep=1.5pt}}
+  \node[vn] (1) at (0,0.5) {$1$};
+  \node[vn] (2) at (1.4,1.4) {$2$};
+  \node[vn] (3) at (1.4,-0.4) {$3$};
+  \node[vn] (4) at (3.0,0.5) {$4$};
+  \node[vn] (5) at (4.2,1.5) {$5$};
+  \node[vn] (6) at (4.4,-0.4) {$6$};
+  \node[vn] (7) at (6.0,0.6) {$7$};
+  \draw (1) -- node[ord, above left] {1} (2);
+  \draw (2) to[bend left=6] node[ord, pos=0.2, above] {2} (7);
+  \draw (3) to[bend left=12] node[ord, pos=0.25, above left] {3} (5);
+  \draw (1) -- node[ord, below left] {4} (3);
+  \draw (5) -- node[ord, right] {5} (6);
+  \draw (4) to[bend right=12] node[ord, below left] {6} (6);
+\end{tikzpicture}
+\caption{Un grafo con $7$ vertici, a cui gli archi vengono aggiunti uno alla volta. Il numero accanto a ogni arco indica l'ordine in cui l'arco viene aggiunto.}
+\label{fig:uf-incrementale}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lll}
+\toprule
+Operazione & Insiemi con più di un elemento & Risposta \\
+\midrule
+\Union$(1,2)$ & $\{1,2\}$ & \\
+\Union$(2,7)$ & $\{1,2,7\}$ & \\
+\FindSet$(1) =$ \FindSet$(6)$? & $\{1,2,7\}$ & no \\
+\Union$(3,5)$ & $\{1,2,7\}\ \{3,5\}$ & \\
+\FindSet$(1) =$ \FindSet$(6)$? & $\{1,2,7\}\ \{3,5\}$ & no \\
+\Union$(1,3)$ & $\{1,2,3,5,7\}$ & \\
+\FindSet$(1) =$ \FindSet$(6)$? & $\{1,2,3,5,7\}$ & no \\
+\Union$(5,6)$ & $\{1,2,3,5,6,7\}$ & \\
+\FindSet$(1) =$ \FindSet$(6)$? & $\{1,2,3,5,6,7\}$ & sì \\
+\Union$(4,6)$ & $\{1,2,3,4,5,6,7\}$ & \\
+\FindSet$(7) =$ \FindSet$(4)$? & $\{1,2,3,4,5,6,7\}$ & sì \\
+\bottomrule
+\end{tabular}
+\caption{La connettività incrementale sul grafo della figura~\ref{fig:uf-incrementale}: ogni \Union{} aggiunge un arco, e ogni domanda confronta due rappresentanti. Gli insiemi con un solo elemento non sono riportati.}
+\label{tab:uf-incrementale}
+\end{table}
+
+\subsection{Generazione di labirinti}\label{sec:uf-labirinti}
+Un'altra applicazione è la \textbf{generazione di labirinti senza cicli}. Consideriamo una griglia di $4 \times 4$ celle, numerate da $1$ a $16$, con l'entrata a sinistra della cella $1$ e l'uscita a destra della cella $16$. All'inizio ogni cella è chiusa da quattro muri, ed è un insieme a sé: \MakeSet$(1), \ldots,$ \MakeSet$(16)$.
+
+Si sceglie a caso un muro interno, che separa due celle adiacenti $c_1$ e $c_2$. Ci sono due casi:
+\begin{itemize}
+    \item \FindSet$(c_1) \ne$ \FindSet$(c_2)$: le due celle non sono ancora collegate. Il muro si abbatte, e si esegue \Union$(c_1, c_2)$.
+    \item \FindSet$(c_1) =$ \FindSet$(c_2)$: le due celle sono già collegate da un cammino, e abbattere il muro creerebbe un ciclo. Il muro resta.
+\end{itemize}
+
+Si ripete finché tutte le celle non stanno nello stesso insieme. La figura~\ref{fig:uf-labirinto} mostra un esempio, in cui i muri vengono considerati nell'ordine $(6,7)$, $(14,15)$, $(4,8)$ e così via. I muri $(10,14)$ e $(7,11)$ restano: quando vengono considerati, le loro celle sono già collegate.
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{maze}[size=4, walls={6-7, 14-15, 4-8, 9-13, 11-15, 2-3, 10-11, 10-14, 9-10, 6-10, 1-5, 2-6, 5-6, 7-11, 11-12, 7-8, 15-16}]
+%% GEN:labirinto
+\begin{tikzpicture}[unionfind]
+  \draw[FigColor!22, line width=7pt, line cap=round, line join=round] (0.000,-0.475) -- (0.475,-0.475) -- (0.475,-1.425) -- (1.425,-1.425) -- (1.425,-2.375) -- (2.375,-2.375) -- (2.375,-3.325) -- (3.325,-3.325) -- (3.800,-3.325);
+  \node[font=\small, color=TextGray] at (0.475,-0.475) {1};
+  \node[font=\small, color=TextGray] at (1.425,-0.475) {2};
+  \node[font=\small, color=TextGray] at (2.375,-0.475) {3};
+  \node[font=\small, color=TextGray] at (3.325,-0.475) {4};
+  \node[font=\small, color=TextGray] at (0.475,-1.425) {5};
+  \node[font=\small, color=TextGray] at (1.425,-1.425) {6};
+  \node[font=\small, color=TextGray] at (2.375,-1.425) {7};
+  \node[font=\small, color=TextGray] at (3.325,-1.425) {8};
+  \node[font=\small, color=TextGray] at (0.475,-2.375) {9};
+  \node[font=\small, color=TextGray] at (1.425,-2.375) {10};
+  \node[font=\small, color=TextGray] at (2.375,-2.375) {11};
+  \node[font=\small, color=TextGray] at (3.325,-2.375) {12};
+  \node[font=\small, color=TextGray] at (0.475,-3.325) {13};
+  \node[font=\small, color=TextGray] at (1.425,-3.325) {14};
+  \node[font=\small, color=TextGray] at (2.375,-3.325) {15};
+  \node[font=\small, color=TextGray] at (3.325,-3.325) {16};
+  \draw[wall] (0.950,0.000) -- ++(0,-0.950);
+  \draw[wall] (2.850,0.000) -- ++(0,-0.950);
+  \draw[wall] (1.900,-0.950) -- ++(0.950,0);
+  \draw[wall] (0.000,-1.900) -- ++(0.950,0);
+  \draw[wall, ObsColor] (1.900,-1.900) -- ++(0.950,0);
+  \draw[wall] (2.850,-1.900) -- ++(0.950,0);
+  \draw[wall, ObsColor] (0.950,-2.850) -- ++(0.950,0);
+  \draw[wall] (2.850,-2.850) -- ++(0.950,0);
+  \draw[wall] (0.950,-2.850) -- ++(0,-0.950);
+  \draw[wall] (0,-0.950) -- (0,-3.800) -- (3.800,-3.800);
+  \draw[wall] (3.800,-2.850) -- (3.800,0) -- (0,0);
+  \node[font=\scriptsize\sffamily, color=FigColor, anchor=east] at (-0.15,-0.475) {ENTRATA};
+  \node[font=\scriptsize\sffamily, color=FigColor, anchor=west] at (3.950,-3.325) {USCITA};
+  \node[font=\small, inner sep=2pt] (w0) at (5.900,-0.550) {$(6,7)$,};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w0.south west) -- ([xshift=-5pt, yshift=1.2pt]w0.south east);
+  \node[font=\small, inner sep=2pt] (w1) at (7.320,-0.550) {$(14,15)$,};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w1.south west) -- ([xshift=-5pt, yshift=1.2pt]w1.south east);
+  \node[font=\small, inner sep=2pt] (w2) at (8.740,-0.550) {$(4,8)$,};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w2.south west) -- ([xshift=-5pt, yshift=1.2pt]w2.south east);
+  \node[font=\small, inner sep=2pt] (w3) at (10.160,-0.550) {$(9,13)$,};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w3.south west) -- ([xshift=-5pt, yshift=1.2pt]w3.south east);
+  \node[font=\small, inner sep=2pt] (w4) at (11.580,-0.550) {$(11,15)$,};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w4.south west) -- ([xshift=-5pt, yshift=1.2pt]w4.south east);
+  \node[font=\small, inner sep=2pt] (w5) at (13.000,-0.550) {$(2,3)$,};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w5.south west) -- ([xshift=-5pt, yshift=1.2pt]w5.south east);
+  \node[font=\small, inner sep=2pt] (w6) at (5.900,-1.350) {$(10,11)$,};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w6.south west) -- ([xshift=-5pt, yshift=1.2pt]w6.south east);
+  \node[draw=ObsColor, thick, inner sep=2pt, font=\small] at (7.320,-1.350) {$(10,14)$,};
+  \node[font=\small, inner sep=2pt] (w8) at (8.740,-1.350) {$(9,10)$,};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w8.south west) -- ([xshift=-5pt, yshift=1.2pt]w8.south east);
+  \node[font=\small, inner sep=2pt] (w9) at (10.160,-1.350) {$(6,10)$,};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w9.south west) -- ([xshift=-5pt, yshift=1.2pt]w9.south east);
+  \node[font=\small, inner sep=2pt] (w10) at (11.580,-1.350) {$(1,5)$,};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w10.south west) -- ([xshift=-5pt, yshift=1.2pt]w10.south east);
+  \node[font=\small, inner sep=2pt] (w11) at (13.000,-1.350) {$(2,6)$,};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w11.south west) -- ([xshift=-5pt, yshift=1.2pt]w11.south east);
+  \node[font=\small, inner sep=2pt] (w12) at (5.900,-2.150) {$(5,6)$,};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w12.south west) -- ([xshift=-5pt, yshift=1.2pt]w12.south east);
+  \node[draw=ObsColor, thick, inner sep=2pt, font=\small] at (7.320,-2.150) {$(7,11)$,};
+  \node[font=\small, inner sep=2pt] (w14) at (8.740,-2.150) {$(11,12)$,};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w14.south west) -- ([xshift=-5pt, yshift=1.2pt]w14.south east);
+  \node[font=\small, inner sep=2pt] (w15) at (10.160,-2.150) {$(7,8)$,};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w15.south west) -- ([xshift=-5pt, yshift=1.2pt]w15.south east);
+  \node[font=\small, inner sep=2pt] (w16) at (11.580,-2.150) {$(15,16)$};
+  \draw[ObsColor, thick] ([xshift=2pt, yshift=1.2pt]w16.south west) -- ([xshift=-5pt, yshift=1.2pt]w16.south east);
+\end{tikzpicture}
+%% END:labirinto
+\end{widget}
+\caption{La generazione di un labirinto $4 \times 4$. I muri vengono considerati nell'ordine dell'elenco: quelli sottolineati separano celle di insiemi diversi, e si abbattono, mentre quelli nel riquadro separano celle già collegate, e restano. Dopo l'ultimo muro tutte le celle stanno nello stesso insieme, e tra l'entrata e l'uscita c'è un solo cammino.}
+\label{fig:uf-labirinto}
+\end{figure}
+
+Il labirinto che si ottiene non ha cicli. Ogni muro abbattuto unisce due insiemi diversi, quindi i muri abbattuti sono esattamente $15 = 16 - 1$, e collegano tutte le celle. In termini di grafi, le celle e i passaggi tra celle formano un albero (un albero di copertura della griglia). Tra due celle qualsiasi, e in particolare tra l'entrata e l'uscita, c'è quindi uno e un solo cammino.
+
+Lo stesso procedimento genera labirinti grandi a piacere. Con $n \times n$ celle servono $n^2$ operazioni \MakeSet{}, $n^2 - 1$ operazioni \Union{} e due \FindSet{} per ogni muro considerato (figura~\ref{fig:uf-labirinto-grande}).
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{maze}[size=12, seed=5, labels=false, interval=70]
+%% GEN:labirinto-grande
+\begin{tikzpicture}[unionfind]
+  \draw[FigColor!70, line width=1.4pt, line cap=round, line join=round] (0.000,-0.225) -- (0.225,-0.225) -- (0.675,-0.225) -- (1.125,-0.225) -- (1.125,-0.675) -- (0.675,-0.675) -- (0.675,-1.125) -- (0.225,-1.125) -- (0.225,-1.575) -- (0.225,-2.025) -- (0.225,-2.475) -- (0.675,-2.475) -- (0.675,-2.925) -- (1.125,-2.925) -- (1.575,-2.925) -- (1.575,-2.475) -- (1.125,-2.475) -- (1.125,-2.025) -- (1.575,-2.025) -- (1.575,-1.575) -- (2.025,-1.575) -- (2.475,-1.575) -- (2.475,-2.025) -- (2.925,-2.025) -- (3.375,-2.025) -- (3.375,-2.475) -- (3.375,-2.925) -- (3.825,-2.925) -- (3.825,-3.375) -- (3.825,-3.825) -- (3.825,-4.275) -- (4.275,-4.275) -- (4.725,-4.275) -- (4.725,-4.725) -- (5.175,-4.725) -- (5.175,-5.175) -- (5.400,-5.175);
+  \draw[wall, line width=1.1pt] (0.000,-0.450) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.450,-0.450) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (1.350,0.000) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (1.800,-0.450) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (3.600,0.000) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (3.150,-0.450) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.050,0.000) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (4.050,-0.450) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.950,-0.450) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.000,-0.900) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (1.350,-0.450) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (1.800,-0.450) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (1.350,-0.900) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (2.250,-0.450) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (2.700,-0.450) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (3.150,-0.450) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (2.700,-0.900) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (3.150,-0.900) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.950,-0.900) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.900,-0.900) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (0.450,-1.350) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (1.350,-0.900) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (1.800,-0.900) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (2.250,-0.900) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (2.250,-1.350) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (3.150,-0.900) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (3.150,-1.350) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.050,-0.900) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (3.600,-1.350) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.500,-0.900) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (4.050,-1.350) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.950,-1.350) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.900,-1.350) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (0.450,-1.800) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (1.350,-1.350) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (0.900,-1.800) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (2.700,-1.350) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (2.700,-1.800) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.500,-1.350) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (4.050,-1.800) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.950,-1.350) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (0.900,-1.800) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (0.450,-2.250) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (1.800,-1.800) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (1.350,-2.250) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (2.250,-1.800) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (1.800,-2.250) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (2.250,-2.250) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (2.700,-2.250) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (3.600,-1.800) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (4.050,-1.800) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (4.050,-2.250) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.950,-2.250) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.000,-2.700) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.900,-2.250) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (0.900,-2.700) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (2.250,-2.250) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (1.800,-2.700) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (2.250,-2.700) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (2.700,-2.700) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (3.600,-2.250) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (4.050,-2.250) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (3.600,-2.700) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.500,-2.250) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (4.500,-2.700) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.000,-3.150) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.450,-3.150) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.900,-3.150) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (1.800,-2.700) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (1.350,-3.150) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (2.700,-3.150) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (3.150,-3.150) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.000,-3.600) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.900,-3.150) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (0.900,-3.600) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (2.250,-3.150) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (1.800,-3.600) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (3.150,-3.150) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (2.700,-3.600) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (3.600,-3.150) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (4.050,-3.150) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (4.500,-3.150) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (4.050,-3.600) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.950,-3.150) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (4.500,-3.600) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.950,-3.600) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.000,-4.050) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.450,-4.050) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (1.350,-3.600) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (1.800,-3.600) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (2.250,-3.600) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (2.250,-4.050) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (2.700,-4.050) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (3.600,-3.600) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (3.150,-4.050) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.050,-4.050) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.500,-4.050) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.950,-4.050) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.900,-4.050) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (1.350,-4.050) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (1.800,-4.050) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (2.700,-4.500) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (3.150,-4.500) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.050,-4.500) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.950,-4.050) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (0.450,-4.500) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (0.000,-4.950) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (0.900,-4.950) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (1.800,-4.500) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (1.350,-4.950) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (2.250,-4.500) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (3.600,-4.500) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (3.150,-4.950) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.050,-4.500) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (3.600,-4.950) -- ++(0.450,0);
+  \draw[wall, line width=1.1pt] (4.500,-4.500) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (1.800,-4.950) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (2.250,-4.950) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (2.700,-4.950) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (4.050,-4.950) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (4.950,-4.950) -- ++(0,-0.450);
+  \draw[wall, line width=1.1pt] (0,-0.450) -- (0,-5.400) -- (5.400,-5.400);
+  \draw[wall, line width=1.1pt] (5.400,-4.950) -- (5.400,0) -- (0,0);
+  \node[font=\scriptsize\sffamily, color=FigColor, anchor=east] at (-0.15,-0.225) {ENTRATA};
+  \node[font=\scriptsize\sffamily, color=FigColor, anchor=west] at (5.550,-5.175) {USCITA};
+\end{tikzpicture}
+%% END:labirinto-grande
+\end{widget}
+\caption{Un labirinto con $12 \times 12$ celle, generato considerando i muri interni in ordine casuale. In evidenza l'unico cammino dall'entrata, in alto a sinistra, all'uscita, in basso a destra.}
+\label{fig:uf-labirinto-grande}
+\end{figure}
+
+\subsection{Percolazione}\label{sec:uf-percolazione}
+La \textbf{percolazione} è il passaggio lento di un liquido attraverso un solido filtrante. Il modello che la descrive si usa per molti sistemi fisici:
+\begin{itemize}
+    \item Una griglia di $N \times N$ \textbf{siti}.
+    \item Ogni sito è aperto con probabilità $p$, oppure bloccato con probabilità $1 - p$.
+    \item Il sistema \textbf{percola} se la prima e l'ultima riga sono collegate da siti aperti.
+\end{itemize}
+
+Due siti aperti sono collegati se sono adiacenti, ovvero se stanno uno accanto all'altro sulla stessa riga o sulla stessa colonna. Un sito aperto collegato alla prima riga da un cammino di siti aperti si dice \textbf{pieno}: pensando al liquido, è un sito che il liquido riesce a raggiungere. La tabella~\ref{tab:uf-modelli} riporta alcuni sistemi descritti da questo modello.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lllll}
+\toprule
+Modello & Sistema & Sito aperto & Sito bloccato & Percola \\
+\midrule
+elettricità & materiale & conduttore & isolante & conduce \\
+flusso di un fluido & materiale & vuoto & bloccato & il fluido scorre \\
+interazione sociale & popolazione & persona & vuoto & l'informazione si diffonde \\
+\bottomrule
+\end{tabular}
+\caption{Alcuni sistemi descritti dal modello della percolazione.}
+\label{tab:uf-modelli}
+\end{table}
+
+\paragraph{Transizione di fase.}
+La probabilità che il sistema percoli dipende da $p$: con $p$ basso il sistema quasi certamente non percola, con $p$ alto quasi certamente percola. La teoria garantisce che, per $N$ grande, esiste una soglia netta $p^*$:
+\begin{itemize}
+    \item Se $p > p^*$, il sistema quasi certamente percola.
+    \item Se $p < p^*$, il sistema quasi certamente non percola.
+\end{itemize}
+
+Qual è il valore di $p^*$? Non se ne conosce una formula, e si stima soltanto con la simulazione: per griglie quadrate grandi vale circa $0{,}592746$ (figura~\ref{fig:uf-transizione}).
+
+\begin{figure}[htbp]
+\centering
+%% GEN:transizione
+\begin{tikzpicture}[unionfind]
+  \draw[TextGray] (0,0) -- (7,0); \draw[TextGray] (0,0) -- (0,3.6);
+  \draw[TextGray] (0.000,0) -- ++(0,-0.08) node[below, font=\scriptsize] {$0$};
+  \draw[TextGray] (1.750,0) -- ++(0,-0.08) node[below, font=\scriptsize] {$0{,}25$};
+  \draw[TextGray] (3.500,0) -- ++(0,-0.08) node[below, font=\scriptsize] {$0{,}5$};
+  \draw[TextGray] (5.250,0) -- ++(0,-0.08) node[below, font=\scriptsize] {$0{,}75$};
+  \draw[TextGray] (7.000,0) -- ++(0,-0.08) node[below, font=\scriptsize] {$1$};
+  \draw[TextGray] (0,0.000) -- ++(-0.08,0) node[left, font=\scriptsize] {$0$};
+  \draw[TextGray] (0,1.800) -- ++(-0.08,0) node[left, font=\scriptsize] {$0{,}5$};
+  \draw[TextGray] (0,3.600) -- ++(-0.08,0) node[left, font=\scriptsize] {$1$};
+  \draw[FigColor, densely dashed] (4.149,0) -- (4.149,3.750) node[above, font=\scriptsize] {$p^* \approx 0{,}593$};
+  \draw[Accent!45, thick] (0.000,0.000) -- (0.140,0.000) -- (0.280,0.000) -- (0.420,0.000) -- (0.560,0.000) -- (0.700,0.000) -- (0.840,0.000) -- (0.980,0.000) -- (1.120,0.000) -- (1.260,0.000) -- (1.400,0.000) -- (1.540,0.000) -- (1.680,0.000) -- (1.820,0.000) -- (1.960,0.009) -- (2.100,0.000) -- (2.240,0.000) -- (2.380,0.000) -- (2.520,0.018) -- (2.660,0.054) -- (2.800,0.108) -- (2.940,0.126) -- (3.080,0.216) -- (3.220,0.378) -- (3.360,0.378) -- (3.500,0.558) -- (3.640,0.828) -- (3.780,0.972) -- (3.920,1.413) -- (4.060,1.737) -- (4.200,1.881) -- (4.340,2.250) -- (4.480,2.601) -- (4.620,2.871) -- (4.760,3.168) -- (4.900,3.339) -- (5.040,3.420) -- (5.180,3.465) -- (5.320,3.546) -- (5.460,3.573) -- (5.600,3.591) -- (5.740,3.600) -- (5.880,3.600) -- (6.020,3.600) -- (6.160,3.600) -- (6.300,3.600) -- (6.440,3.600) -- (6.580,3.600) -- (6.720,3.600) -- (6.860,3.600) -- (7.000,3.600);
+  \draw[Accent, thick] (0.000,0.000) -- (0.700,0.000) -- (1.400,0.000) -- (2.100,0.000) -- (2.800,0.000) -- (3.150,0.000) -- (3.500,0.000) -- (3.640,0.000) -- (3.710,0.000) -- (3.780,0.000) -- (3.850,0.045) -- (3.920,0.081) -- (3.990,0.315) -- (4.060,0.702) -- (4.130,1.620) -- (4.200,2.439) -- (4.270,3.168) -- (4.340,3.483) -- (4.410,3.573) -- (4.480,3.591) -- (4.550,3.600) -- (4.620,3.600) -- (4.690,3.600) -- (4.760,3.600) -- (4.900,3.600) -- (5.250,3.600) -- (5.600,3.600) -- (6.300,3.600) -- (7.000,3.600);
+  \node[font=\small, anchor=north] at (3.500,-0.5) {probabilità $p$ che un sito sia aperto};
+  \node[font=\small, rotate=90, anchor=south] at (-0.55,1.800) {probabilità di percolazione};
+  \node[font=\scriptsize, color=Accent!60, anchor=east] at (3.220,1.512) {$N = 10$};
+  \node[font=\scriptsize, color=Accent, anchor=west] at (4.340,1.512) {$N = 100$};
+\end{tikzpicture}
+%% END:transizione
+\caption{La probabilità che il sistema percoli in funzione della probabilità $p$ che un sito sia aperto, stimata con $400$ griglie casuali per ogni valore di $p$. Con $N = 100$ la curva è molto più ripida che con $N = 10$, e passa da $0$ a $1$ intorno a $p^* \approx 0{,}593$.}
+\label{fig:uf-transizione}
+\end{figure}
+
+\paragraph{Simulazione Monte Carlo.}
+Per stimare $p^*$ si usa una \textbf{simulazione Monte Carlo}:
+\begin{enumerate}
+    \item Si inizializza la griglia con tutti i siti bloccati.
+    \item Si aprono siti scelti a caso, uno alla volta, finché la prima riga non è collegata all'ultima.
+    \item La percentuale dei siti aperti è una stima di $p^*$.
+\end{enumerate}
+
+Ripetendo la simulazione molte volte e facendo la media delle stime, si ottiene una stima sempre più precisa.
+
+\paragraph{Soluzione con union-find.}
+Come facciamo a stabilire se il sistema percola? Si crea un elemento per ogni sito, e due siti stanno nello stesso insieme se sono collegati da siti aperti. Il sistema percola se un sito della prima riga sta nello stesso insieme di un sito dell'ultima riga.
+
+Per dichiarare aperto un nuovo sito, basta unirlo a tutti i siti aperti adiacenti, che sono al più quattro. Resta però un problema: per verificare se il sistema percola, un algoritmo a forza bruta dovrebbe controllare tutte le $N^2$ coppie formate da un sito della prima riga e da un sito dell'ultima riga.
+
+Possiamo risolvere il problema con un'ottimizzazione: si creano due siti virtuali, $\mathit{top}$ e $\mathit{bottom}$. Ogni sito aperto della prima riga viene unito a $\mathit{top}$, e ogni sito aperto dell'ultima riga a $\mathit{bottom}$. Il sistema percola quando $\mathit{top}$ e $\mathit{bottom}$ stanno nello stesso insieme, e per saperlo basta un solo confronto, \FindSet$(\mathit{top}) =$ \FindSet$(\mathit{bottom})$.\footnote{Con i siti virtuali, \FindSet{} non basta per stabilire se un sito è pieno. Dopo la percolazione, infatti, anche i siti collegati soltanto all'ultima riga stanno nell'insieme di $\mathit{top}$. Per questo, nella figura~\ref{fig:uf-percolazione}, i siti pieni si trovano con una visita della griglia.}
+
+La figura~\ref{fig:uf-percolazione} mostra una simulazione su una griglia $8 \times 8$, con i siti numerati da $0$ a $63$ per righe, e i siti virtuali $\mathit{top} = 64$ e $\mathit{bottom} = 65$. In ogni sito è scritto il suo rappresentante. Il sistema percola dopo l'apertura di $38$ siti, quindi la simulazione stima $p^* \approx 38/64 \approx 0{,}594$.
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{percolation}[n=8, seed=7]
+%% GEN:percolazione
+\begin{tikzpicture}[unionfind]
+  \definecolor{pieno}{HTML}{9CC6EC}
+  \draw[TextGray, fill=pieno] (0,0.000) rectangle (4.960,-0.380);
+  \node[font=\scriptsize] at (2.480,-0.190) {65};
+  \node[lab, font=\footnotesize, anchor=east] at (-0.12,-0.190) {$\mathit{top}$ (64)};
+  \draw[black!35, fill=black!80] (0.000,-0.500) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (0.310,-0.810) {0};
+  \draw[black!35, fill=pieno] (0.620,-0.500) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (0.930,-0.810) {65};
+  \draw[black!35, fill=pieno] (1.240,-0.500) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (1.550,-0.810) {65};
+  \draw[black!35, fill=black!80] (1.860,-0.500) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (2.170,-0.810) {3};
+  \draw[black!35, fill=pieno] (2.480,-0.500) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (2.790,-0.810) {65};
+  \draw[black!35, fill=black!80] (3.100,-0.500) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (3.410,-0.810) {5};
+  \draw[black!35, fill=black!80] (3.720,-0.500) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (4.030,-0.810) {6};
+  \draw[black!35, fill=pieno] (4.340,-0.500) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (4.650,-0.810) {65};
+  \draw[black!35, fill=black!80] (0.000,-1.120) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (0.310,-1.430) {8};
+  \draw[black!35, fill=black!80] (0.620,-1.120) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (0.930,-1.430) {9};
+  \draw[black!35, fill=black!80] (1.240,-1.120) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (1.550,-1.430) {10};
+  \draw[black!35, fill=black!80] (1.860,-1.120) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (2.170,-1.430) {11};
+  \draw[black!35, fill=pieno] (2.480,-1.120) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (2.790,-1.430) {65};
+  \draw[black!35, fill=black!80] (3.100,-1.120) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (3.410,-1.430) {13};
+  \draw[black!35, fill=black!80] (3.720,-1.120) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (4.030,-1.430) {14};
+  \draw[black!35, fill=pieno] (4.340,-1.120) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (4.650,-1.430) {65};
+  \draw[black!35, fill=pieno] (0.000,-1.740) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (0.310,-2.050) {65};
+  \draw[black!35, fill=pieno] (0.620,-1.740) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (0.930,-2.050) {65};
+  \draw[black!35, fill=black!80] (1.240,-1.740) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (1.550,-2.050) {18};
+  \draw[black!35, fill=pieno] (1.860,-1.740) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (2.170,-2.050) {65};
+  \draw[black!35, fill=pieno] (2.480,-1.740) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (2.790,-2.050) {65};
+  \draw[black!35, fill=pieno] (3.100,-1.740) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (3.410,-2.050) {65};
+  \draw[black!35, fill=pieno] (3.720,-1.740) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (4.030,-2.050) {65};
+  \draw[black!35, fill=black!80] (4.340,-1.740) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (4.650,-2.050) {23};
+  \draw[black!35, fill=pieno] (0.000,-2.360) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (0.310,-2.670) {65};
+  \draw[black!35, fill=black!80] (0.620,-2.360) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (0.930,-2.670) {25};
+  \draw[black!35, fill=black!80] (1.240,-2.360) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (1.550,-2.670) {26};
+  \draw[black!35, fill=black!80] (1.860,-2.360) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (2.170,-2.670) {27};
+  \draw[black!35, fill=pieno] (2.480,-2.360) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (2.790,-2.670) {65};
+  \draw[black!35, fill=pieno] (3.100,-2.360) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (3.410,-2.670) {65};
+  \draw[black!35, fill=black!80] (3.720,-2.360) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (4.030,-2.670) {30};
+  \draw[black!35, fill=black!80] (4.340,-2.360) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (4.650,-2.670) {31};
+  \draw[black!35, fill=pieno] (0.000,-2.980) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (0.310,-3.290) {65};
+  \draw[black!35, fill=pieno] (0.620,-2.980) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (0.930,-3.290) {65};
+  \draw[black!35, fill=pieno] (1.240,-2.980) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (1.550,-3.290) {65};
+  \draw[black!35, fill=pieno] (1.860,-2.980) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (2.170,-3.290) {65};
+  \draw[black!35, fill=pieno] (2.480,-2.980) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (2.790,-3.290) {65};
+  \draw[black!35, fill=black!80] (3.100,-2.980) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (3.410,-3.290) {37};
+  \draw[black!35, fill=white] (3.720,-2.980) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (4.030,-3.290) {65};
+  \draw[black!35, fill=black!80] (4.340,-2.980) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (4.650,-3.290) {39};
+  \draw[black!35, fill=black!80] (0.000,-3.600) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (0.310,-3.910) {40};
+  \draw[black!35, fill=pieno] (0.620,-3.600) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (0.930,-3.910) {65};
+  \draw[black!35, fill=black!80] (1.240,-3.600) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (1.550,-3.910) {42};
+  \draw[black!35, fill=pieno] (1.860,-3.600) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (2.170,-3.910) {65};
+  \draw[black!35, fill=black!80] (2.480,-3.600) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (2.790,-3.910) {44};
+  \draw[black!35, fill=white] (3.100,-3.600) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (3.410,-3.910) {65};
+  \draw[black!35, fill=white] (3.720,-3.600) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (4.030,-3.910) {65};
+  \draw[black!35, fill=white] (4.340,-3.600) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (4.650,-3.910) {65};
+  \draw[black!35, fill=pieno] (0.000,-4.220) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (0.310,-4.530) {65};
+  \draw[black!35, fill=pieno] (0.620,-4.220) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (0.930,-4.530) {65};
+  \draw[black!35, fill=pieno] (1.240,-4.220) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (1.550,-4.530) {65};
+  \draw[black!35, fill=pieno] (1.860,-4.220) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (2.170,-4.530) {65};
+  \draw[black!35, fill=black!80] (2.480,-4.220) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (2.790,-4.530) {52};
+  \draw[black!35, fill=black!80] (3.100,-4.220) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (3.410,-4.530) {53};
+  \draw[black!35, fill=white] (3.720,-4.220) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (4.030,-4.530) {65};
+  \draw[black!35, fill=white] (4.340,-4.220) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (4.650,-4.530) {65};
+  \draw[black!35, fill=black!80] (0.000,-4.840) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (0.310,-5.150) {56};
+  \draw[black!35, fill=pieno] (0.620,-4.840) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (0.930,-5.150) {65};
+  \draw[black!35, fill=pieno] (1.240,-4.840) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (1.550,-5.150) {65};
+  \draw[black!35, fill=pieno] (1.860,-4.840) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (2.170,-5.150) {65};
+  \draw[black!35, fill=black!80] (2.480,-4.840) rectangle ++(0.620,-0.620);
+  \node[font=\tiny, color=white] at (2.790,-5.150) {60};
+  \draw[black!35, fill=white] (3.100,-4.840) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (3.410,-5.150) {65};
+  \draw[black!35, fill=white] (3.720,-4.840) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (4.030,-5.150) {65};
+  \draw[black!35, fill=white] (4.340,-4.840) rectangle ++(0.620,-0.620);
+  \node[font=\tiny] at (4.650,-5.150) {65};
+  \draw[TextGray, fill=pieno] (0,-5.580) rectangle (4.960,-5.960);
+  \node[font=\scriptsize] at (2.480,-5.770) {65};
+  \node[lab, font=\footnotesize, anchor=east] at (-0.12,-5.770) {$\mathit{bottom}$ (65)};
+\end{tikzpicture}
+%% END:percolazione
+\end{widget}
+\caption{Una simulazione Monte Carlo su una griglia $8 \times 8$, nel momento in cui il sistema percola. I siti bloccati sono scuri, i siti aperti bianchi e i siti pieni in blu. In ogni sito è scritto il suo rappresentante, e le barre sopra e sotto la griglia sono i siti virtuali $\mathit{top}$ e $\mathit{bottom}$, ora nello stesso insieme. I siti aperti in basso a destra stanno nell'insieme di $\mathit{bottom}$, ma non sono pieni.}
+\label{fig:uf-percolazione}
+\end{figure}
+
+\section{Implementazione con liste concatenate}\label{sec:uf-liste}
+La rappresentazione più semplice di un insieme è una lista concatenata dei suoi elementi. Procediamo per tentativi, partendo dall'idea più ingenua e correggendone di volta in volta i limiti. Come esempio useremo gli insiemi $\{a,b,c\}$, $\{d,e\}$ e $\{f,g,h\}$.
+
+\paragraph{Primo tentativo.}
+Ogni insieme è una lista concatenata semplice, in cui ogni elemento punta al successivo (figura~\ref{fig:uf-liste}a). Il rappresentante è l'ultimo elemento, la \textbf{coda} (tail) della lista. Le operazioni si implementano così:
+\begin{itemize}
+    \item \MakeSet$(x)$: ovvia, crea una lista con il solo elemento $x$.
+    \item \FindSet$(x)$: segue i puntatori a partire da $x$, fino alla coda.
+    \item \Union$(x,y)$: non è chiaro come farla.
+\end{itemize}
+
+Per concatenare le due liste dovremmo far puntare la coda della lista di $x$ alla testa della lista di $y$. La coda si trova, ma la testa no: a partire da $y$ si può soltanto andare avanti, e gli elementi che precedono $y$ resterebbero fuori. Inoltre \FindSet{} costa quanto la distanza di $x$ dalla coda, ovvero $\Theta(n)$ nel caso peggiore.
+
+\paragraph{Secondo tentativo.}
+Serve quindi un puntatore da ciascun elemento al primo elemento della lista, che diventa il rappresentante. Ogni nodo ha tre campi (figura~\ref{fig:uf-liste}b):
+\begin{itemize}
+    \item $\mathit{repr}[x]$: il puntatore al primo elemento della lista.
+    \item $\mathit{info}[x]$: l'elemento.
+    \item $\mathit{next}[x]$: il puntatore all'elemento successivo, che vale \Nil{} nell'ultimo nodo.
+\end{itemize}
+
+Le operazioni diventano:
+\begin{itemize}
+    \item \MakeSet$(x)$: ovvia, con $\mathit{repr}[x] = x$.
+    \item \FindSet$(x)$: restituisce $\mathit{repr}[x]$, in tempo $O(1)$.
+    \item \Union$(x,y)$: concatena la lista di $y$ alla lista di $x$, e aggiorna i campi $\mathit{repr}$ degli elementi della lista di $y$, che ora devono puntare alla testa della lista di $x$.
+\end{itemize}
+
+La concatenazione, però, richiede la coda della lista di $x$, che si trova soltanto scorrendo tutta la lista. Come semplificare l'operazione di concatenazione?
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[unionfind]
+  % \dueC{nome}{x}{y}{elemento}: un nodo con l'elemento e il puntatore next
+  \newcommand{\dueC}[4]{%
+    \draw[Accent, fill=Accent!6] (#2,#3) rectangle ({#2+0.95},{#3+0.48});
+    \draw[Accent] ({#2+0.5},#3) -- ({#2+0.5},{#3+0.48});
+    \node[font=\small] at ({#2+0.25},{#3+0.24}) {$#4$};
+    \coordinate (#1n) at ({#2+0.725},{#3+0.24});
+    \coordinate (#1w) at (#2,{#3+0.24});}
+  % \treC{nome}{x}{y}{elemento}: un nodo con i campi repr, info e next
+  \newcommand{\treC}[4]{%
+    \draw[Accent, fill=Accent!6] (#2,#3) rectangle ({#2+1.2},{#3+0.48});
+    \draw[Accent] ({#2+0.35},#3) -- ({#2+0.35},{#3+0.48});
+    \draw[Accent] ({#2+0.85},#3) -- ({#2+0.85},{#3+0.48});
+    \node[font=\small] at ({#2+0.6},{#3+0.24}) {$#4$};
+    \coordinate (#1r) at ({#2+0.175},{#3+0.24});
+    \coordinate (#1u) at ({#2+0.175},{#3+0.8});
+    \coordinate (#1n) at ({#2+1.025},{#3+0.24});
+    \coordinate (#1w) at (#2,{#3+0.24});
+    \coordinate (#1t) at ({#2+0.6},{#3+0.48});
+    \coordinate (#1v) at ({#2+0.6},{#3+0.8});
+    \fill[Accent] (#1r) circle (1.1pt);}
+  % il puntatore next da un nodo al successivo
+  \newcommand{\nx}[2]{\fill[Accent] (#1n) circle (1.1pt); \draw[ptr] (#1n) -- (#2w);}
+  % NIL nel campo next di un nodo con due campi (\nilD) o con tre campi (\nilT) che inizia in (x, y)
+  \newcommand{\nilD}[2]{\draw[Accent] ({#1+0.5},#2) -- ({#1+0.95},{#2+0.48});}
+  \newcommand{\nilT}[2]{\draw[Accent] ({#1+0.85},#2) -- ({#1+1.2},{#2+0.48});}
+  % (a) primo tentativo
+  \node[lab, anchor=east] at (-0.25,0.24) {(a)};
+  \dueC{a}{0}{0}{a} \dueC{b}{1.4}{0}{b} \dueC{c}{2.8}{0}{c}
+  \nx{a}{b} \nx{b}{c} \nilD{2.8}{0}
+  \dueC{d}{0}{-1.25}{d} \dueC{e}{1.4}{-1.25}{e}
+  \nx{d}{e} \nilD{1.4}{-1.25}
+  \dueC{f}{0}{-2.5}{f} \dueC{g}{1.4}{-2.5}{g} \dueC{h}{2.8}{-2.5}{h}
+  \nx{f}{g} \nx{g}{h} \nilD{2.8}{-2.5}
+  % (b) secondo tentativo: tutti i campi repr di una lista puntano al suo primo nodo
+  \begin{scope}[xshift=5.4cm]
+    \node[lab, anchor=east] at (-0.25,0.24) {(b)};
+    \treC{A}{0}{0}{a} \treC{B}{1.65}{0}{b} \treC{C}{3.3}{0}{c}
+    \nx{A}{B} \nx{B}{C} \nilT{3.3}{0}
+    \treC{D}{0}{-1.25}{d} \treC{E}{1.65}{-1.25}{e}
+    \nx{D}{E} \nilT{1.65}{-1.25}
+    \treC{F}{0}{-2.5}{f} \treC{G}{1.65}{-2.5}{g} \treC{H}{3.3}{-2.5}{h}
+    \nx{F}{G} \nx{G}{H} \nilT{3.3}{-2.5}
+    \foreach \v in {A,B,C,D,E,F,G,H} \draw[Accent] (\v r) -- (\v u);
+    \draw[Accent] (Au) -- (Cu); \draw[ptr] (Av) -- (At);
+    \draw[Accent] (Du) -- (Eu); \draw[ptr] (Dv) -- (Dt);
+    \draw[Accent] (Fu) -- (Hu); \draw[ptr] (Fv) -- (Ft);
+  \end{scope}
+\end{tikzpicture}
+\caption{Gli insiemi $\{a,b,c\}$, $\{d,e\}$ e $\{f,g,h\}$ rappresentati con le liste concatenate. (a) Primo tentativo: ogni nodo punta al successivo, e il rappresentante è l'ultimo nodo. La barra nel campo $\mathit{next}$ indica \Nil{}. (b) Secondo tentativo: il primo campo di ogni nodo, $\mathit{repr}$, punta al primo nodo della lista, che è il rappresentante.}
+\label{fig:uf-liste}
+\end{figure}
+
+\paragraph{Terzo tentativo.}
+È utile mantenere un puntatore all'ultimo elemento di ciascuna lista. Ogni insieme diventa un oggetto con due campi (figura~\ref{fig:uf-coda}):
+\begin{itemize}
+    \item $\mathit{head}$: il puntatore al primo elemento della lista, che è il rappresentante.
+    \item $\mathit{tail}$: il puntatore all'ultimo elemento.
+\end{itemize}
+
+Il campo $\mathit{repr}$ di ogni nodo punta ora all'oggetto dell'insieme. \FindSet$(x)$ restituisce quindi $\mathit{head}[\mathit{repr}[x]]$, ancora in tempo $O(1)$.
+
+Nell'eseguire \Union$(x,y)$ conviene concatenare la seconda lista alla prima: grazie al campo $\mathit{tail}$, la coda della lista di $x$ si trova in tempo costante. Restano da aggiornare i campi $\mathit{repr}$ degli elementi della lista di $y$, e l'oggetto dell'insieme di $y$ viene distrutto. Ad esempio, \Union$(b,g)$ concatena la lista $f, g, h$ alla lista $a, b, c$, e aggiorna i campi $\mathit{repr}$ di $f$, $g$ e $h$ (figura~\ref{fig:uf-coda}b). Il costo di \Union{} è quindi proporzionale alla lunghezza della lista di $y$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[unionfind]
+  \newcommand{\treC}[4]{%
+    \draw[Accent, fill=Accent!6] (#2,#3) rectangle ({#2+1.2},{#3+0.48});
+    \draw[Accent] ({#2+0.35},#3) -- ({#2+0.35},{#3+0.48});
+    \draw[Accent] ({#2+0.85},#3) -- ({#2+0.85},{#3+0.48});
+    \node[font=\small] at ({#2+0.6},{#3+0.24}) {$#4$};
+    \coordinate (#1r) at ({#2+0.175},{#3+0.24});
+    \coordinate (#1u) at ({#2+0.175},{#3+0.8});
+    \coordinate (#1n) at ({#2+1.025},{#3+0.24});
+    \coordinate (#1w) at (#2,{#3+0.24});
+    \coordinate (#1s) at ({#2+0.6},#3);
+    \fill[Accent] (#1r) circle (1.1pt);}
+  \newcommand{\nx}[2]{\fill[Accent] (#1n) circle (1.1pt); \draw[ptr] (#1n) -- (#2w);}
+  \newcommand{\nilT}[2]{\draw[Accent] ({#1+0.85},#2) -- ({#1+1.2},{#2+0.48});}
+  % \testa{nome}{x}{y}: l'oggetto di un insieme, con i campi head (sopra) e tail (sotto);
+  % la riga di head è alla stessa altezza dei nodi che iniziano in y
+  \newcommand{\testa}[3]{%
+    \draw[FigColor, fill=FigColor!10] (#2,{#3+0.03}) rectangle ({#2+1.1},{#3+0.87});
+    \draw[FigColor] (#2,{#3+0.45}) -- ({#2+1.1},{#3+0.45});
+    \node[font=\scriptsize, color=FigColor, anchor=west, inner sep=1pt] at ({#2+0.05},{#3+0.66}) {$\mathit{head}$};
+    \node[font=\scriptsize, color=FigColor, anchor=west, inner sep=1pt] at ({#2+0.05},{#3+0.24}) {$\mathit{tail}$};
+    \coordinate (#1h) at ({#2+0.95},{#3+0.66});
+    \coordinate (#1c) at ({#2+0.95},{#3+0.24});
+    \coordinate (#1t) at ({#2+0.55},{#3+0.87});
+    \coordinate (#1v) at ({#2+0.55},{#3+1.12});
+    \fill[FigColor] (#1h) circle (1.1pt); \fill[FigColor] (#1c) circle (1.1pt);}
+  % (a) gli insiemi {a, b, c} e {f, g, h}
+  \node[lab, anchor=east] at (-2.0,0.24) {(a)};
+  \testa{S}{-1.75}{-0.21}
+  \treC{a}{0}{0}{a} \treC{b}{1.65}{0}{b} \treC{c}{3.3}{0}{c}
+  \nx{a}{b} \nx{b}{c} \nilT{3.3}{0}
+  \draw[ptr, FigColor] (Sh) -- ++(0.35,0) |- (aw);
+  \draw[ptr, FigColor] (Sc) -- ++(0.25,0) |- ([yshift=-0.3cm]cs) -- (cs);
+  \foreach \v in {a,b,c} \draw[Accent] (\v r) -- (\v u);
+  \draw[Accent] (cu) -- (Sv |- au); \draw[ptr] (Sv |- au) -- (St);
+  \testa{T}{-1.75}{-1.81}
+  \treC{f}{0}{-1.6}{f} \treC{g}{1.65}{-1.6}{g} \treC{h}{3.3}{-1.6}{h}
+  \nx{f}{g} \nx{g}{h} \nilT{3.3}{-1.6}
+  \draw[ptr, FigColor] (Th) -- ++(0.35,0) |- (fw);
+  \draw[ptr, FigColor] (Tc) -- ++(0.25,0) |- ([yshift=-0.3cm]hs) -- (hs);
+  \foreach \v in {f,g,h} \draw[Accent] (\v r) -- (\v u);
+  \draw[Accent] (hu) -- (Tv |- fu); \draw[ptr] (Tv |- fu) -- (Tt);
+  % (b) dopo Union(b, g)
+  \node[lab, anchor=east] at (-2.0,-3.36) {(b)};
+  \testa{U}{-1.75}{-3.81}
+  \treC{A}{0}{-3.6}{a} \treC{B}{1.65}{-3.6}{b} \treC{C}{3.3}{-3.6}{c}
+  \treC{F}{4.95}{-3.6}{f} \treC{G}{6.6}{-3.6}{g} \treC{H}{8.25}{-3.6}{h}
+  \nx{A}{B} \nx{B}{C} \fill[Accent] (Cn) circle (1.1pt); \draw[ptr, ObsColor, thick] (Cn) -- (Fw);
+  \nx{F}{G} \nx{G}{H} \nilT{8.25}{-3.6}
+  \draw[ptr, FigColor] (Uh) -- ++(0.35,0) |- (Aw);
+  \draw[ptr, ObsColor, thick] (Uc) -- ++(0.25,0) |- ([yshift=-0.3cm]Hs) -- (Hs);
+  \foreach \v in {A,B,C} \draw[Accent] (\v r) -- (\v u);
+  \foreach \v in {F,G,H} \draw[ObsColor, thick] (\v r) -- (\v u);
+  \draw[Accent] (Cu) -- (Uv |- Au); \draw[ObsColor, thick] (Hu) -- (Cu); \draw[ptr] (Uv |- Au) -- (Ut);
+\end{tikzpicture}
+\caption{Terzo tentativo: l'oggetto di ogni insieme (a sinistra) ha i campi $\mathit{head}$ e $\mathit{tail}$, e il campo $\mathit{repr}$ di ogni nodo punta all'oggetto del suo insieme. (a) Gli insiemi $\{a,b,c\}$ e $\{f,g,h\}$. (b) Il risultato di \Union$(b,g)$: la lista di $g$ è stata concatenata in fondo alla lista di $b$, e i puntatori cambiati sono in evidenza. L'oggetto del secondo insieme è stato distrutto.}
+\label{fig:uf-coda}
+\end{figure}
+
+\paragraph{Senza il campo tail.}
+Si può fare a meno del campo $\mathit{tail}$? Sì, cambiando il punto in cui si inserisce la seconda lista. La seconda lista va comunque scorsa tutta, per aggiornare i campi $\mathit{repr}$ dei suoi elementi: la ricerca della sua coda si può fare mentre si aggiornano i campi. A quel punto la seconda lista si inserisce subito dopo il primo elemento della prima lista, che si raggiunge in tempo costante con $\mathit{repr}$.
+
+In questo modo si torna alla rappresentazione del secondo tentativo, senza l'oggetto dell'insieme (figura~\ref{fig:uf-senza-coda}). Il costo di \Union{} resta proporzionale alla lunghezza della seconda lista.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[unionfind]
+  \newcommand{\treC}[4]{%
+    \draw[Accent, fill=Accent!6] (#2,#3) rectangle ({#2+1.2},{#3+0.48});
+    \draw[Accent] ({#2+0.35},#3) -- ({#2+0.35},{#3+0.48});
+    \draw[Accent] ({#2+0.85},#3) -- ({#2+0.85},{#3+0.48});
+    \node[font=\small] at ({#2+0.6},{#3+0.24}) {$#4$};
+    \coordinate (#1r) at ({#2+0.175},{#3+0.24});
+    \coordinate (#1u) at ({#2+0.175},{#3+0.8});
+    \coordinate (#1n) at ({#2+1.025},{#3+0.24});
+    \coordinate (#1w) at (#2,{#3+0.24});
+    \coordinate (#1t) at ({#2+0.6},{#3+0.48});
+    \coordinate (#1v) at ({#2+0.6},{#3+0.8});
+    \coordinate (#1s) at ({#2+0.6},#3);
+    \fill[Accent] (#1r) circle (1.1pt);}
+  \newcommand{\nx}[2]{\fill[Accent] (#1n) circle (1.1pt); \draw[ptr] (#1n) -- (#2w);}
+  \newcommand{\nilT}[2]{\draw[Accent] ({#1+0.85},#2) -- ({#1+1.2},{#2+0.48});}
+  % (a) gli insiemi {a, b, c} e {f, g, h}
+  \node[lab, anchor=east] at (-0.25,0.24) {(a)};
+  \treC{a}{0}{0}{a} \treC{b}{1.65}{0}{b} \treC{c}{3.3}{0}{c}
+  \nx{a}{b} \nx{b}{c} \nilT{3.3}{0}
+  \treC{f}{5.6}{0}{f} \treC{g}{7.25}{0}{g} \treC{h}{8.9}{0}{h}
+  \nx{f}{g} \nx{g}{h} \nilT{8.9}{0}
+  \foreach \v in {a,b,c,f,g,h} \draw[Accent] (\v r) -- (\v u);
+  \draw[Accent] (au) -- (cu); \draw[ptr] (av) -- (at);
+  \draw[Accent] (fu) -- (hu); \draw[ptr] (fv) -- (ft);
+  % (b) dopo Union(b, g): la lista di g sta tra a e b
+  \node[lab, anchor=east] at (-0.25,-1.36) {(b)};
+  \treC{A}{0}{-1.6}{a} \treC{F}{1.65}{-1.6}{f} \treC{G}{3.3}{-1.6}{g} \treC{H}{4.95}{-1.6}{h}
+  \treC{B}{6.6}{-1.6}{b} \treC{C}{8.25}{-1.6}{c}
+  \fill[Accent] (An) circle (1.1pt); \draw[ptr, ObsColor, thick] (An) -- (Fw);
+  \nx{F}{G} \nx{G}{H}
+  \fill[Accent] (Hn) circle (1.1pt); \draw[ptr, ObsColor, thick] (Hn) -- (Bw);
+  \nx{B}{C} \nilT{8.25}{-1.6}
+  \foreach \v in {A,B,C} \draw[Accent] (\v r) -- (\v u);
+  \foreach \v in {F,G,H} \draw[ObsColor, thick] (\v r) -- (\v u);
+  \draw[Accent] (Au) -- (Cu); \draw[ptr] (Av) -- (At);
+\end{tikzpicture}
+\caption{\Union{} senza il campo $\mathit{tail}$. (a) Gli insiemi $\{a,b,c\}$ e $\{f,g,h\}$, con il campo $\mathit{repr}$ che punta al primo nodo della lista. (b) Il risultato di \Union$(b,g)$: mentre si aggiornano i campi $\mathit{repr}$ di $f$, $g$ e $h$, si arriva alla coda $h$, e la lista di $g$ si inserisce tra $a$ e $b$. I puntatori cambiati sono in evidenza.}
+\label{fig:uf-senza-coda}
+\end{figure}
+
+\paragraph{Complessità.}
+Con questa implementazione \MakeSet{} e \FindSet{} costano $O(1)$, ma \Union{} può costare molto. Consideriamo la sequenza di $2n - 1$ operazioni della tabella~\ref{tab:uf-sequenza}: $n$ operazioni \MakeSet{}, che costano $\Theta(n)$, seguite da $n - 1$ unioni. La lista di $x_i$ contiene $x_i, x_{i-1}, \ldots, x_1$, quindi \Union$(x_{i+1}, x_i)$ aggiorna $i$ campi $\mathit{repr}$, e il costo complessivo delle unioni è:
+\[
+\sum_{i=1}^{n-1} i = \frac{n(n-1)}{2} = \Theta(n^2).
+\]
+La sequenza contiene $2n - 1$ operazioni, quindi ciascuna operazione ha costo ammortizzato $\Theta(n)$.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lc}
+\toprule
+Operazione & Campi $\mathit{repr}$ scritti \\
+\midrule
+\MakeSet$(x_1)$ & $1$ \\
+\MakeSet$(x_2)$ & $1$ \\
+$\vdots$ & $\vdots$ \\
+\MakeSet$(x_n)$ & $1$ \\
+\Union$(x_2, x_1)$ & $1$ \\
+\Union$(x_3, x_2)$ & $2$ \\
+\Union$(x_4, x_3)$ & $3$ \\
+$\vdots$ & $\vdots$ \\
+\Union$(x_n, x_{n-1})$ & $n - 1$ \\
+\bottomrule
+\end{tabular}
+\caption{Una sequenza di $2n - 1$ operazioni su $n$ elementi che costa $\Theta(n^2)$, ovvero $\Theta(n)$ per operazione in media. Ogni \Union{} concatena la lista più lunga a quella più corta.}
+\label{tab:uf-sequenza}
+\end{table}
+
+\subsection{Unione per ranghi}\label{sec:uf-liste-ranghi}
+Il problema della sequenza precedente è che ogni unione concatena la lista più lunga a quella più corta, e aggiorna i campi $\mathit{repr}$ di tutti gli elementi della lista più lunga. Possiamo risolvere il problema con un'euristica: nell'eseguire un'operazione di \Union{}, si appende la lista più corta a quella più lunga. Questa euristica si chiama \textbf{unione per ranghi}, dove il rango di una lista è la sua lunghezza.\footnote{Nel caso delle liste concatenate si parla anche di \textbf{unione pesata} (weighted union).}
+
+Quarto tentativo: l'oggetto di ogni insieme ha un campo in più, $\mathit{size}$, con la lunghezza della lista (figura~\ref{fig:uf-ranghi}). Il campo si aggiorna in tempo costante a ogni unione, sommando le due lunghezze. Quando le due liste hanno la stessa lunghezza, la scelta della lista da appendere è arbitraria.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[unionfind]
+  \newcommand{\treC}[4]{%
+    \draw[Accent, fill=Accent!6] (#2,#3) rectangle ({#2+1.2},{#3+0.48});
+    \draw[Accent] ({#2+0.35},#3) -- ({#2+0.35},{#3+0.48});
+    \draw[Accent] ({#2+0.85},#3) -- ({#2+0.85},{#3+0.48});
+    \node[font=\small] at ({#2+0.6},{#3+0.24}) {$#4$};
+    \coordinate (#1r) at ({#2+0.175},{#3+0.24});
+    \coordinate (#1u) at ({#2+0.175},{#3+1.05});
+    \coordinate (#1n) at ({#2+1.025},{#3+0.24});
+    \coordinate (#1w) at (#2,{#3+0.24});
+    \coordinate (#1s) at ({#2+0.6},#3);
+    \fill[Accent] (#1r) circle (1.1pt);}
+  \newcommand{\nx}[2]{\fill[Accent] (#1n) circle (1.1pt); \draw[ptr] (#1n) -- (#2w);}
+  \newcommand{\nilT}[2]{\draw[Accent] ({#1+0.85},#2) -- ({#1+1.2},{#2+0.48});}
+  % \testa{nome}{x}{y}{size}: l'oggetto di un insieme con i campi size, head e tail; la riga di head è
+  % alla stessa altezza dei nodi che iniziano in y
+  \newcommand{\testa}[4]{%
+    \draw[FigColor, fill=FigColor!10] (#2,{#3-0.39}) rectangle ({#2+1.1},{#3+0.87});
+    \draw[FigColor] (#2,{#3+0.45}) -- ({#2+1.1},{#3+0.45});
+    \draw[FigColor] (#2,{#3+0.03}) -- ({#2+1.1},{#3+0.03});
+    \node[font=\scriptsize, color=FigColor, anchor=west, inner sep=1pt] at ({#2+0.05},{#3+0.66}) {$\mathit{size}$};
+    \node[font=\small, anchor=east, inner sep=1pt] at ({#2+1.05},{#3+0.66}) {$#4$};
+    \node[font=\scriptsize, color=FigColor, anchor=west, inner sep=1pt] at ({#2+0.05},{#3+0.24}) {$\mathit{head}$};
+    \node[font=\scriptsize, color=FigColor, anchor=west, inner sep=1pt] at ({#2+0.05},{#3-0.18}) {$\mathit{tail}$};
+    \coordinate (#1h) at ({#2+0.95},{#3+0.24});
+    \coordinate (#1c) at ({#2+0.95},{#3-0.18});
+    \coordinate (#1t) at ({#2+0.55},{#3+0.87});
+    \coordinate (#1v) at ({#2+0.55},{#3+1.3});
+    \fill[FigColor] (#1h) circle (1.1pt); \fill[FigColor] (#1c) circle (1.1pt);}
+  % (a) gli insiemi {a, b, c} e {d, e}
+  \node[lab, anchor=east] at (-2.0,0.24) {(a)};
+  \testa{S}{-1.75}{0}{3}
+  \treC{a}{0}{0}{a} \treC{b}{1.65}{0}{b} \treC{c}{3.3}{0}{c}
+  \nx{a}{b} \nx{b}{c} \nilT{3.3}{0}
+  \draw[ptr, FigColor] (Sh) -- (aw);
+  \draw[ptr, FigColor] (Sc) -- ++(0.25,0) |- ([yshift=-0.35cm]cs) -- (cs);
+  \foreach \v in {a,b,c} \draw[Accent] (\v r) -- (\v u);
+  \draw[Accent] (cu) -- (Sv |- au); \draw[ptr] (Sv |- au) -- (St);
+  \testa{T}{5.4}{0}{2}
+  \treC{d}{7.15}{0}{d} \treC{e}{8.8}{0}{e}
+  \nx{d}{e} \nilT{8.8}{0}
+  \draw[ptr, FigColor] (Th) -- (dw);
+  \draw[ptr, FigColor] (Tc) -- ++(0.25,0) |- ([yshift=-0.35cm]es) -- (es);
+  \foreach \v in {d,e} \draw[Accent] (\v r) -- (\v u);
+  \draw[Accent] (eu) -- (Tv |- du); \draw[ptr] (Tv |- du) -- (Tt);
+  % (b) dopo Union(d, b): la lista di d è più corta, e viene appesa a quella di b
+  \node[lab, anchor=east] at (-2.0,-1.96) {(b)};
+  \testa{U}{-1.75}{-2.2}{5}
+  \treC{A}{0}{-2.2}{a} \treC{B}{1.65}{-2.2}{b} \treC{C}{3.3}{-2.2}{c}
+  \treC{D}{4.95}{-2.2}{d} \treC{E}{6.6}{-2.2}{e}
+  \nx{A}{B} \nx{B}{C} \fill[Accent] (Cn) circle (1.1pt); \draw[ptr, ObsColor, thick] (Cn) -- (Dw);
+  \nx{D}{E} \nilT{6.6}{-2.2}
+  \draw[ptr, FigColor] (Uh) -- (Aw);
+  \draw[ptr, ObsColor, thick] (Uc) -- ++(0.25,0) |- ([yshift=-0.35cm]Es) -- (Es);
+  \foreach \v in {A,B,C} \draw[Accent] (\v r) -- (\v u);
+  \foreach \v in {D,E} \draw[ObsColor, thick] (\v r) -- (\v u);
+  \draw[Accent] (Cu) -- (Uv |- Au); \draw[ObsColor, thick] (Eu) -- (Cu); \draw[ptr] (Uv |- Au) -- (Ut);
+\end{tikzpicture}
+\caption{Quarto tentativo, con l'unione per ranghi: l'oggetto di ogni insieme ha anche il campo $\mathit{size}$, con la lunghezza della lista. (a) Gli insiemi $\{a,b,c\}$ e $\{d,e\}$. (b) Il risultato di \Union$(d,b)$: la lista di $d$ è la più corta, quindi viene appesa alla lista di $b$, anche se $d$ è il primo argomento. Si aggiornano soltanto i campi $\mathit{repr}$ di $d$ e di $e$, e $\mathit{size}$ diventa $3 + 2 = 5$.}
+\label{fig:uf-ranghi}
+\end{figure}
+
+Una singola \Union{} può ancora costare $\Theta(n)$, se le due liste hanno entrambe circa $n/2$ elementi. Una sequenza di operazioni, invece, costa molto meno, grazie al seguente lemma.
+
+\begin{lemma}[Lemma del raddoppio]\label{lem:uf-raddoppio}
+Con l'unione per ranghi, ogni volta che il puntatore al rappresentante di un elemento $x$ viene modificato durante una \Union{}, la lunghezza della lista che contiene $x$ almeno raddoppia.
+\end{lemma}
+
+\paragraph{Dimostrazione.}
+Il campo $\mathit{repr}[x]$ viene modificato soltanto se la lista di $x$ viene appesa all'altra, ovvero se non è la più lunga delle due. Se la lista di $x$ ha lunghezza $\ell$, l'altra ha quindi lunghezza $\ell' \ge \ell$, e la nuova lista ha lunghezza $\ell + \ell' \ge 2\ell$. \hfill $\square$
+
+\begin{teorema}\label{teo:uf-liste}
+Con le liste concatenate e l'unione per ranghi, una sequenza di $m$ operazioni \MakeSet{}, \Union{} e \FindSet{}, di cui $n$ sono \MakeSet{}, costa $O(m + n \lg n)$.
+\end{teorema}
+
+\paragraph{Dimostrazione.}
+Sia $S$ la sequenza, e sia $k$ il numero complessivo di aggiornamenti dei campi $\mathit{repr}$. Ogni operazione costa $O(1)$, più gli aggiornamenti dei campi $\mathit{repr}$ fatti da \Union{}, quindi la complessità della sequenza $S$ è chiaramente $\Theta(m + k)$.
+
+Proviamo a valutare $k$ in funzione di $n$. Sia $x$ un elemento: quante volte può cambiare il valore di $\mathit{repr}[x]$? Detta $\ell_i$ la lunghezza della lista contenente $x$ dopo l'$i$-esimo aggiornamento di $\mathit{repr}[x]$, per il lemma~\ref{lem:uf-raddoppio} si ha:
+\[
+\ell_1 \ge 2, \qquad \ell_2 \ge 2\ell_1 \ge 2^2, \qquad \ell_3 \ge 2\ell_2 \ge 2^3, \qquad \ldots, \qquad \ell_h \ge 2\ell_{h-1} \ge 2^h,
+\]
+dove $h$ è il numero di aggiornamenti di $\mathit{repr}[x]$, e $\ell_1 \ge 2$ in quanto la lista di partenza contiene almeno $x$. Nessuna lista contiene più di $n$ elementi, e perciò $n \ge \ell_h \ge 2^h$, da cui $h \le \lfloor \lg n \rfloor$.
+
+Quindi il campo $\mathit{repr}[x]$ può cambiare al più $\lfloor \lg n \rfloor$ volte. Di conseguenza il numero totale di aggiornamenti al campo $\mathit{repr}$ di tutti i nodi è $k \le n \lfloor \lg n \rfloor = O(n \lg n)$, e la complessità della sequenza $S$ è $O(m + n \lg n)$. \hfill $\square$
+
+\subsection{Costi ammortizzati}\label{sec:uf-liste-ammortizzati}
+Il teorema~\ref{teo:uf-liste} dà il costo di un'intera sequenza. Possiamo ripartirlo tra le singole operazioni in più modi. Si tratta di assegnare a ogni operazione un costo ammortizzato, in modo che la somma dei costi ammortizzati sia un limite superiore al costo effettivo della sequenza (capitolo~\ref{ch:ammortizzata}). Vediamo due ripartizioni diverse.
+
+\begin{teorema}[Prima ripartizione]\label{teo:uf-prima}
+Con le liste concatenate e l'unione per ranghi si hanno i seguenti costi:
+\begin{itemize}
+    \item \MakeSet{}: $O(\lg n)$, come costo ammortizzato.
+    \item \FindSet{}: $O(1)$, come costo reale.
+    \item \Union{}: $O(1)$, come costo ammortizzato.
+\end{itemize}
+\end{teorema}
+
+\paragraph{Dimostrazione.}
+Usiamo il metodo degli accantonamenti (sezione~\ref{sec:accantonamenti}). \MakeSet$(x)$ paga il proprio costo, e accantona $\lfloor \lg n \rfloor$ crediti sull'elemento $x$.\footnote{Il numero $n$ delle operazioni \MakeSet{} della sequenza serve soltanto all'analisi: l'algoritmo non ha bisogno di conoscerlo.} Ogni aggiornamento di $\mathit{repr}[x]$ viene pagato con uno dei crediti di $x$. Per il lemma del raddoppio, $\mathit{repr}[x]$ cambia al più $\lfloor \lg n \rfloor$ volte, quindi i crediti di $x$ non diventano mai negativi (figura~\ref{fig:uf-crediti}).
+
+\Union{} deve quindi pagare soltanto la parte del lavoro che non riguarda i campi $\mathit{repr}$: la concatenazione e l'aggiornamento di $\mathit{head}$, $\mathit{tail}$ e $\mathit{size}$, in tempo costante. \FindSet{}, infine, costa $O(1)$ anche nel caso peggiore. \hfill $\square$
+
+\begin{figure}[htbp]
+\centering
+%% GEN:crediti
+\begin{tikzpicture}[unionfind]
+  \node[lab, anchor=east] at (-0.2,0.230) {livello 0};
+  \draw[Accent, fill=Accent!6] (0.000,0.000) rectangle ++(0.72,0.46); \node[font=\small] at (0.360,0.230) {$x_{1}$};
+  \fill[ObsColor] (0.190,0.620) circle (0.06);
+  \fill[ObsColor] (0.360,0.620) circle (0.06);
+  \fill[ObsColor] (0.530,0.620) circle (0.06);
+  \draw[Accent, fill=Accent!6] (1.000,0.000) rectangle ++(0.72,0.46); \node[font=\small] at (1.360,0.230) {$x_{2}$};
+  \fill[ObsColor] (1.190,0.620) circle (0.06);
+  \fill[ObsColor] (1.360,0.620) circle (0.06);
+  \fill[ObsColor] (1.530,0.620) circle (0.06);
+  \draw[Accent, fill=Accent!6] (2.000,0.000) rectangle ++(0.72,0.46); \node[font=\small] at (2.360,0.230) {$x_{3}$};
+  \fill[ObsColor] (2.190,0.620) circle (0.06);
+  \fill[ObsColor] (2.360,0.620) circle (0.06);
+  \fill[ObsColor] (2.530,0.620) circle (0.06);
+  \draw[Accent, fill=Accent!6] (3.000,0.000) rectangle ++(0.72,0.46); \node[font=\small] at (3.360,0.230) {$x_{4}$};
+  \fill[ObsColor] (3.190,0.620) circle (0.06);
+  \fill[ObsColor] (3.360,0.620) circle (0.06);
+  \fill[ObsColor] (3.530,0.620) circle (0.06);
+  \draw[Accent, fill=Accent!6] (4.000,0.000) rectangle ++(0.72,0.46); \node[font=\small] at (4.360,0.230) {$x_{5}$};
+  \fill[ObsColor] (4.190,0.620) circle (0.06);
+  \fill[ObsColor] (4.360,0.620) circle (0.06);
+  \fill[ObsColor] (4.530,0.620) circle (0.06);
+  \draw[Accent, fill=Accent!6] (5.000,0.000) rectangle ++(0.72,0.46); \node[font=\small] at (5.360,0.230) {$x_{6}$};
+  \fill[ObsColor] (5.190,0.620) circle (0.06);
+  \fill[ObsColor] (5.360,0.620) circle (0.06);
+  \fill[ObsColor] (5.530,0.620) circle (0.06);
+  \draw[Accent, fill=Accent!6] (6.000,0.000) rectangle ++(0.72,0.46); \node[font=\small] at (6.360,0.230) {$x_{7}$};
+  \fill[ObsColor] (6.190,0.620) circle (0.06);
+  \fill[ObsColor] (6.360,0.620) circle (0.06);
+  \fill[ObsColor] (6.530,0.620) circle (0.06);
+  \draw[Accent, fill=Accent!6] (7.000,0.000) rectangle ++(0.72,0.46); \node[font=\small] at (7.360,0.230) {$x_{8}$};
+  \fill[ObsColor] (7.190,0.620) circle (0.06);
+  \fill[ObsColor] (7.360,0.620) circle (0.06);
+  \fill[ObsColor] (7.530,0.620) circle (0.06);
+  \node[lab, anchor=east] at (-0.2,-0.970) {livello 1};
+  \draw[Accent, fill=Accent!6] (0.000,-1.200) rectangle ++(0.72,0.46); \node[font=\small] at (0.360,-0.970) {$x_{1}$};
+  \fill[ObsColor] (0.190,-0.580) circle (0.06);
+  \fill[ObsColor] (0.360,-0.580) circle (0.06);
+  \fill[ObsColor] (0.530,-0.580) circle (0.06);
+  \draw[ptr] (0.720,-0.970) -- (1.000,-0.970);
+  \draw[Accent, fill=Accent!6] (1.000,-1.200) rectangle ++(0.72,0.46); \node[font=\small] at (1.360,-0.970) {$x_{2}$};
+  \fill[ObsColor] (1.190,-0.580) circle (0.06);
+  \fill[ObsColor] (1.360,-0.580) circle (0.06);
+  \draw[TextGray] (1.530,-0.580) circle (0.055);
+  \draw[Accent, fill=Accent!6] (2.000,-1.200) rectangle ++(0.72,0.46); \node[font=\small] at (2.360,-0.970) {$x_{3}$};
+  \fill[ObsColor] (2.190,-0.580) circle (0.06);
+  \fill[ObsColor] (2.360,-0.580) circle (0.06);
+  \fill[ObsColor] (2.530,-0.580) circle (0.06);
+  \draw[ptr] (2.720,-0.970) -- (3.000,-0.970);
+  \draw[Accent, fill=Accent!6] (3.000,-1.200) rectangle ++(0.72,0.46); \node[font=\small] at (3.360,-0.970) {$x_{4}$};
+  \fill[ObsColor] (3.190,-0.580) circle (0.06);
+  \fill[ObsColor] (3.360,-0.580) circle (0.06);
+  \draw[TextGray] (3.530,-0.580) circle (0.055);
+  \draw[Accent, fill=Accent!6] (4.000,-1.200) rectangle ++(0.72,0.46); \node[font=\small] at (4.360,-0.970) {$x_{5}$};
+  \fill[ObsColor] (4.190,-0.580) circle (0.06);
+  \fill[ObsColor] (4.360,-0.580) circle (0.06);
+  \fill[ObsColor] (4.530,-0.580) circle (0.06);
+  \draw[ptr] (4.720,-0.970) -- (5.000,-0.970);
+  \draw[Accent, fill=Accent!6] (5.000,-1.200) rectangle ++(0.72,0.46); \node[font=\small] at (5.360,-0.970) {$x_{6}$};
+  \fill[ObsColor] (5.190,-0.580) circle (0.06);
+  \fill[ObsColor] (5.360,-0.580) circle (0.06);
+  \draw[TextGray] (5.530,-0.580) circle (0.055);
+  \draw[Accent, fill=Accent!6] (6.000,-1.200) rectangle ++(0.72,0.46); \node[font=\small] at (6.360,-0.970) {$x_{7}$};
+  \fill[ObsColor] (6.190,-0.580) circle (0.06);
+  \fill[ObsColor] (6.360,-0.580) circle (0.06);
+  \fill[ObsColor] (6.530,-0.580) circle (0.06);
+  \draw[ptr] (6.720,-0.970) -- (7.000,-0.970);
+  \draw[Accent, fill=Accent!6] (7.000,-1.200) rectangle ++(0.72,0.46); \node[font=\small] at (7.360,-0.970) {$x_{8}$};
+  \fill[ObsColor] (7.190,-0.580) circle (0.06);
+  \fill[ObsColor] (7.360,-0.580) circle (0.06);
+  \draw[TextGray] (7.530,-0.580) circle (0.055);
+  \node[lab, anchor=east] at (-0.2,-2.170) {livello 2};
+  \draw[Accent, fill=Accent!6] (0.000,-2.400) rectangle ++(0.72,0.46); \node[font=\small] at (0.360,-2.170) {$x_{1}$};
+  \fill[ObsColor] (0.190,-1.780) circle (0.06);
+  \fill[ObsColor] (0.360,-1.780) circle (0.06);
+  \fill[ObsColor] (0.530,-1.780) circle (0.06);
+  \draw[ptr] (0.720,-2.170) -- (1.000,-2.170);
+  \draw[Accent, fill=Accent!6] (1.000,-2.400) rectangle ++(0.72,0.46); \node[font=\small] at (1.360,-2.170) {$x_{2}$};
+  \fill[ObsColor] (1.190,-1.780) circle (0.06);
+  \fill[ObsColor] (1.360,-1.780) circle (0.06);
+  \draw[TextGray] (1.530,-1.780) circle (0.055);
+  \draw[ptr] (1.720,-2.170) -- (2.000,-2.170);
+  \draw[Accent, fill=Accent!6] (2.000,-2.400) rectangle ++(0.72,0.46); \node[font=\small] at (2.360,-2.170) {$x_{3}$};
+  \fill[ObsColor] (2.190,-1.780) circle (0.06);
+  \fill[ObsColor] (2.360,-1.780) circle (0.06);
+  \draw[TextGray] (2.530,-1.780) circle (0.055);
+  \draw[ptr] (2.720,-2.170) -- (3.000,-2.170);
+  \draw[Accent, fill=Accent!6] (3.000,-2.400) rectangle ++(0.72,0.46); \node[font=\small] at (3.360,-2.170) {$x_{4}$};
+  \fill[ObsColor] (3.190,-1.780) circle (0.06);
+  \draw[TextGray] (3.360,-1.780) circle (0.055);
+  \draw[TextGray] (3.530,-1.780) circle (0.055);
+  \draw[Accent, fill=Accent!6] (4.000,-2.400) rectangle ++(0.72,0.46); \node[font=\small] at (4.360,-2.170) {$x_{5}$};
+  \fill[ObsColor] (4.190,-1.780) circle (0.06);
+  \fill[ObsColor] (4.360,-1.780) circle (0.06);
+  \fill[ObsColor] (4.530,-1.780) circle (0.06);
+  \draw[ptr] (4.720,-2.170) -- (5.000,-2.170);
+  \draw[Accent, fill=Accent!6] (5.000,-2.400) rectangle ++(0.72,0.46); \node[font=\small] at (5.360,-2.170) {$x_{6}$};
+  \fill[ObsColor] (5.190,-1.780) circle (0.06);
+  \fill[ObsColor] (5.360,-1.780) circle (0.06);
+  \draw[TextGray] (5.530,-1.780) circle (0.055);
+  \draw[ptr] (5.720,-2.170) -- (6.000,-2.170);
+  \draw[Accent, fill=Accent!6] (6.000,-2.400) rectangle ++(0.72,0.46); \node[font=\small] at (6.360,-2.170) {$x_{7}$};
+  \fill[ObsColor] (6.190,-1.780) circle (0.06);
+  \fill[ObsColor] (6.360,-1.780) circle (0.06);
+  \draw[TextGray] (6.530,-1.780) circle (0.055);
+  \draw[ptr] (6.720,-2.170) -- (7.000,-2.170);
+  \draw[Accent, fill=Accent!6] (7.000,-2.400) rectangle ++(0.72,0.46); \node[font=\small] at (7.360,-2.170) {$x_{8}$};
+  \fill[ObsColor] (7.190,-1.780) circle (0.06);
+  \draw[TextGray] (7.360,-1.780) circle (0.055);
+  \draw[TextGray] (7.530,-1.780) circle (0.055);
+  \node[lab, anchor=east] at (-0.2,-3.370) {livello 3};
+  \draw[Accent, fill=Accent!6] (0.000,-3.600) rectangle ++(0.72,0.46); \node[font=\small] at (0.360,-3.370) {$x_{1}$};
+  \fill[ObsColor] (0.190,-2.980) circle (0.06);
+  \fill[ObsColor] (0.360,-2.980) circle (0.06);
+  \fill[ObsColor] (0.530,-2.980) circle (0.06);
+  \draw[ptr] (0.720,-3.370) -- (1.000,-3.370);
+  \draw[Accent, fill=Accent!6] (1.000,-3.600) rectangle ++(0.72,0.46); \node[font=\small] at (1.360,-3.370) {$x_{2}$};
+  \fill[ObsColor] (1.190,-2.980) circle (0.06);
+  \fill[ObsColor] (1.360,-2.980) circle (0.06);
+  \draw[TextGray] (1.530,-2.980) circle (0.055);
+  \draw[ptr] (1.720,-3.370) -- (2.000,-3.370);
+  \draw[Accent, fill=Accent!6] (2.000,-3.600) rectangle ++(0.72,0.46); \node[font=\small] at (2.360,-3.370) {$x_{3}$};
+  \fill[ObsColor] (2.190,-2.980) circle (0.06);
+  \fill[ObsColor] (2.360,-2.980) circle (0.06);
+  \draw[TextGray] (2.530,-2.980) circle (0.055);
+  \draw[ptr] (2.720,-3.370) -- (3.000,-3.370);
+  \draw[Accent, fill=Accent!6] (3.000,-3.600) rectangle ++(0.72,0.46); \node[font=\small] at (3.360,-3.370) {$x_{4}$};
+  \fill[ObsColor] (3.190,-2.980) circle (0.06);
+  \draw[TextGray] (3.360,-2.980) circle (0.055);
+  \draw[TextGray] (3.530,-2.980) circle (0.055);
+  \draw[ptr] (3.720,-3.370) -- (4.000,-3.370);
+  \draw[Accent, fill=Accent!6] (4.000,-3.600) rectangle ++(0.72,0.46); \node[font=\small] at (4.360,-3.370) {$x_{5}$};
+  \fill[ObsColor] (4.190,-2.980) circle (0.06);
+  \fill[ObsColor] (4.360,-2.980) circle (0.06);
+  \draw[TextGray] (4.530,-2.980) circle (0.055);
+  \draw[ptr] (4.720,-3.370) -- (5.000,-3.370);
+  \draw[Accent, fill=Accent!6] (5.000,-3.600) rectangle ++(0.72,0.46); \node[font=\small] at (5.360,-3.370) {$x_{6}$};
+  \fill[ObsColor] (5.190,-2.980) circle (0.06);
+  \draw[TextGray] (5.360,-2.980) circle (0.055);
+  \draw[TextGray] (5.530,-2.980) circle (0.055);
+  \draw[ptr] (5.720,-3.370) -- (6.000,-3.370);
+  \draw[Accent, fill=Accent!6] (6.000,-3.600) rectangle ++(0.72,0.46); \node[font=\small] at (6.360,-3.370) {$x_{7}$};
+  \fill[ObsColor] (6.190,-2.980) circle (0.06);
+  \draw[TextGray] (6.360,-2.980) circle (0.055);
+  \draw[TextGray] (6.530,-2.980) circle (0.055);
+  \draw[ptr] (6.720,-3.370) -- (7.000,-3.370);
+  \draw[Accent, fill=Accent!6] (7.000,-3.600) rectangle ++(0.72,0.46); \node[font=\small] at (7.360,-3.370) {$x_{8}$};
+  \draw[TextGray] (7.190,-2.980) circle (0.055);
+  \draw[TextGray] (7.360,-2.980) circle (0.055);
+  \draw[TextGray] (7.530,-2.980) circle (0.055);
+\end{tikzpicture}
+%% END:crediti
+\caption{I crediti della prima ripartizione con $n = 8$ elementi, ciascuno con $\lfloor \lg 8 \rfloor = 3$ crediti. A ogni livello le liste vengono unite a coppie, e gli elementi della lista appesa spendono un credito per l'aggiornamento di $\mathit{repr}$: i cerchi vuoti sono i crediti spesi. L'elemento $x_8$ viene appeso tre volte, e finisce i suoi crediti senza andare in negativo.}
+\label{fig:uf-crediti}
+\end{figure}
+
+\begin{teorema}[Seconda ripartizione]\label{teo:uf-seconda}
+Con le liste concatenate e l'unione per ranghi si hanno i seguenti costi ammortizzati:
+\begin{itemize}
+    \item \MakeSet{}: $O(1)$.
+    \item \FindSet{}: $O(1)$.
+    \item \Union{}: $O(\lg n)$.
+\end{itemize}
+\end{teorema}
+
+\paragraph{Dimostrazione.}
+Consideriamo una sequenza con $n$ operazioni \MakeSet{}, $f$ operazioni \FindSet{} e $u$ operazioni \Union{} effettive, ovvero che uniscono due insiemi diversi. Occorre dimostrare che il costo della sequenza è:
+\[
+T(n,f,u) = O(n + f + u \lg n).
+\]
+Ovviamente vale $T(n,f,u) = O(n + f + A)$, dove $A$ è il numero complessivo degli aggiornamenti dei campi $\mathit{repr}$. Basta quindi dimostrare che $A = O(u \lg n)$.
+
+Supponiamo che al termine della sequenza siano presenti $t$ insiemi disgiunti $S_1, S_2, \ldots, S_t$, e poniamo $s_i = |S_i|$. Chiaramente:
+\[
+\sum_{i=1}^{t} s_i = n.
+\]
+Ogni \Union{} effettiva riduce di uno il numero degli insiemi, e perciò $t = n - u$. Si ha quindi:
+\begin{equation}\label{eq:uf-unioni}
+u = n - t = \sum_{i=1}^{t} s_i - t = \sum_{i=1}^{t} (s_i - 1).
+\end{equation}
+
+Per il lemma del raddoppio, il campo $\mathit{repr}$ di un elemento di $S_i$ cambia al più $\lfloor \lg s_i \rfloor$ volte, in quanto la lista che lo contiene non supera mai $s_i$ elementi. Gli aggiornamenti attribuibili all'insieme $S_i$ sono quindi al più $s_i \lfloor \lg s_i \rfloor$, e il numero complessivo degli aggiornamenti è:
+\[
+A \le \sum_{i=1}^{t} s_i \lfloor \lg s_i \rfloor.
+\]
+
+Se $s_i = 1$, il termine $s_i \lfloor \lg s_i \rfloor$ vale $0$. Altrimenti $s_i \ge 2$, e quindi $s_i \le 2s_i - 2 = 2(s_i - 1)$. In entrambi i casi $s_i \lfloor \lg s_i \rfloor \le 2(s_i - 1) \lfloor \lg s_i \rfloor$, e si ha:
+\[
+\begin{aligned}
+A &\le \sum_{i=1}^{t} 2(s_i - 1) \lfloor \lg s_i \rfloor \\
+&\le 2 \lg n \sum_{i=1}^{t} (s_i - 1) \\
+&= 2u \lg n,
+\end{aligned}
+\]
+dove il secondo passaggio usa $\lfloor \lg s_i \rfloor \le \lg n$, e l'ultimo l'equazione~\eqref{eq:uf-unioni}. Da cui $A = O(u \lg n)$. Poiché $T(n,f,u) = O(n + f + A)$, si ha:
+\[
+T(n,f,u) = O(n + f + u \lg n).
+\]
+Quest'ultima espressione consente di ripartire i costi ammortizzati così: $O(1)$ a ciascuna \MakeSet{}, $O(1)$ a ciascuna \FindSet{} e $O(\lg n)$ a ciascuna \Union{} effettiva. \hfill $\square$
+
+\paragraph{Il limite è stretto.}
+Verifichiamo che il limite $O(\lg n)$ per \Union{} è stretto nel caso peggiore ammortizzato. Sia $n = 2^k$. Eseguiamo:
+\begin{itemize}
+    \item $n$ operazioni \MakeSet{}.
+    \item $n/2$ unioni tra liste di lunghezza $1$.
+    \item $n/2^2$ unioni tra liste di lunghezza $2$.
+    \item In generale, $n/2^j$ unioni tra liste di lunghezza $2^{j-1}$, per $j = 1, \ldots, k$.
+\end{itemize}
+
+Le unioni del livello $j$ aggiornano ciascuna $2^{j-1}$ campi $\mathit{repr}$ (la figura~\ref{fig:uf-crediti} mostra il caso $n = 8$). Il numero di aggiornamenti per livello è quindi:
+\[
+\frac{n}{2^j} \cdot 2^{j-1} = \frac{n}{2}.
+\]
+Ci sono $k = \lg n$ livelli, perciò $A = \frac{n}{2} \lg n$. Il numero complessivo di \Union{} è invece:
+\[
+u = \frac{n}{2} + \frac{n}{2^2} + \cdots + \frac{n}{2^k} = n\left(1 - \frac{1}{2^k}\right) = n\left(1 - \frac{1}{n}\right) = n - 1.
+\]
+Ne segue che, per questa famiglia di sequenze, il costo medio per \Union{} è almeno:
+\[
+\frac{A}{u} = \frac{\frac{n}{2} \lg n}{n - 1} = \Theta(\lg n).
+\]
+Pertanto il costo ammortizzato di \Union{} per questo tipo di sequenze è $\Theta(\lg n)$.
+
+\section{Foreste di insiemi disgiunti}\label{sec:uf-foreste}
+Una rappresentazione più efficiente usa gli alberi radicati: ogni insieme è un albero, e ogni nodo contiene un elemento. In una \textbf{foresta di insiemi disgiunti} ogni nodo punta soltanto al padre. La radice di ogni albero contiene il rappresentante, ed è padre di sé stessa (figura~\ref{fig:uf-foresta}a).
+
+Le tre operazioni hanno un'implementazione immediata:
+\begin{itemize}
+    \item \MakeSet$(x)$: crea un albero con il solo nodo $x$.
+    \item \FindSet$(x)$: segue i puntatori ai padri fino alla radice. I nodi visitati formano il \textbf{cammino di ricerca} (find path).
+    \item \Union$(x,y)$: fa puntare la radice di uno dei due alberi alla radice dell'altro.
+\end{itemize}
+
+Ad esempio, \Union$(g,c)$ fa diventare la radice $a$ figlio della radice $f$ (figura~\ref{fig:uf-foresta}b).
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[unionfind]
+  % (a) gli insiemi {a, b, c, d} ed {e, f, g, h, i}
+  \node[lab, anchor=east] at (-0.6,0) {(a)};
+  \node[vn] (a) at (0.6,0) {$a$};
+  \node[vn] (b) at (0,-1) {$b$};
+  \node[vn] (c) at (1.2,-1) {$c$};
+  \node[vn] (d) at (1.2,-2) {$d$};
+  \draw[par] (b) -- (a); \draw[par] (c) -- (a); \draw[par] (d) -- (c);
+  \draw[par] (a) to[self] (a);
+  \node[vn] (f) at (3.2,0) {$f$};
+  \node[vn] (e) at (2.6,-1) {$e$};
+  \node[vn] (g) at (3.8,-1) {$g$};
+  \node[vn] (h) at (3.8,-2) {$h$};
+  \node[vn] (i) at (3.8,-3) {$i$};
+  \draw[par] (e) -- (f); \draw[par] (g) -- (f); \draw[par] (h) -- (g); \draw[par] (i) -- (h);
+  \draw[par] (f) to[self] (f);
+  % (b) dopo Union(g, c)
+  \begin{scope}[xshift=6.6cm]
+    \node[lab, anchor=east] at (-0.6,0) {(b)};
+    \node[vn] (F) at (1.5,0) {$f$};
+    \node[vn] (A) at (0.6,-1) {$a$};
+    \node[vn] (E) at (1.5,-1) {$e$};
+    \node[vn] (G) at (2.4,-1) {$g$};
+    \node[vn] (B) at (0,-2) {$b$};
+    \node[vn] (C) at (1.2,-2) {$c$};
+    \node[vn] (D) at (1.2,-3) {$d$};
+    \node[vn] (H) at (2.4,-2) {$h$};
+    \node[vn] (I) at (2.4,-3) {$i$};
+    \draw[new] (A) -- (F);
+    \draw[par] (E) -- (F); \draw[par] (G) -- (F); \draw[par] (B) -- (A); \draw[par] (C) -- (A);
+    \draw[par] (D) -- (C); \draw[par] (H) -- (G); \draw[par] (I) -- (H);
+    \draw[par] (F) to[self] (F);
+  \end{scope}
+\end{tikzpicture}
+\caption{Una foresta di insiemi disgiunti: ogni nodo punta al padre, e ogni radice a sé stessa. (a) Gli insiemi $\{a,b,c,d\}$ ed $\{e,f,g,h,i\}$, con rappresentanti $a$ ed $f$. (b) Il risultato di \Union$(g,c)$: la radice $a$ è diventata figlio della radice $f$.}
+\label{fig:uf-foresta}
+\end{figure}
+
+Così com'è, l'implementazione con gli alberi disgiunti non è più efficiente di quella con le liste concatenate. Una sequenza di $n - 1$ unioni può costruire un albero che è una catena di $n$ nodi, e allora un \FindSet{} sul nodo più profondo costa $\Theta(n)$. Le cose cambiano se si utilizzano due euristiche: l'\textbf{unione per ranghi} e la \textbf{compressione dei cammini}.
+
+\subsection{Unione per ranghi}\label{sec:uf-ranghi}
+L'idea è la stessa dell'unione per ranghi con le liste: l'albero più piccolo va sotto quello più grande. Invece del numero di nodi, però, conviene usare una grandezza legata in qualche modo all'altezza:
+\begin{itemize}
+    \item Si definisce opportunamente la nozione di \textbf{rango} di un albero.
+    \item Si sceglie di innestare l'albero di rango più piccolo nella radice dell'albero di rango più alto.
+    \item Nel caso di alberi aventi lo stesso rango, gli alberi si innestano in maniera arbitraria, e il rango dell'albero risultante viene incrementato di un'unità.
+\end{itemize}
+
+Ogni nodo $x$ ha un campo $\mathit{rank}[x]$, un limite superiore all'altezza di $x$, ovvero al numero di archi del cammino più lungo da $x$ a una foglia sua discendente. Il rango di un albero è il rango della sua radice. Un nuovo nodo ha rango $0$, e il rango di un nodo cambia soltanto quando il nodo è una radice e riceve un albero dello stesso rango.
+
+\subsection{Compressione dei cammini}\label{sec:uf-compressione}
+La seconda euristica riguarda \FindSet{}: tutti i nodi incontrati nell'esecuzione di una \FindSet{} vengono innestati nella radice (figura~\ref{fig:uf-compressione}). Il cammino di ricerca va comunque percorso per trovare la radice, quindi la compressione costa soltanto un fattore costante in più. In compenso, le ricerche successive sugli stessi nodi, e sui loro discendenti, saranno molto più veloci.
+
+La compressione dei cammini non cambia i ranghi. Senza la compressione il rango di un nodo coincide con la sua altezza, mentre con la compressione gli alberi possono diventare più bassi, e il rango resta soltanto un limite superiore all'altezza.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[unionfind]
+  % \sotto{x}{y}: un sottoalbero appeso al nodo in (x, y), disegnato come un triangolo
+  \newcommand{\sotto}[2]{\draw[Accent, fill=Accent!4] (#1,#2) -- ({#1-0.36},{#2-0.85}) -- ({#1+0.36},{#2-0.85}) -- cycle;}
+  % (a) prima di Find-Set(a): il cammino di ricerca a, b, c, d, e
+  \node[lab, anchor=east] at (-0.7,2.9) {(a)};
+  \foreach \v/\x/\y in {a/0/0, b/0.9/0.75, c/1.8/1.5, d/2.7/2.25, e/3.6/3.0} {
+    \sotto{\x}{\y}
+    \node[vn] (\v) at (\x,\y) {$\v$};
+  }
+  \draw[par] (a) -- (b); \draw[par] (b) -- (c); \draw[par] (c) -- (d); \draw[par] (d) -- (e);
+  \draw[par] (e) to[self] (e);
+  \draw[-{Stealth[length=2.2mm]}, very thick, FigColor] (4.5,1.3) -- node[above, font=\small] {\FindSet$(a)$} (6.3,1.3);
+  % (b) dopo Find-Set(a): tutti i nodi del cammino puntano alla radice
+  \begin{scope}[xshift=7.0cm]
+    \node[lab, anchor=east] at (-0.5,2.9) {(b)};
+    \foreach \v/\x in {a/0, b/1.05, c/2.1, d/3.15} {
+      \sotto{\x}{1.4}
+      \node[vn] (\v2) at (\x,1.4) {$\v$};
+    }
+    \sotto{4.1}{2.6}
+    \node[vn] (e2) at (4.1,2.6) {$e$};
+    \foreach \v in {a,b,c,d} \draw[new] (\v2) -- (e2);
+    \draw[par] (e2) to[self] (e2);
+  \end{scope}
+\end{tikzpicture}
+\caption{La compressione dei cammini. I triangoli sono i sottoalberi dei nodi del cammino, che non cambiano. (a) Un albero prima di \FindSet$(a)$, con il cammino di ricerca $a, b, c, d, e$. (b) Lo stesso albero dopo \FindSet$(a)$: tutti i nodi del cammino puntano direttamente alla radice $e$.}
+\label{fig:uf-compressione}
+\end{figure}
+
+\subsection{Pseudocodice}\label{sec:uf-pseudocodice}
+L'algoritmo~\ref{alg:uf-link} riporta \MakeSet{}, \Link{} e \Union{}. \Union$(x,y)$ cerca le radici dei due alberi, e le passa a \Link{}. Se i ranghi delle due radici sono diversi, la radice di rango minore diventa figlio dell'altra, e i ranghi non cambiano. Se invece i ranghi sono uguali, $x$ diventa figlio di $y$, e il rango di $y$ aumenta di uno (righe 6--8).
+
+\begin{algorithm}[!htb]
+\caption{La creazione di un insieme, e l'unione di due insiemi con l'unione per ranghi. \Link{} riceve due radici.}\label{alg:uf-link}
+\begin{algorithmic}[1]
+\Procedure{Make-Set}{$x$}
+  \State $p[x] \gets x$
+  \State $\mathit{rank}[x] \gets 0$
+\EndProcedure
+\Statex
+\Procedure{Link}{$x,y$}
+  \If{$\mathit{rank}[x] > \mathit{rank}[y]$}
+    \State $p[y] \gets x$
+  \Else
+    \State $p[x] \gets y$
+    \If{$\mathit{rank}[x] = \mathit{rank}[y]$}
+      \State $\mathit{rank}[y] \gets \mathit{rank}[y] + 1$
+    \EndIf
+  \EndIf
+\EndProcedure
+\Statex
+\Procedure{Union}{$x,y$}
+  \State \Call{Link}{\FindSet$(x)$, \FindSet$(y)$}
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\FindSet{} con la compressione dei cammini (algoritmo~\ref{alg:uf-find}) è ricorsiva, e lavora in due passate. Nella prima, le chiamate ricorsive risalgono il cammino di ricerca fino alla radice. Nella seconda, mentre la ricorsione si chiude, la riga 3 fa puntare ogni nodo del cammino direttamente alla radice, che la riga 5 restituisce. Se $x$ è la radice, la ricorsione si ferma subito, e \FindSet{} restituisce $p[x] = x$.
+
+\begin{algorithm}[!htb]
+\caption{La ricerca del rappresentante di $x$, con la compressione dei cammini.}\label{alg:uf-find}
+\begin{algorithmic}[1]
+\Procedure{Find-Set}{$x$}
+  \If{$x \ne p[x]$}
+    \State $p[x] \gets$ \Call{Find-Set}{$p[x]$}
+  \EndIf
+  \State \Return $p[x]$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Esempio.}
+La figura~\ref{fig:uf-esempio} mostra la foresta che si ottiene con \MakeSet$(0), \ldots,$ \MakeSet$(16)$ seguite dalle unioni seguenti, da leggere per righe:
+\begin{center}
+\begin{tabular}{llll}
+\Union$(1,2)$ & \Union$(3,4)$ & \Union$(3,5)$ & \Union$(1,7)$ \\
+\Union$(3,6)$ & \Union$(8,9)$ & \Union$(1,8)$ & \Union$(3,10)$ \\
+\Union$(3,11)$ & \Union$(3,12)$ & \Union$(3,13)$ & \Union$(14,15)$ \\
+\Union$(16,0)$ & \Union$(14,16)$ & \Union$(1,3)$ & \Union$(1,14)$
+\end{tabular}
+\end{center}
+In questo esempio, a parità di rango, è la radice del primo argomento a diventare il padre: si tratta della scelta opposta a quella di \Link{}, ed è ammessa, in quanto con l'unione per ranghi la scelta è arbitraria. Ad esempio, \Union$(1,2)$ fa diventare $2$ figlio di $1$, e il rango di $1$ sale a $1$.
+
+Le unioni avvengono sempre tra due radici, quindi i cammini di ricerca si fermano subito e la compressione non interviene. Il risultato è un solo albero, con radice $1$ e rango $3$. Se ora eseguiamo \FindSet$(0)$, sul nodo più profondo, il cammino di ricerca è $0, 16, 14, 1$: dopo la compressione, $0$ e $16$ diventano figli della radice $1$.
+
+\begin{figure}[htbp]
+\centering
+\begin{widget}{union-find}[n=17, tie=first, interval=1500, ops={union 1 2, union 3 4, union 3 5, union 1 7, union 3 6, union 8 9, union 1 8, union 3 10, union 3 11, union 3 12, union 3 13, union 14 15, union 16 0, union 14 16, union 1 3, union 1 14, find 0}]
+%% GEN:esempio
+\begin{tikzpicture}[unionfind]
+  % (a)
+  \node[lab, anchor=east] at (0.100,-0.836) {(a)};
+  \node[vs] (a2) at (0.665,-1.900) {2};
+  \node[rk, anchor=south west] at (0.835,-1.780) {0};
+  \node[vs] (a7) at (1.311,-1.900) {7};
+  \node[rk, anchor=south west] at (1.481,-1.780) {0};
+  \node[vs] (a9) at (1.957,-2.964) {9};
+  \node[rk, anchor=south west] at (2.127,-2.844) {0};
+  \node[vs] (a8) at (1.957,-1.900) {8};
+  \node[rk, anchor=south west] at (2.127,-1.780) {1};
+  \node[vs] (a4) at (2.603,-2.964) {4};
+  \node[rk, anchor=south west] at (2.773,-2.844) {0};
+  \node[vs] (a5) at (3.249,-2.964) {5};
+  \node[rk, anchor=south west] at (3.419,-2.844) {0};
+  \node[vs] (a6) at (3.895,-2.964) {6};
+  \node[rk, anchor=south west] at (4.065,-2.844) {0};
+  \node[vs] (a10) at (4.541,-2.964) {10};
+  \node[rk, anchor=south west] at (4.711,-2.844) {0};
+  \node[vs] (a11) at (5.187,-2.964) {11};
+  \node[rk, anchor=south west] at (5.357,-2.844) {0};
+  \node[vs] (a12) at (5.833,-2.964) {12};
+  \node[rk, anchor=south west] at (6.003,-2.844) {0};
+  \node[vs] (a13) at (6.479,-2.964) {13};
+  \node[rk, anchor=south west] at (6.649,-2.844) {0};
+  \node[vs] (a3) at (4.541,-1.900) {3};
+  \node[rk, anchor=south west] at (4.711,-1.780) {1};
+  \node[vs] (a15) at (7.125,-2.964) {15};
+  \node[rk, anchor=south west] at (7.295,-2.844) {0};
+  \node[vs] (a0) at (7.771,-4.028) {0};
+  \node[rk, anchor=south west] at (7.941,-3.908) {0};
+  \node[vs] (a16) at (7.771,-2.964) {16};
+  \node[rk, anchor=south west] at (7.941,-2.844) {1};
+  \node[vs] (a14) at (7.448,-1.900) {14};
+  \node[rk, anchor=south west] at (7.618,-1.780) {2};
+  \node[vs] (a1) at (4.057,-0.836) {1};
+  \node[rk, anchor=south west] at (4.227,-0.716) {3};
+  \draw[par] (a9) -- (a8);
+  \draw[par] (a4) -- (a3);
+  \draw[par] (a5) -- (a3);
+  \draw[par] (a6) -- (a3);
+  \draw[par] (a10) -- (a3);
+  \draw[par] (a11) -- (a3);
+  \draw[par] (a12) -- (a3);
+  \draw[par] (a13) -- (a3);
+  \draw[par] (a0) -- (a16);
+  \draw[par] (a15) -- (a14);
+  \draw[par] (a16) -- (a14);
+  \draw[par] (a2) -- (a1);
+  \draw[par] (a7) -- (a1);
+  \draw[par] (a8) -- (a1);
+  \draw[par] (a3) -- (a1);
+  \draw[new] (a14) -- (a1);
+  \draw[par] (a1) to[self] (a1);
+  % (b)
+  \node[lab, anchor=east] at (0.100,-5.679) {(b)};
+  \node[vs] (b2) at (0.665,-6.743) {2};
+  \node[rk, anchor=south west] at (0.835,-6.623) {0};
+  \node[vs] (b7) at (1.311,-6.743) {7};
+  \node[rk, anchor=south west] at (1.481,-6.623) {0};
+  \node[vs] (b9) at (1.957,-7.807) {9};
+  \node[rk, anchor=south west] at (2.127,-7.687) {0};
+  \node[vs] (b8) at (1.957,-6.743) {8};
+  \node[rk, anchor=south west] at (2.127,-6.623) {1};
+  \node[vs] (b4) at (2.603,-7.807) {4};
+  \node[rk, anchor=south west] at (2.773,-7.687) {0};
+  \node[vs] (b5) at (3.249,-7.807) {5};
+  \node[rk, anchor=south west] at (3.419,-7.687) {0};
+  \node[vs] (b6) at (3.895,-7.807) {6};
+  \node[rk, anchor=south west] at (4.065,-7.687) {0};
+  \node[vs] (b10) at (4.541,-7.807) {10};
+  \node[rk, anchor=south west] at (4.711,-7.687) {0};
+  \node[vs] (b11) at (5.187,-7.807) {11};
+  \node[rk, anchor=south west] at (5.357,-7.687) {0};
+  \node[vs] (b12) at (5.833,-7.807) {12};
+  \node[rk, anchor=south west] at (6.003,-7.687) {0};
+  \node[vs] (b13) at (6.479,-7.807) {13};
+  \node[rk, anchor=south west] at (6.649,-7.687) {0};
+  \node[vs] (b3) at (4.541,-6.743) {3};
+  \node[rk, anchor=south west] at (4.711,-6.623) {1};
+  \node[vs] (b15) at (7.125,-7.807) {15};
+  \node[rk, anchor=south west] at (7.295,-7.687) {0};
+  \node[vs] (b14) at (7.125,-6.743) {14};
+  \node[rk, anchor=south west] at (7.295,-6.623) {2};
+  \node[vs] (b0) at (7.771,-6.743) {0};
+  \node[rk, anchor=south west] at (7.941,-6.623) {0};
+  \node[vs] (b16) at (8.417,-6.743) {16};
+  \node[rk, anchor=south west] at (8.587,-6.623) {1};
+  \node[vs] (b1) at (4.541,-5.679) {1};
+  \node[rk, anchor=south west] at (4.711,-5.559) {3};
+  \draw[par] (b9) -- (b8);
+  \draw[par] (b4) -- (b3);
+  \draw[par] (b5) -- (b3);
+  \draw[par] (b6) -- (b3);
+  \draw[par] (b10) -- (b3);
+  \draw[par] (b11) -- (b3);
+  \draw[par] (b12) -- (b3);
+  \draw[par] (b13) -- (b3);
+  \draw[par] (b15) -- (b14);
+  \draw[par] (b2) -- (b1);
+  \draw[par] (b7) -- (b1);
+  \draw[par] (b8) -- (b1);
+  \draw[par] (b3) -- (b1);
+  \draw[par] (b14) -- (b1);
+  \draw[new] (b0) -- (b1);
+  \draw[new] (b16) -- (b1);
+  \draw[par] (b1) to[self] (b1);
+\end{tikzpicture}
+%% END:esempio
+\end{widget}
+\caption{La foresta ottenuta con \MakeSet$(0), \ldots,$ \MakeSet$(16)$ e le unioni dell'esempio, in cui a parità di rango la radice del primo argomento diventa il padre. Accanto a ogni nodo c'è il suo rango. (a) Dopo l'ultima unione, \Union$(1,14)$, che crea la freccia in evidenza, tutti gli elementi stanno in un albero con radice $1$ e rango $3$. (b) Dopo \FindSet$(0)$: i nodi $0$ e $16$ del cammino di ricerca puntano ora alla radice.}
+\label{fig:uf-esempio}
+\end{figure}
+
+\section{Effetto delle euristiche sulla complessità}\label{sec:uf-complessita}
+Le due euristiche migliorano il costo anche separatamente, ma è la loro combinazione a dare il risultato migliore. Ricordando che $m$ è il numero complessivo di operazioni e $n$ il numero di operazioni \MakeSet{}, si ha:
+\begin{itemize}
+    \item \textbf{Unione per ranghi} (senza compressione dei cammini): $O(m \lg n)$.
+    \item \textbf{Compressione dei cammini} (senza unione per ranghi): $\Theta\bigl(n + f \cdot (1 + \log_{2 + f/n} n)\bigr)$, dove $f$ è il numero di operazioni \FindSet{}.
+    \item \textbf{Entrambe le euristiche}: $O(m\,\alpha(n))$, dove $\alpha(n)$ è un'inversa della funzione di Ackermann.
+\end{itemize}
+
+In pratica $\alpha(n) \le 4$, sebbene $\alpha(n) \to +\infty$. Dimostriamo il primo limite, e poi definiamo la funzione $\alpha$.
+
+\subsection{Solo l'unione per ranghi}\label{sec:uf-solo-ranghi}
+Con l'unione per ranghi, il rango di una radice dà un limite inferiore al numero di nodi del suo albero.
+
+\begin{lemma}\label{lem:uf-rango}
+Con l'unione per ranghi, ogni radice $x$ di rango $r$ ha almeno $2^r$ nodi nel suo albero.
+\end{lemma}
+
+\paragraph{Dimostrazione.}
+Procediamo per induzione sul numero di operazioni. \MakeSet{} crea un albero con un solo nodo, di rango $0$, e $1 = 2^0$. \FindSet{} non cambia né i ranghi né i nodi contenuti in ciascun albero, anche quando comprime un cammino. Resta \Link$(x,y)$, che modifica soltanto l'albero che riceve l'altro:
+\begin{itemize}
+    \item Se $\mathit{rank}[x] \ne \mathit{rank}[y]$, la radice di rango maggiore riceve un sottoalbero in più, e il suo rango non cambia. Il numero dei suoi nodi può soltanto aumentare.
+    \item Se $\mathit{rank}[x] = \mathit{rank}[y] = r$, l'albero di $y$ riceve l'albero di $x$, e il rango di $y$ diventa $r + 1$. Per l'ipotesi induttiva i due alberi hanno almeno $2^r$ nodi ciascuno, quindi il nuovo albero ne ha almeno $2^r + 2^r = 2^{r+1}$. \hfill $\square$
+\end{itemize}
+
+\begin{corollario}\label{cor:uf-rango}
+Con l'unione per ranghi, ogni nodo ha rango al più $\lfloor \lg n \rfloor$.
+\end{corollario}
+
+\paragraph{Dimostrazione.}
+Il rango di un nodo cambia soltanto mentre il nodo è una radice, quindi basta considerare le radici. Per il lemma~\ref{lem:uf-rango}, una radice di rango $r$ ha almeno $2^r$ nodi nel suo albero, che non possono essere più di $n$. Da $2^r \le n$ segue $r \le \lg n$, e quindi $r \le \lfloor \lg n \rfloor$, in quanto il rango è un intero. \hfill $\square$
+
+\begin{teorema}\label{teo:uf-solo-ranghi}
+Con l'unione per ranghi e senza la compressione dei cammini, una sequenza di $m$ operazioni \MakeSet{}, \Union{} e \FindSet{}, di cui $n$ sono \MakeSet{}, costa $O(m \lg n)$.
+\end{teorema}
+
+\paragraph{Dimostrazione.}
+Senza la compressione dei cammini, il rango di ogni nodo coincide con la sua altezza. Un nodo cambia altezza soltanto quando è una radice e riceve un figlio con \Link{}. Se i ranghi sono diversi, il nuovo figlio ha altezza minore della radice, e l'altezza della radice non cambia. Se i ranghi sono uguali a $r$, l'altezza diventa $r + 1$, come il rango.
+
+Per il corollario~\ref{cor:uf-rango}, quindi, ogni albero ha altezza al più $\lfloor \lg n \rfloor$, e ogni \FindSet{} costa $O(\lg n)$. \MakeSet{} e \Link{} costano $O(1)$, e \Union{} costa quanto due \FindSet{}, ovvero $O(\lg n)$. Una sequenza di $m$ operazioni costa quindi $O(m \lg n)$. \hfill $\square$
+
+\begin{osservazione}[Il limite è stretto]
+Il limite $O(m \lg n)$ è stretto. Sia $n = 2^k$: unendo gli insiemi a coppie, livello per livello come nella figura~\ref{fig:uf-crediti}, ogni \Link{} collega due radici dello stesso rango, e si ottiene un solo albero di rango e altezza $k = \lg n$. Ripetendo poi \FindSet{} sul nodo più profondo, ogni ricerca costa $\Theta(\lg n)$, in quanto senza compressione l'albero non cambia. Con $m \ge 3n$ operazioni, di cui almeno $m - 2n$ sono queste ricerche, il costo complessivo è $\Omega(m \lg n)$.
+\end{osservazione}
+
+\subsection{La funzione di Ackermann e la sua inversa}\label{sec:uf-ackermann}
+Per interi $j, k \ge 0$, definiamo la funzione:
+\[
+A_k(j) =
+\begin{cases}
+j + 1 & \text{se } k = 0, \\
+A_{k-1}^{(j+1)}(j) & \text{se } k \ge 1,
+\end{cases}
+\]
+dove $A_{k-1}^{(j+1)}$ indica la funzione $A_{k-1}$ applicata $j + 1$ volte di seguito. Si tratta dell'iterazione funzionale: $A_{k-1}^{(0)}(j) = j$, e $A_{k-1}^{(i)}(j) = A_{k-1}\bigl(A_{k-1}^{(i-1)}(j)\bigr)$ per $i \ge 1$. Il parametro $k$ si chiama \textbf{livello} della funzione.\footnote{La funzione definita da W.~Ackermann nel 1928 è diversa: questa è una delle sue varianti, che cresce in modo analogo.}
+
+La funzione $A_k(j)$ cresce strettamente sia in $j$ sia in $k$. Per vedere quanto velocemente, ricaviamo una forma chiusa per i primi due livelli:
+\[
+A_1(j) = 2j + 1, \qquad A_2(j) = 2^{j+1}(j + 1) - 1.
+\]
+Per induzione su $i$ si ha $A_0^{(i)}(j) = j + i$, da cui $A_1(j) = A_0^{(j+1)}(j) = 2j + 1$. Allo stesso modo $A_1^{(i)}(j) = 2^i(j + 1) - 1$: vale per $i = 0$, e se vale per $i - 1$ si ha:
+\[
+A_1^{(i)}(j) = A_1\bigl(2^{i-1}(j + 1) - 1\bigr) = 2\bigl(2^{i-1}(j + 1) - 1\bigr) + 1 = 2^i(j + 1) - 1.
+\]
+Quindi $A_2(j) = A_1^{(j+1)}(j) = 2^{j+1}(j + 1) - 1$.
+
+Calcoliamo ora $A_k(1)$ per i livelli da $0$ a $4$. Dai primi due livelli si ottiene $A_0(1) = 2$, $A_1(1) = 3$ e $A_2(1) = 2^2 \cdot 2 - 1 = 7$. Per il terzo e il quarto livello si ha:
+\[
+\begin{aligned}
+A_3(1) &= A_2^{(2)}(1) = A_2\bigl(A_2(1)\bigr) = A_2(7) = 2^8 \cdot 8 - 1 = 2^{11} - 1 = 2047, \\
+A_4(1) &= A_3^{(2)}(1) = A_3\bigl(A_3(1)\bigr) = A_3(2047) = A_2^{(2048)}(2047) \\
+&\gg A_2(2047) = 2^{2048} \cdot 2048 - 1 = 2^{2059} - 1 > 16^{514},
+\end{aligned}
+\]
+dove $16^{514} = 2^{2056}$ è già enormemente più grande di $10^{80}$, il numero stimato di atomi nell'universo osservabile.
+
+\begin{definizione}[Inversa della funzione di Ackermann]\label{def:uf-alpha}
+Per ogni intero $n \ge 0$ si definisce:
+\[
+\alpha(n) = \min\{k : A_k(1) \ge n\},
+\]
+ovvero il livello più basso $k$ per cui $A_k(1)$ è almeno $n$.
+\end{definizione}
+
+Dai valori di $A_k(1)$ calcolati sopra si ottiene:
+\[
+\alpha(n) =
+\begin{cases}
+0 & \text{per } 0 \le n \le 2, \\
+1 & \text{per } n = 3, \\
+2 & \text{per } 4 \le n \le 7, \\
+3 & \text{per } 8 \le n \le 2047, \\
+4 & \text{per } 2048 \le n \le A_4(1).
+\end{cases}
+\]
+Soltanto per valori di $n$ più grandi di $A_4(1)$ si ha $\alpha(n) > 4$. In pratica, quindi, $\alpha(n) \le 4$, sebbene $\alpha(n) \to +\infty$ per $n \to +\infty$.
+
+\subsection{Entrambe le euristiche}\label{sec:uf-entrambe}
+Il risultato seguente è dovuto a R.\,E.~Tarjan (1975), e lo enunciamo senza dimostrazione.
+
+\begin{teorema}\label{teo:uf-alpha}
+Con l'unione per ranghi e la compressione dei cammini, una sequenza di $m$ operazioni \MakeSet{}, \Union{} e \FindSet{}, di cui $n$ sono \MakeSet{}, costa $O(m\,\alpha(n))$.
+\end{teorema}
+
+Poiché in pratica $\alpha(n) \le 4$, il costo di una sequenza di $m$ operazioni è lineare in $m$ per qualsiasi applicazione concreta, e il costo ammortizzato di ogni operazione è praticamente costante. Matematicamente, però, il costo resta superlineare, in quanto $\alpha(n)$ non è limitata.
+
+\section{Riepilogo dei costi}\label{sec:uf-costi}
+La tabella~\ref{tab:uf-costi} riassume il costo di una sequenza di $m$ operazioni, di cui $n$ sono \MakeSet{}, con le implementazioni viste nel capitolo.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lll}
+\toprule
+Rappresentazione & Euristiche & Costo della sequenza \\
+\midrule
+liste concatenate & nessuna & $O(m + n^2)$ \\
+liste concatenate & unione per ranghi & $O(m + n \lg n)$ \\
+foreste & nessuna & $O(m n)$ \\
+foreste & unione per ranghi & $O(m \lg n)$ \\
+foreste & compressione dei cammini & $\Theta\bigl(n + f \cdot (1 + \log_{2+f/n} n)\bigr)$ \\
+foreste & entrambe & $O(m\,\alpha(n))$ \\
+\bottomrule
+\end{tabular}
+\caption{Il costo di una sequenza di $m$ operazioni \MakeSet{}, \Union{} e \FindSet{}, di cui $n$ sono \MakeSet{} ed $f$ sono \FindSet{}, nel caso peggiore.}
+\label{tab:uf-costi}
+\end{table}
+
+Senza euristiche, con le liste concatenate ogni \Union{} costa al più $O(n)$, e con le foreste ogni \FindSet{} costa al più $O(n)$, l'altezza di una catena di $n$ nodi. Le euristiche trasformano questi costi lineari in costi logaritmici, e insieme, con le foreste, in un costo ammortizzato praticamente costante.
+
+\section*{Riferimenti}
+Il materiale visto in questo capitolo comprende:
+\begin{itemize}
+    \item Materiale visto a lezione.
+    \item Capitolo 19 (\emph{Data Structures for Disjoint Sets}) del libro T.\,H.~Cormen, C.\,E.~Leiserson, R.\,L.~Rivest, C.~Stein, \emph{Introduction to Algorithms}, quarta edizione.
+    \item R.\,E.~Tarjan, \emph{Efficiency of a Good But Not Linear Set Union Algorithm}, Journal of the ACM, 22(2), 1975, pp.~215--225.
+    \item R.~Sedgewick, K.~Wayne, lucidi della lezione \emph{Union-Find} del corso \emph{Algorithms}, Princeton University: l'esempio della percolazione.
+\end{itemize}

@@ -1,0 +1,37 @@
+/* labirinto: celle colorate per insieme, muri che si abbattono, e l'elenco dei muri sotto la figura */
+.w-maze .mz-cell { fill: var(--surface); stroke: color-mix(in oklab, var(--rule) 70%, transparent); stroke-width: 0.6;
+  transition: fill calc(0.4s / var(--speed, 1)); }
+.w-maze .mz-c0 { fill: color-mix(in oklab, var(--c2) 24%, var(--surface)); }
+.w-maze .mz-c1 { fill: color-mix(in oklab, var(--c4) 26%, var(--surface)); }
+.w-maze .mz-c2 { fill: color-mix(in oklab, var(--c5) 22%, var(--surface)); }
+.w-maze .mz-c3 { fill: color-mix(in oklab, var(--c3) 20%, var(--surface)); }
+.w-maze .mz-c4 { fill: color-mix(in oklab, var(--lemma) 24%, var(--surface)); }
+.w-maze .mz-c5 { fill: color-mix(in oklab, var(--c1) 16%, var(--surface)); }
+.w-maze .mz-c6 { fill: color-mix(in oklab, var(--accent) 18%, var(--surface)); }
+.w-maze .mz-c7 { fill: color-mix(in oklab, var(--obs) 14%, var(--surface)); }
+.w-maze .mz-pair { stroke: var(--fig); stroke-width: 2.2; }
+.w-maze .mz-num { font-family: var(--font-serif); font-size: 13px; fill: var(--ink-soft); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.w-maze .mz-wall { stroke: var(--accent); stroke-width: 3.2; stroke-linecap: round;
+  transition: opacity calc(0.5s / var(--speed, 1)), stroke calc(0.3s / var(--speed, 1)); }
+.w-maze .mz-gone { opacity: 0; }
+.w-maze .mz-cur-ok { stroke: var(--fig); stroke-dasharray: 4 4; opacity: 0.7; }
+.w-maze .mz-cur-ko { stroke: var(--hot); stroke-width: 5; }
+.w-maze .mz-kept { stroke: var(--hot); }
+.w-maze .mz-border { fill: none; stroke: var(--accent); stroke-width: 3.6; stroke-linecap: round; stroke-linejoin: round; }
+.w-maze .mz-io { font-family: var(--font-sans); font-size: 11px; fill: var(--hot); dominant-baseline: central; text-transform: uppercase; letter-spacing: 0.04em; }
+.w-maze .mz-path { fill: none; stroke: var(--fig); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; opacity: 0;
+  transition: opacity calc(0.5s / var(--speed, 1)); }
+.w-maze .mz-path.on { opacity: 0.85; }
+.w-maze .mz-path-soft { stroke-width: 9; }
+.w-maze .mz-path-soft.on { opacity: 0.3; }
+
+.w-maze .mz-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.25rem 0.55rem; margin: 0.7rem auto 0; max-width: 34rem;
+  font-family: var(--font-serif); font-size: 0.95rem; }
+.w-maze .mz-chip { padding: 0.05rem 0.3rem; color: var(--ink-soft); border: 1.5px solid transparent; border-radius: 4px;
+  transition: color calc(0.3s / var(--speed, 1)), border-color calc(0.3s / var(--speed, 1)), background calc(0.3s / var(--speed, 1)); }
+.w-maze .mz-chip.ok { color: var(--ink); text-decoration: underline; text-decoration-color: var(--hot); text-underline-offset: 3px; }
+.w-maze .mz-chip.ko { color: var(--ink); border-color: var(--hot); }
+.w-maze .mz-chip.cur { background: color-mix(in oklab, var(--fig) 16%, transparent); font-weight: 600; }
+.w-maze .mz-chip.skip { opacity: 0.45; }
+
+.w-maze .eq-line { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.15rem 1.6rem; }

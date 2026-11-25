@@ -1,0 +1,13 @@
+/* foresta di insiemi disgiunti: frecce verso il padre, anelli sulle radici e ranghi accanto ai nodi */
+.w-uf .uf-loop { fill: none; stroke: var(--ink-soft); stroke-width: 1.3; }
+.w-uf .uf-loophead { fill: var(--ink-soft); stroke: none; }
+.w-uf .uf-rank {
+  font-family: var(--font-sans); font-size: 10px; fill: var(--ink-soft); stroke-width: 2.5px;
+}
+.w-uf .uf-rank-root { fill: var(--accent); font-weight: 700; }
+.w-uf .fv-arrow.uf-path { stroke: var(--fig); stroke-width: 2.8; }
+.w-uf .fv-arrow.uf-fresh { stroke: var(--obs); stroke-width: 2.4; }
+.w-uf .uf-sel { font-style: italic; font-weight: 700; fill: var(--obs); }
+.w-uf .sc { font-variant: small-caps; letter-spacing: 0.03em; }
+.w-uf .hint { font-size: 0.8rem; margin-top: 0.3rem; }
+.w-uf .eq-line { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.15rem 1.6rem; }

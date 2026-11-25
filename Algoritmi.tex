@@ -94,6 +94,21 @@
   cell/.style={draw=TextGray, minimum size=4.2mm, inner sep=0pt, font=\scriptsize},
   cellc/.style={cell, draw=FigColor, fill=FigColor!18}}}
 
+% union-find: vn è un vertice di un grafo o un nodo di una foresta (vs la sua versione piccola, rk il rango
+% scritto accanto a un nodo), ptr un puntatore delle liste concatenate, par la freccia da un nodo al padre,
+% self l'anello di una radice (che è padre di sé stessa) e new una freccia appena creata; wall è un muro dei
+% labirinti; le coordinate delle figure dei widget vengono dai modelli dei widget union-find, maze e percolation
+\tikzset{unionfind/.style={
+  vn/.style={circle, draw=Accent, fill=Accent!6, minimum size=5.5mm, inner sep=0pt, font=\small},
+  vs/.style={circle, draw=Accent, fill=Accent!6, minimum size=4.6mm, inner sep=0pt, font=\scriptsize},
+  rk/.style={font=\tiny, color=TextGray, fill=white, inner sep=0.5pt},
+  ptr/.style={-{Stealth[length=1.6mm]}, Accent},
+  par/.style={-{Stealth[length=1.5mm]}, TextGray},
+  new/.style={-{Stealth[length=1.8mm]}, FigColor, thick},
+  self/.style={loop above, min distance=4mm, looseness=7},
+  wall/.style={Accent, line width=1.6pt, line cap=round},
+  lab/.style={font=\small, color=TextGray}}}
+
 % figure interattive della versione web (texweb): nel PDF si stampa la figura statica
 \usepackage{texweb}
 
@@ -386,6 +401,12 @@
 \newcommand{\Cut}{\textsc{Cut}}
 \newcommand{\CascadingCut}{\textsc{Cascading-Cut}}
 \newcommand{\FibHeapDelete}{\textsc{Fib-Heap-Delete}}
+% union-find
+\newcommand{\MakeSet}{\textsc{Make-Set}}
+\newcommand{\FindSet}{\textsc{Find-Set}}
+\newcommand{\Link}{\textsc{Link}}
+\newcommand{\ConnectedComponents}{\textsc{Connected-Components}}
+\newcommand{\SameComponent}{\textsc{Same-Component}}
 
 % =====================================================
 % METADATA
@@ -486,6 +507,7 @@ Versione: \today
 \input{chapters/move_to_front}
 \input{chapters/heap_binomiali}
 \input{chapters/heap_fibonacci}
+\input{chapters/union_find}
 
 % =====================================================
 % BIBLIOGRAPHY

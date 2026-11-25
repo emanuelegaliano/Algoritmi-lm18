@@ -1,0 +1,26 @@
+/* percolazione: siti bloccati scuri, aperti bianchi, pieni in blu, e i due siti virtuali come barre */
+.w-perc .pc-cell { stroke: #8a8d93; stroke-width: 0.6;
+  transition: fill calc(0.35s / var(--speed, 1)); }
+/* i colori della griglia non dipendono dal tema: bloccato scuro, aperto bianco e pieno azzurro, come nel PDF */
+.w-perc .pc-blocked { fill: #24272d; }
+.w-perc .pc-open { fill: #f7f5f0; }
+.w-perc .pc-full { fill: #9cc6ec; }
+.w-perc .pc-new { stroke: var(--hot); stroke-width: 2.6; }
+.w-perc .pc-bar { fill: #e4e1da; stroke: var(--ink-soft); stroke-width: 0.8;
+  transition: fill calc(0.35s / var(--speed, 1)); }
+.w-perc .pc-bar.pc-full { fill: #9cc6ec; }
+.w-perc .pc-num { font-family: var(--font-mono); font-size: 11px; fill: #1d1f23; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.w-perc .pc-num-dark { fill: #f2f2f2; opacity: 0.85; }
+.w-perc .pc-barnum { font-size: 11px; }
+.w-perc .pc-side { font-family: var(--font-sans); font-size: 11px; fill: var(--ink-soft); dominant-baseline: central; font-style: italic; }
+
+.w-perc .pc-est { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--rule); }
+.w-perc .pc-est .controls { justify-content: center; margin-bottom: 0.5rem; }
+.w-perc .pc-lab { font-family: var(--font-sans); font-size: 0.88rem; color: var(--ink-soft); }
+.w-perc .pc-out { text-align: center; min-height: 1.6rem; font-size: 0.98rem; }
+.w-perc .pc-hist { display: block; margin: 0.3rem auto 0; max-width: 360px; }
+.w-perc .pc-bin { fill: color-mix(in oklab, var(--blue) 55%, var(--surface)); }
+.w-perc .pc-pstar { stroke: var(--hot); stroke-width: 1.2; stroke-dasharray: 3 2; }
+.w-perc .pc-axis { font-family: var(--font-sans); font-size: 8px; fill: var(--ink-soft); }
+
+.w-perc .eq-line { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.15rem 1.6rem; }
